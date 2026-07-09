@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id       Int     @id @default(autoincrement())
+  name     String
+  sku      String
+  category String
+  qty      Int
+  price    Float
+  image    String?
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  color     String     @default("#356DDB")
+  active    Boolean    @default(true)
+  menuItems MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id          Int         @id @default(autoincrement())
+  name        String
+  sku         String      @unique
+  description String?
+  price       Float
+  saleUnit    String       @default("จาน")
+  image       String?
+  available   Boolean     @default(true)
+  categoryId  Int
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  recipes     Recipe[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model RestaurantTable {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique
+  seats     Int         @default(2)
+  status    TableStatus @default(AVAILABLE)
+  orders    Order[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Order {
+  id          Int              @id @default(autoincrement())
+  orderNumber String           @unique
+  tableId     Int?
+  table       RestaurantTable? @relation(fields: [tableId], references: [id])
+  type        OrderType        @default(DINE_IN)
+  queueNumber String?          @unique
+  customerName String?
+  customerPhone String?
+  estimatedReadyAt DateTime?
+  pickedUpAt  DateTime?
+  status      OrderStatus      @default(SENT)
+  paymentStatus PaymentStatus  @default(UNPAID)
+  subtotal    Float
+  discount    Float            @default(0)
+  total       Float
+  note        String?
+  stockDeducted Boolean          @default(false)
+  items       OrderItem[]
+  payment     Payment?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model OrderItem {
+  id         Int           @id @default(autoincrement())
+  orderId    Int
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId Int
+  menuItem   MenuItem      @relation(fields: [menuItemId], references: [id])
+  name       String
+  price      Float
+  qty        Int
+  note       String?
+  status     KitchenStatus @default(NEW)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Payment {
+  id      Int           @id @default(autoincrement())
+  orderId Int           @unique
+  order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method  PaymentMethod
+  amount  Float
+  paidAt  DateTime      @default(now())
+}
+
+model Ingredient {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  unit        String
+  stock       Float           @default(0)
+  minStock    Float           @default(0)
+  costPerUnit Float           @default(0)
+  active      Boolean         @default(true)
+  recipes     Recipe[]
+  movements   StockMovement[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Recipe {
+  id           Int        @id @default(autoincrement())
+  menuItemId   Int
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Float
+
+  @@unique([menuItemId, ingredientId])
+}
+
+model StockMovement {
+  id           Int               @id @default(autoincrement())
+  ingredientId Int
+  ingredient   Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  type         StockMovementType
+  quantity     Float
+  reference    String?
+  note         String?
+  createdAt    DateTime          @default(now())
+}
+
+model Employee {
+  id           Int            @id @default(autoincrement())
+  username     String         @unique
+  displayName  String
+  passwordHash String
+  active       Boolean        @default(true)
+  lastLoginAt  DateTime?
+  roles        EmployeeRole[]
+  sessions     AuthSession[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model EmployeeRole {
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role       StaffRole
+
+  @@id([employeeId, role])
+}
+
+model AuthSession {
+  tokenHash  String   @id
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         Int       @id @default(autoincrement())
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([createdAt])
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+}
+
+enum OrderStatus {
+  SENT
+  PREPARING
+  READY
+  SERVED
+  PAID
+  CANCELLED
+}
+
+enum KitchenStatus {
+  NEW
+  PREPARING
+  READY
+  SERVED
+}
+
+enum PaymentMethod {
+  CASH
+  PROMPTPAY
+  CARD
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum StockMovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+}
+
+enum StaffRole {
+  OWNER
+  CASHIER
+  KITCHEN
+  STOCK
+}

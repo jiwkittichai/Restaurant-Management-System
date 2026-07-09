@@ -1,0 +1,16 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { ChefHat, Clock3 } from "lucide-react";
+
+type Item={id:number;name:string;qty:number;note?:string;status:string};
+type Order={id:number;orderNumber:string;type:string;queueNumber?:string;customerName?:string;paymentStatus:string;status:string;createdAt:string;table?:{name:string};items:Item[]};
+const itemText:Record<string,string>={NEW:"รอทำ",PREPARING:"กำลังทำ",READY:"พร้อมเสิร์ฟ",SERVED:"เสิร์ฟแล้ว"};
+
+export default function KitchenPage(){
+  const [orders,setOrders]=useState<Order[]>([]);const [error,setError]=useState("");
+  const load=useCallback(()=>fetch("/api/orders").then(r=>r.json()).then(setOrders).catch(()=>setError("โหลดออเดอร์ไม่สำเร็จ")),[]);
+  useEffect(()=>{load();const timer=setInterval(load,10000);return()=>clearInterval(timer);},[load]);
+  async function update(itemId:number,status:string){const r=await fetch("/api/orders",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"item-status",itemId,status})});if(!r.ok)setError("อัปเดตสถานะไม่สำเร็จ");else load();}
+  return <div className="p-6"><div className="flex justify-between items-center mb-4"><p className="text-sm text-gray-400">อัปเดตอัตโนมัติทุก 10 วินาที</p><button onClick={load} className="bg-white px-4 py-2 rounded-xl text-sm">รีเฟรช</button></div>{error&&<p className="text-red-500">{error}</p>}<div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{orders.map(order=><div key={order.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden"><div className={`p-4 text-white flex justify-between ${order.type==="TAKEAWAY"?"bg-[#356DDB]":"bg-[#212A3A]"}`}><div><p className="font-semibold">{order.type==="TAKEAWAY"?`คิว ${order.queueNumber}`:order.table?.name}</p><p className="text-xs text-gray-200">{order.customerName||order.orderNumber} · {order.paymentStatus==="PAID"?"ชำระแล้ว":"ยังไม่ชำระ"}</p></div><div className="flex items-center gap-1 text-xs text-gray-200"><Clock3 size={14}/>{new Date(order.createdAt).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}</div></div><div className="p-4 space-y-4">{order.items.map(item=><div key={item.id} className="border-b border-gray-100 pb-3 last:border-0"><div className="flex justify-between"><p className="font-medium"><span className="text-blue-600 mr-2">{item.qty}×</span>{item.name}</p><span className="text-xs text-gray-400">{itemText[item.status]}</span></div>{item.note&&<p className="text-xs text-red-500 mt-1">หมายเหตุ: {item.note}</p>}<div className="flex gap-2 mt-2">{item.status==="NEW"&&<button onClick={()=>update(item.id,"PREPARING")} className="bg-amber-500 text-white rounded-lg px-3 py-1.5 text-xs">เริ่มทำ</button>}{item.status==="PREPARING"&&<button onClick={()=>update(item.id,"READY")} className="bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs">{order.type==="TAKEAWAY"?"พร้อมรับ":"พร้อมเสิร์ฟ"}</button>}{item.status==="READY"&&order.type==="DINE_IN"&&<button onClick={()=>update(item.id,"SERVED")} className="bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs">เสิร์ฟแล้ว</button>}</div></div>)}</div></div>)}</div>{!orders.length&&<div className="text-center mt-20 text-gray-400"><ChefHat size={48} className="mx-auto mb-3 opacity-30"/><p>ยังไม่มีออเดอร์เข้าครัว</p></div>}</div>;
+}

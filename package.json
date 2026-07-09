@@ -1,0 +1,39 @@
+{
+  "name": "restaurant-system",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:seed": "node prisma/seed.js",
+    "minio:init": "node scripts/init-minio.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1025.0",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "formidable": "^3.5.4",
+    "lucide-react": "^1.7.0",
+    "minio": "^8.0.7",
+    "mysql2": "^3.20.0",
+    "next": "16.2.2",
+    "pg": "^8.20.0",
+    "prisma": "^6.19.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/formidable": "^3.5.0",
+    "@types/node": "^20.19.39",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
