@@ -18,6 +18,7 @@ import {
   Tags,
   PackageOpen,
   ChartNoAxesCombined,
+  Clock3,
   Users,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ const ICONS: Record<string, React.ElementType> = {
   Tags,
   PackageOpen,
   ChartNoAxesCombined,
+  Clock3,
   Users,
 };
 
@@ -61,7 +63,7 @@ const initialSidebarItems: SidebarItem[] = [
   { name: "เมนูอาหาร", path: "/dashboard/products", icon: "UtensilsCrossed", roles: ["OWNER"] },
   { name: "หมวดหมู่", path: "/dashboard/categories", icon: "Tags", roles: ["OWNER"] },
   { name: "รายงานยอดขาย", path: "/dashboard/reports", icon: "ChartNoAxesCombined", roles: ["OWNER"] },
-  { name: "จัดการพนักงาน", path: "/dashboard/employees", icon: "Users", roles: ["OWNER"] },
+  { name: "จัดการพนักงาน", path: "/dashboard/employees", icon: "Users", roles: ["OWNER"] }
 ];
 
 const Sidebar = ({ roles }: { roles: string[] }) => {
@@ -72,7 +74,7 @@ const Sidebar = ({ roles }: { roles: string[] }) => {
 
   const sidebarItems = initialSidebarItems.filter(item => item.roles.some(role => roles.includes(role)));
 
-  // แก้ isActive ให้ปุ่มไหนตรง pathname เท่านั้นถึง active
+  // isActive ให้ปุ่มไหนตรง pathname เท่านั้นถึง active
   const isActive = (path: string) => pathname === path;
 
   const handleNavigate = (path: string) => {

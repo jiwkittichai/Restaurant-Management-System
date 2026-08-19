@@ -57,6 +57,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const id = Number(body.id);
     const current = await prisma.employee.findUniqueOrThrow({where:{id},include:{roles:true}});
+    const currentRoles = current.roles.map(item=>item.role);
     const roles = body.roles === undefined ? null : normalizeRoles(body.roles);
     if (roles && !roles.length) return NextResponse.json({error:"พนักงานต้องมีอย่างน้อยหนึ่งบทบาท"},{status:400});
     if (id===auth.user.id && (body.active===false || (roles && !roles.includes(StaffRole.OWNER)))) {
@@ -74,7 +75,12 @@ export async function PATCH(req: NextRequest) {
       if(body.active===false)await tx.authSession.deleteMany({where:{employeeId:id}});
       return updated;
     });
-    await writeAudit(auth.user.id,"UPDATE_EMPLOYEE","Employee",id,{previousName:current.displayName,roles:roles||current.roles.map(item=>item.role),active:employee.active,passwordReset:Boolean(password)});
+    await writeAudit(auth.user.id,"UPDATE_EMPLOYEE","Employee",id,{
+      targetName: employee.displayName,
+      before: { displayName: current.displayName, roles: currentRoles, active: current.active },
+      after: { displayName: employee.displayName, roles: roles||currentRoles, active: employee.active },
+      passwordReset:Boolean(password),
+    });
     return NextResponse.json({success:true});
   } catch {
     return NextResponse.json({error:"อัปเดตบัญชีพนักงานไม่สำเร็จ"},{status:409});

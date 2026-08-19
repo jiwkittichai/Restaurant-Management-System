@@ -14,8 +14,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const username = String(body.username || "").trim().toLowerCase();
   const employee = await prisma.employee.findUnique({ where: { username }, include: { roles: true } });
-  if (!employee || !employee.active || !(await verifyPassword(String(body.password || ""), employee.passwordHash))) {
+  if (!employee || !(await verifyPassword(String(body.password || ""), employee.passwordHash))) {
     return NextResponse.json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 });
+  }
+  if (!employee.active) {
+    await writeAudit(employee.id, "LOGIN_INACTIVE", "Employee", employee.id);
+    return NextResponse.json({ error: "บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อเจ้าของร้านหรือผู้จัดการ" }, { status: 403 });
   }
   await prisma.employee.update({ where: { id: employee.id }, data: { lastLoginAt: new Date() } });
   await createSession(employee.id);

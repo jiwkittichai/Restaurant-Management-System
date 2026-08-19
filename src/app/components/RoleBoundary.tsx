@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const access: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard/employees", roles: ["OWNER"] },
+  { prefix: "/dashboard/audits", roles: ["OWNER"] },
   { prefix: "/dashboard/reports", roles: ["OWNER"] },
   { prefix: "/dashboard/categories", roles: ["OWNER"] },
   { prefix: "/dashboard/products", roles: ["OWNER"] },

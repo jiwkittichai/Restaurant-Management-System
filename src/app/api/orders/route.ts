@@ -110,7 +110,15 @@ export async function POST(req: NextRequest) {
       if (orderType === OrderType.DINE_IN && tableId) await tx.restaurantTable.update({ where: { id: Number(tableId) }, data: { status: "OCCUPIED" } });
       return { order: saved, isAdditional: Boolean(active) };
     });
-    await writeAudit(auth.user.id,result.isAdditional?"ADD_ORDER_ITEMS":"CREATE_ORDER","Order",result.order.id,{orderNumber:result.order.orderNumber,type:result.order.type,total:result.order.total});
+    await writeAudit(auth.user.id,result.isAdditional?"ADD_ORDER_ITEMS":"CREATE_ORDER","Order",result.order.id,{
+      orderNumber:result.order.orderNumber,
+      type:result.order.type,
+      total:result.order.total,
+      itemCount:normalized.reduce((sum,item)=>sum+item.qty,0),
+      items:normalized.map(item=>({name:item.source.name,qty:item.qty,price:item.source.price})),
+      tableName:result.order.table?.name,
+      queueNumber:result.order.queueNumber,
+    });
     return NextResponse.json({ ...result.order, isAdditional: result.isAdditional }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")
@@ -126,6 +134,7 @@ export async function PATCH(req: NextRequest) {
     const allowed=body.action==="item-status"?[StaffRole.OWNER,StaffRole.KITCHEN]:[StaffRole.OWNER,StaffRole.CASHIER];
     const auth=await authorizeApi(allowed);if("response" in auth)return auth.response;
     if (body.action === "item-status") {
+      const current = await prisma.orderItem.findUniqueOrThrow({ where: { id: Number(body.itemId) }, include: { order: true } });
       const item = await prisma.orderItem.update({
         where: { id: Number(body.itemId) },
         data: { status: body.status as KitchenStatus },
@@ -137,7 +146,13 @@ export async function PATCH(req: NextRequest) {
           ? OrderStatus.PREPARING
           : OrderStatus.SENT;
       await prisma.order.update({ where: { id: item.orderId }, data: { status } });
-      await writeAudit(auth.user.id,"UPDATE_KITCHEN_STATUS","OrderItem",item.id,{status:item.status,orderId:item.orderId});
+      await writeAudit(auth.user.id,"UPDATE_KITCHEN_STATUS","OrderItem",item.id,{
+        orderId:item.orderId,
+        orderNumber:current.order.orderNumber,
+        itemName:current.name,
+        before:{status:current.status},
+        after:{status:item.status},
+      });
       return NextResponse.json(item);
     }
     if (body.action === "pay") {
@@ -157,7 +172,7 @@ export async function PATCH(req: NextRequest) {
         if (current.tableId) await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
         return paid;
       });
-      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{method:body.method,total:order.total});
+      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{orderNumber:order.orderNumber,method:body.method,total:order.total});
       return NextResponse.json(order);
     }
     if (body.action === "pickup") {
@@ -168,7 +183,7 @@ export async function PATCH(req: NextRequest) {
       const order = await prisma.order.update({
         where: { id: current.id }, data: { status: OrderStatus.SERVED, pickedUpAt: new Date() },
       });
-      await writeAudit(auth.user.id,"PICKUP_ORDER","Order",order.id);
+      await writeAudit(auth.user.id,"PICKUP_ORDER","Order",order.id,{orderNumber:order.orderNumber});
       return NextResponse.json(order);
     }
     if (body.action === "cancel") {

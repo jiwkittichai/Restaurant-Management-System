@@ -25,6 +25,28 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
+  try {
+    const { id, name } = await req.json();
+    if (!name?.trim()) return NextResponse.json({ error: "กรุณาระบุชื่อหมวดหมู่" }, { status: 400 });
+    const current = await prisma.category.findUnique({ where: { id: Number(id) } });
+    if (!current) return NextResponse.json({ error: "ไม่พบหมวดหมู่" }, { status: 404 });
+    const category = await prisma.category.update({
+      where: { id: Number(id) },
+      data: { name: name.trim() },
+    });
+    await writeAudit(auth.user.id,"UPDATE_CATEGORY","Category",category.id,{
+      name: category.name,
+      before: { name: current.name },
+      after: { name: category.name },
+    });
+    return NextResponse.json(category);
+  } catch {
+    return NextResponse.json({ error: "ชื่อหมวดหมู่นี้มีอยู่แล้ว" }, { status: 409 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {

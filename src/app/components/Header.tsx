@@ -21,6 +21,8 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
     "/dashboard/categories": "หมวดหมู่เมนู",
     "/dashboard/reports": "รายงานยอดขาย",
     "/dashboard/employees": "จัดการพนักงาน",
+    "/dashboard/employees/create": "เพิ่มพนักงาน",
+    "/dashboard/audits": "ประวัติกิจกรรม",
   };
   async function logout(){await fetch("/api/auth/logout",{method:"POST"});router.replace("/login");router.refresh();}
 
