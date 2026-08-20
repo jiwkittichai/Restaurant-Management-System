@@ -12,8 +12,8 @@ export async function GET() {
         where: { paymentStatus: "UNPAID", status: { not: "CANCELLED" } },
         select: {
           id: true, orderNumber: true, subtotal: true, discount: true, total: true,
-          status: true, paymentStatus: true,
-          items: { select: { id: true, name: true, qty: true, price: true, status: true } },
+          status: true, paymentStatus: true, createdAt: true,
+          items: { select: { id: true, name: true, qty: true, price: true, note: true, status: true } },
         },
         take: 1,
         orderBy: { createdAt: "desc" },

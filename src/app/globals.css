@@ -33,3 +33,149 @@ body {
   src: url('/fonts/Kanit-Bold.ttf') format('truetype');
   font-weight: 700;
 }
+
+@media print {
+  @page {
+    size: 80mm 297mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 80mm;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible !important;
+  }
+
+  .receipt-print {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 80mm;
+    box-sizing: border-box;
+    padding: 3.5mm;
+    background: #fff;
+    color: #000;
+    font-family: 'Kanit', sans-serif;
+    font-size: 10.5px;
+    line-height: 1.28;
+    letter-spacing: 0;
+  }
+
+  .receipt-center {
+    text-align: center;
+  }
+
+  .receipt-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20mm;
+    height: 8mm;
+    margin-bottom: 2mm;
+    border: 1px solid #000;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .receipt-center h1 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .receipt-center p {
+    margin: 1px 0 0;
+  }
+
+  .receipt-rule {
+    margin: 6px 0;
+    border-top: 1px dashed #000;
+  }
+
+  .receipt-meta {
+    display: grid;
+    gap: 2px;
+  }
+
+  .receipt-meta div,
+  .receipt-totals div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .receipt-meta span,
+  .receipt-totals span,
+  .receipt-item-sub span {
+    color: #000;
+  }
+
+  .receipt-table-head,
+  .receipt-item-row {
+    display: grid;
+    grid-template-columns: 8mm 1fr 18mm;
+    gap: 2mm;
+    align-items: start;
+  }
+
+  .receipt-table-head {
+    margin-bottom: 4px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .receipt-table-head span:last-child,
+  .receipt-item-row b:last-child {
+    text-align: right;
+  }
+
+  .receipt-items {
+    display: grid;
+    gap: 5px;
+  }
+
+  .receipt-item-row {
+    font-weight: 600;
+  }
+
+  .receipt-item-sub {
+    padding-left: 10mm;
+    font-size: 9px;
+  }
+
+  .receipt-item p {
+    margin: 2px 0 0 10mm;
+    font-size: 9px;
+  }
+
+  .receipt-totals {
+    display: grid;
+    gap: 3px;
+  }
+
+  .receipt-grand {
+    margin-top: 3px;
+    padding-top: 4px;
+    border-top: 1px solid #000;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .receipt-footer {
+    margin-top: 8px;
+    font-size: 9px;
+  }
+}

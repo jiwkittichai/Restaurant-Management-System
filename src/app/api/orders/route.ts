@@ -14,10 +14,13 @@ export async function GET(req: NextRequest) {
     : view === "takeaway"
       ? { type: OrderType.TAKEAWAY, status: { notIn: [OrderStatus.SERVED, OrderStatus.CANCELLED] } }
       : { status: { in: [OrderStatus.SENT, OrderStatus.PREPARING, OrderStatus.READY] } };
+  const orderBy: Prisma.OrderOrderByWithRelationInput = view === "history" || view === "takeaway"
+    ? { createdAt: "desc" }
+    : { createdAt: "asc" };
   const orders = await prisma.order.findMany({
     where,
     include: { table: true, items: true, payment: true },
-    orderBy: { createdAt: "desc" },
+    orderBy,
   });
   return NextResponse.json(orders);
 }
@@ -140,7 +143,9 @@ export async function PATCH(req: NextRequest) {
         data: { status: body.status as KitchenStatus },
       });
       const siblings = await prisma.orderItem.findMany({ where: { orderId: item.orderId } });
-      const status = siblings.every((i) => i.status === KitchenStatus.READY || i.status === KitchenStatus.SERVED)
+      const status = siblings.every((i) => i.status === KitchenStatus.SERVED)
+        ? OrderStatus.SERVED
+        : siblings.every((i) => i.status === KitchenStatus.READY || i.status === KitchenStatus.SERVED)
         ? OrderStatus.READY
         : siblings.some((i) => i.status === KitchenStatus.PREPARING)
           ? OrderStatus.PREPARING
@@ -159,8 +164,13 @@ export async function PATCH(req: NextRequest) {
       const order = await prisma.$transaction(async (tx) => {
         const current = await tx.order.findUniqueOrThrow({ where: { id: Number(body.orderId) }, include: { payment: true } });
         if (current.payment) throw new Error("ALREADY_PAID");
-        await tx.payment.create({
-          data: { orderId: current.id, method: body.method as PaymentMethod, amount: current.total },
+        const method = body.method as PaymentMethod;
+        if (method !== PaymentMethod.CASH && method !== PaymentMethod.PROMPTPAY) throw new Error("INVALID_PAYMENT_METHOD");
+        const receivedAmount = method === PaymentMethod.CASH ? Number(body.receivedAmount ?? current.total) : current.total;
+        if (!Number.isFinite(receivedAmount) || receivedAmount < current.total) throw new Error("INSUFFICIENT_PAYMENT");
+        const changeAmount = method === PaymentMethod.CASH ? Math.max(0, receivedAmount - current.total) : 0;
+        const payment = await tx.payment.create({
+          data: { orderId: current.id, method, amount: current.total, receivedAmount, changeAmount },
         });
         const paid = await tx.order.update({
           where: { id: current.id },
@@ -170,9 +180,9 @@ export async function PATCH(req: NextRequest) {
           },
         });
         if (current.tableId) await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
-        return paid;
+        return { ...paid, payment };
       });
-      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{orderNumber:order.orderNumber,method:body.method,total:order.total});
+      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{orderNumber:order.orderNumber,method:order.payment.method,total:order.total,receivedAmount:order.payment.receivedAmount,changeAmount:order.payment.changeAmount});
       return NextResponse.json(order);
     }
     if (body.action === "pickup") {
@@ -217,7 +227,9 @@ export async function PATCH(req: NextRequest) {
       : code === "NOT_READY" ? "อาหารยังไม่พร้อมรับ"
         : code === "PAID_ORDER" ? "ไม่สามารถยกเลิกบิลที่ชำระแล้ว"
           : code === "ALREADY_PAID" ? "ออเดอร์นี้ชำระเงินแล้ว"
-            : "อัปเดตออเดอร์ไม่สำเร็จ";
+            : code === "INSUFFICIENT_PAYMENT" ? "ยอดรับเงินต้องไม่น้อยกว่ายอดสุทธิ"
+              : code === "INVALID_PAYMENT_METHOD" ? "รองรับเฉพาะเงินสดและพร้อมเพย์"
+                : "อัปเดตออเดอร์ไม่สำเร็จ";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

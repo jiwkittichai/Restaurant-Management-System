@@ -94,12 +94,14 @@ model OrderItem {
 }
 
 model Payment {
-  id      Int           @id @default(autoincrement())
-  orderId Int           @unique
-  order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  method  PaymentMethod
-  amount  Float
-  paidAt  DateTime      @default(now())
+  id             Int           @id @default(autoincrement())
+  orderId        Int           @unique
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method         PaymentMethod
+  amount         Float
+  receivedAmount Float?
+  changeAmount   Float?
+  paidAt         DateTime      @default(now())
 }
 
 model Ingredient {
