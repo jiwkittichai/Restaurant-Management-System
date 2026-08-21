@@ -10,6 +10,7 @@
 - ระบบจัดการเมนูและหมวดหมู่
 - ระบบวัตถุดิบ สูตรอาหาร และการตัดสต็อก
 - ระบบบันทึกสถานะและช่องทางการชำระเงิน
+- ระบบชำระเงิน PromptPay ผ่าน Stripe Sandbox
 - ระบบรายงานยอดขายและเมนูขายดี
 - ระบบบันทึกประวัติกิจกรรมของพนักงาน
 
@@ -47,6 +48,17 @@ npm install
 ```bash
 เปลี่ยนชื่อไฟล์ .env.example ให้เป็น .env
 ```
+
+หากต้องการทดสอบ PromptPay ผ่าน Stripe Sandbox ให้เพิ่มค่าเหล่านี้ใน `.env`
+
+```env
+STRIPE_SECRET_KEY=sk_test_xxx
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PROMPTPAY_BILLING_EMAIL=customer@example.com
+```
+
+เปิดใช้งาน PromptPay ใน Stripe Dashboard โหมดทดสอบก่อนใช้งาน โดยระบบจะสร้าง Stripe Checkout Session เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
 
 ### 4. สร้าง Prisma Client
 
@@ -129,4 +141,3 @@ docker compose ps
 npx prisma generate
 npx prisma migrate deploy
 ```
-

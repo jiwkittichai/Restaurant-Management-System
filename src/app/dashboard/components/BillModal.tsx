@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer, ReceiptText, WalletCards, X } from "lucide-react";
+import { CheckCircle2, Printer, RefreshCw, ReceiptText, WalletCards, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type PaymentMethod = "CASH" | "PROMPTPAY";
@@ -25,6 +25,14 @@ type BillModalProps = {
   loading?: boolean;
   onClose: () => void;
   onConfirm: (payload: { orderId: number; method: PaymentMethod; receivedAmount: number; changeAmount: number }) => Promise<void>;
+  onStripePromptPay?: (orderId: number) => Promise<PromptPayQrPayment>;
+  onStripePromptPayStatus?: (paymentIntentId: string) => Promise<{ paid: boolean; status: string }>;
+};
+
+type PromptPayQrPayment = {
+  paymentIntentId: string;
+  status: string;
+  qrCodeImageUrl: string;
 };
 
 const methodText: Record<PaymentMethod, string> = {
@@ -157,16 +165,24 @@ function buildReceiptHtml(args: {
 </html>`;
 }
 
-export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm }: BillModalProps) {
+export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm, onStripePromptPay, onStripePromptPayStatus }: BillModalProps) {
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [received, setReceived] = useState("");
   const [error, setError] = useState("");
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [promptPayQr, setPromptPayQr] = useState<PromptPayQrPayment | null>(null);
+  const [promptPayStatus, setPromptPayStatus] = useState("");
+  const [promptPayPaid, setPromptPayPaid] = useState(false);
 
   useEffect(() => {
     if (!order) return;
     setMethod("CASH");
     setReceived(order.total.toFixed(2));
     setError("");
+    setStripeLoading(false);
+    setPromptPayQr(null);
+    setPromptPayStatus("");
+    setPromptPayPaid(false);
   }, [order]);
 
   const receivedAmount = Number(received || 0);
@@ -178,10 +194,27 @@ export default function BillModal({ order, title = "เช็คบิล", load
   const printableChange = method === "CASH" ? changeAmount : 0;
   const now = new Date();
 
+  useEffect(() => {
+    if (!promptPayQr || !onStripePromptPayStatus || promptPayPaid) return;
+    const timer = window.setInterval(() => {
+      checkPromptPayStatus({ silent: true });
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [promptPayQr?.paymentIntentId, onStripePromptPayStatus, promptPayPaid]);
+
   if (!order) return null;
 
   async function submit() {
     if (!order) return;
+    if (promptPayPaid) {
+      onClose();
+      return;
+    }
+    if (method === "PROMPTPAY" && onStripePromptPay) {
+      if (promptPayQr) await checkPromptPayStatus();
+      else await createPromptPayQr();
+      return;
+    }
     const finalReceived = method === "CASH" ? receivedAmount : order.total;
     if (method === "CASH" && finalReceived < order.total) {
       setError("ยอดรับเงินต้องไม่น้อยกว่ายอดสุทธิ");
@@ -197,6 +230,44 @@ export default function BillModal({ order, title = "เช็คบิล", load
       });
     } catch (error) {
       setError(error instanceof Error ? error.message : "รับชำระเงินไม่สำเร็จ");
+    }
+  }
+
+  async function createPromptPayQr() {
+    if (!order || !onStripePromptPay) return;
+    setError("");
+    setStripeLoading(true);
+    try {
+      const payment = await onStripePromptPay(order.id);
+      setPromptPayQr(payment);
+      setPromptPayStatus(payment.status);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "สร้าง QR ไม่สำเร็จ");
+    } finally {
+      setStripeLoading(false);
+    }
+  }
+
+  async function checkPromptPayStatus(options?: { silent?: boolean }) {
+    if (!promptPayQr || !onStripePromptPayStatus) return;
+    if (!options?.silent) {
+      setError("");
+      setStripeLoading(true);
+    }
+    try {
+      const result = await onStripePromptPayStatus(promptPayQr.paymentIntentId);
+      setPromptPayStatus(result.status);
+      if (result.paid) {
+        setError("");
+        setPromptPayPaid(true);
+        setPromptPayStatus("succeeded");
+      } else if (!options?.silent) {
+        setError("ยังไม่พบยอดชำระ กรุณาลองตรวจสอบอีกครั้ง");
+      }
+    } catch (error) {
+      if (!options?.silent) setError(error instanceof Error ? error.message : "ตรวจสอบการชำระเงินไม่สำเร็จ");
+    } finally {
+      if (!options?.silent) setStripeLoading(false);
     }
   }
 
@@ -279,6 +350,11 @@ export default function BillModal({ order, title = "เช็คบิล", load
                   onClick={() => {
                     setMethod(option);
                     if (option !== "CASH") setReceived(order.total.toFixed(2));
+                    if (option === "CASH") {
+                      setPromptPayQr(null);
+                      setPromptPayStatus("");
+                      setPromptPayPaid(false);
+                    }
                   }}
                   className={`rounded-xl py-2.5 text-sm ${method === option ? "bg-[#356DDB] text-white" : "bg-gray-100 text-gray-500"}`}
                 >
@@ -287,24 +363,60 @@ export default function BillModal({ order, title = "เช็คบิล", load
               ))}
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm text-gray-500">
-                ยอดรับเงิน
-                <input
-                  type="number"
-                  min={order.total}
-                  step="0.01"
-                  disabled={method !== "CASH"}
-                  value={received}
-                  onChange={(event) => setReceived(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-gray-900 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                />
-              </label>
-              <div className="rounded-xl bg-emerald-50 px-4 py-3">
-                <p className="text-xs text-emerald-700">เงินทอน</p>
-                <p className="text-xl font-semibold text-emerald-700">{money(method === "CASH" ? changeAmount : 0)}</p>
+            {method === "CASH" && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-gray-500">
+                  ยอดรับเงิน
+                  <input
+                    type="number"
+                    min={order.total}
+                    step="0.01"
+                    value={received}
+                    onChange={(event) => setReceived(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-gray-900 outline-none"
+                  />
+                </label>
+                <div className="rounded-xl bg-emerald-50 px-4 py-3">
+                  <p className="text-xs text-emerald-700">เงินทอน</p>
+                  <p className="text-xl font-semibold text-emerald-700">{money(changeAmount)}</p>
+                </div>
               </div>
-            </div>
+            )}
+            {method === "PROMPTPAY" && onStripePromptPay && (
+              <div className={`mt-4 rounded-xl border px-4 py-4 ${promptPayPaid ? "border-emerald-100 bg-emerald-50" : "border-gray-100 bg-gray-50"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className={`text-sm font-semibold ${promptPayPaid ? "text-emerald-700" : "text-gray-900"}`}>
+                      {promptPayPaid ? "ชำระเงินสำเร็จแล้ว" : "สแกนจ่ายพร้อมเพย์"}
+                    </p>
+                    <p className={`mt-1 text-xs ${promptPayPaid ? "text-emerald-700" : "text-gray-500"}`}>
+                      ยอดชำระ {money(order.total)}
+                    </p>
+                  </div>
+                  {promptPayQr && !promptPayPaid && (
+                    <button type="button" onClick={() => checkPromptPayStatus()} disabled={stripeLoading} className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-blue-600 disabled:opacity-50">
+                      <span className="inline-flex items-center gap-1"><RefreshCw size={13} /> ตรวจสอบ</span>
+                    </button>
+                  )}
+                </div>
+                {promptPayPaid ? (
+                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-emerald-700 shadow-sm">
+                    <CheckCircle2 size={28} className="shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-semibold">รับชำระเงินเรียบร้อยแล้ว</p>
+                    </div>
+                  </div>
+                ) : promptPayQr ? (
+                  <div className="mt-4 grid place-items-center">
+                    <div className="rounded-xl bg-white p-4 shadow-sm">
+                      <img src={promptPayQr.qrCodeImageUrl} alt="QR พร้อมเพย์" className="h-64 w-64 object-contain sm:h-72 sm:w-72" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-gray-500">กดปุ่มด้านล่างเพื่อสร้าง QR</p>
+                )}
+              </div>
+            )}
             {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
           </div>
         </div>
@@ -313,8 +425,8 @@ export default function BillModal({ order, title = "เช็คบิล", load
           <button onClick={printReceipt} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 flex items-center justify-center gap-2">
             <Printer size={16} /> พิมพ์บิล
           </button>
-          <button onClick={submit} disabled={loading} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-            {loading ? "กำลังบันทึก..." : `รับชำระ ${money(order.total)}`}
+          <button onClick={submit} disabled={loading || stripeLoading} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+            {loading || stripeLoading ? "กำลังดำเนินการ..." : promptPayPaid ? "ปิดหน้าต่าง" : method === "PROMPTPAY" && onStripePromptPay ? (promptPayQr ? "ตรวจสอบการชำระเงิน" : "สร้าง QR") : `รับชำระ ${money(order.total)}`}
           </button>
         </div>
         </div>

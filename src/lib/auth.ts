@@ -70,7 +70,7 @@ export async function authorizeApi(allowedRoles?: StaffRole[]) {
 }
 
 export async function writeAudit(
-  employeeId: number,
+  employeeId: number | null,
   action: string,
   entityType: string,
   entityId?: string | number | null,

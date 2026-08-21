@@ -124,6 +124,32 @@ export default function TakeawayPage() {
     load();
   }
 
+  async function createStripePromptPay(orderId: number) {
+    const response = await fetch("/api/payments/stripe/promptpay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "สร้าง QR PromptPay ไม่สำเร็จ");
+    return data as { paymentIntentId: string; status: string; qrCodeImageUrl: string; hostedInstructionsUrl?: string | null };
+  }
+
+  async function checkStripePromptPay(paymentIntentId: string) {
+    const response = await fetch("/api/payments/stripe/promptpay", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "ตรวจสอบการชำระเงินไม่สำเร็จ");
+    if (data.paid) {
+      setDetailOrder(null);
+      load();
+    }
+    return data as { paid: boolean; status: string };
+  }
+
   async function cancel(order: Order) {
     await action(order.id, "cancel");
     setConfirmingCancel(null);
@@ -255,7 +281,7 @@ export default function TakeawayPage() {
         </div>
       )}
 
-      <BillModal order={billOrder} loading={loadingId === billOrder?.id} onClose={() => setBillOrder(null)} onConfirm={pay} />
+      <BillModal order={billOrder} loading={loadingId === billOrder?.id} onClose={() => setBillOrder(null)} onConfirm={pay} onStripePromptPay={createStripePromptPay} onStripePromptPayStatus={checkStripePromptPay} />
 
       {detailOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/20">
