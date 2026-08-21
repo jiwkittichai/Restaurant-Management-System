@@ -32,6 +32,7 @@
 ### 1. 
 
 ```bash
+git clone https://github.com/jiwkittichai/Restaurant-Management-System.git
 cd Restaurant-Management-System
 ```
 
