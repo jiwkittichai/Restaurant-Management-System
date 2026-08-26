@@ -27,6 +27,7 @@ export const actionText: Record<string, string> = {
   ADD_ORDER_ITEMS: "เพิ่มรายการในบิล",
   UPDATE_KITCHEN_STATUS: "อัปเดตสถานะครัว",
   PAY_ORDER: "รับชำระเงิน",
+  PAY_ORDER_STRIPE: "รับชำระเงิน",
   PICKUP_ORDER: "ส่งมอบออเดอร์",
   CANCEL_ORDER: "ยกเลิกออเดอร์",
   CREATE_INGREDIENT: "เพิ่มวัตถุดิบ",
@@ -123,7 +124,7 @@ export function auditSummary(audit: Audit) {
   }
   if (audit.action === "CREATE_ORDER") return `สร้างออเดอร์ ${orderNumber}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "ADD_ORDER_ITEMS") return `เพิ่มรายการในบิล ${orderNumber}${money(detailValue(details, "total")) ? ` ยอดรวม ${money(detailValue(details, "total"))}` : ""}`;
-  if (audit.action === "PAY_ORDER") return `รับชำระเงิน ${orderNumber || `ออเดอร์ #${audit.entityId || "-"}`} ${asText(detailValue(details, "method"))} ${money(detailValue(details, "total"))}`;
+  if (audit.action === "PAY_ORDER" || audit.action === "PAY_ORDER_STRIPE") return `รับชำระเงิน ${orderNumber || `ออเดอร์ #${audit.entityId || "-"}`} ${asText(detailValue(details, "method"))} ${money(detailValue(details, "total"))}`;
   if (audit.action === "CANCEL_ORDER") return `ยกเลิกออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}`;
   if (audit.action === "UPDATE_KITCHEN_STATUS") return `อัปเดต ${asText(detailValue(details, "itemName")) || "รายการครัว"} เป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
   if (audit.action === "CREATE_INGREDIENT") return `เพิ่มวัตถุดิบ ${name}${detailValue(details, "stock") !== undefined ? ` ตั้งต้น ${asText(detailValue(details, "stock"))}` : ""}`;

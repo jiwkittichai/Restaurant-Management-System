@@ -417,6 +417,15 @@ export default function BillModal({ order, title = "เช็คบิล", load
                 )}
               </div>
             )}
+            {method === "PROMPTPAY" && !onStripePromptPay && (
+              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
+                <p className="text-sm font-semibold text-gray-900">บันทึกรับชำระพร้อมเพย์</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  ยังไม่ได้ตั้งค่า Stripe gateway ระบบจะบันทึกยอดชำระเป็นพร้อมเพย์โดยไม่สร้าง QR
+                </p>
+                <p className="mt-3 text-lg font-semibold text-blue-600">{money(order.total)}</p>
+              </div>
+            )}
             {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
           </div>
         </div>

@@ -3,18 +3,31 @@ import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const internalActions = ["CREATE_CUSTOMER_PAYMENT_LINK"];
+
 export async function GET(req: NextRequest) {
   const auth = await authorizeApi([StaffRole.OWNER]);
   if ("response" in auth) return auth.response;
 
   const action = req.nextUrl.searchParams.get("action") || "";
+  const employeeId = Number(req.nextUrl.searchParams.get("employeeId") || 0);
   const q = (req.nextUrl.searchParams.get("q") || "").trim().toLowerCase();
   const from = req.nextUrl.searchParams.get("from");
   const to = req.nextUrl.searchParams.get("to");
   const take = Math.min(Math.max(Number(req.nextUrl.searchParams.get("take") || 100), 20), 300);
 
   const where: Prisma.AuditLogWhereInput = {};
-  if (action) where.action = action;
+  if (action) {
+    where.action = action;
+  } else {
+    where.action = { notIn: internalActions };
+  }
+  if (employeeId) {
+    where.OR = [
+      { employeeId },
+      { entityType: "Employee", entityId: String(employeeId) },
+    ];
+  }
   if (from || to) {
     where.createdAt = {
       ...(from ? { gte: new Date(from) } : {}),

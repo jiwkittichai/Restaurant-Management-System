@@ -8,7 +8,9 @@ type Report = {
   meta: { oldestPaidAt?: string | null; latestPaidAt?: string | null };
   topItems: Array<{ name: string; qty: number; sales: number }>;
   payments: Array<{ method: string; amount: number }>;
-  daily: Array<{ date: string; amount: number }>;
+  daily: Array<{ date: string; amount: number; orders?: number; average?: number }>;
+  chart?: Array<{ key?: string; label: string; amount: number; orders: number; average: number }>;
+  chartMode?: "hour" | "day" | "month" | "year";
   recent: Array<{ id: number; orderNumber: string; table: string; total: number; method: string; paidAt: string }>;
 };
 
@@ -18,11 +20,12 @@ const empty: Report = {
   topItems: [],
   payments: [],
   daily: [],
+  chart: [],
   recent: [],
 };
 
 const methodText: Record<string, string> = { CASH: "เงินสด", PROMPTPAY: "พร้อมเพย์", CARD: "บัตร" };
-type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "CUSTOM";
+type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "YEAR" | "CUSTOM";
 
 function localDate(date: Date) {
   const offset = date.getTimezoneOffset() * 60000;
@@ -37,10 +40,31 @@ function monthStartText(date = new Date()) {
   return localDate(new Date(date.getFullYear(), date.getMonth(), 1));
 }
 
+function yearStartText(date = new Date()) {
+  return localDate(new Date(date.getFullYear(), 0, 1));
+}
+
 function daysAgoText(days: number) {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return localDate(date);
+}
+
+function money(value: number) {
+  return `฿${value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function compactMoney(value: number) {
+  if (value >= 1000000) return `฿${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `฿${(value / 1000).toFixed(1)}k`;
+  return `฿${value.toLocaleString("th-TH")}`;
+}
+
+function shortDate(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export default function ReportsPage() {
@@ -57,6 +81,7 @@ export default function ReportsPage() {
       params.set("from", from);
       params.set("to", to);
     }
+    params.set("mode", rangeMode);
     return params.toString();
   }, [from, rangeMode, to]);
 
@@ -85,6 +110,10 @@ export default function ReportsPage() {
         setFrom(monthStartText(new Date()));
         setTo(latest);
       }
+      if (rangeMode === "YEAR") {
+        setFrom(yearStartText(new Date()));
+        setTo(latest);
+      }
     }
 
     window.addEventListener("focus", syncLatestDate);
@@ -96,12 +125,55 @@ export default function ReportsPage() {
   }, [rangeMode, to]);
 
   const cards = [
-    { label: "ยอดขาย", value: `฿${report.summary.sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: Banknote, color: "text-emerald-600 bg-emerald-50" },
+    { label: "ยอดขาย", value: money(report.summary.sales), icon: Banknote, color: "text-emerald-600 bg-emerald-50" },
     { label: "จำนวนบิล", value: report.summary.orders, icon: ReceiptText, color: "text-blue-600 bg-blue-50" },
-    { label: "ยอดเฉลี่ยต่อบิล", value: `฿${report.summary.average.toFixed(2)}`, icon: ClipboardList, color: "text-violet-600 bg-violet-50" },
-    { label: "ส่วนลดรวม", value: `฿${report.summary.discounts.toFixed(2)}`, icon: Percent, color: "text-amber-600 bg-amber-50" },
+    { label: "ยอดเฉลี่ยต่อบิล", value: money(report.summary.average), icon: ClipboardList, color: "text-violet-600 bg-violet-50" },
+    { label: "ส่วนลดรวม", value: money(report.summary.discounts), icon: Percent, color: "text-amber-600 bg-amber-50" },
   ];
-  const max = Math.max(...report.daily.map((day) => day.amount), 1);
+  const chartData = report.chart?.length
+    ? report.chart
+    : report.daily.map((day) => ({
+      key: day.date,
+      label: day.date.slice(8),
+      amount: day.amount,
+      orders: day.orders || 0,
+      average: day.average || 0,
+    }));
+  const maxAmount = Math.max(...chartData.map((item) => item.amount), 1);
+  const max = Math.max(100, Math.ceil((maxAmount * 1.25) / 100) * 100);
+  const bestPoint = chartData.reduce<(typeof chartData)[number] | null>(
+    (best, item) => (!best || item.amount > best.amount ? item : best),
+    null,
+  );
+  const chartMode = report.chartMode || (rangeMode === "TODAY" ? "hour" : rangeMode === "YEAR" || rangeMode === "ALL" ? "month" : "day");
+  const chartTitle = chartMode === "hour"
+    ? "ยอดขายรายชั่วโมง"
+    : chartMode === "year"
+      ? "ยอดขายรายปี"
+      : chartMode === "month"
+        ? "ยอดขายรายเดือน"
+        : "ยอดขายรายวัน";
+  const chartXAxisLabel = chartMode === "hour"
+    ? "เวลา"
+    : chartMode === "year"
+      ? "ปี"
+      : chartMode === "month"
+        ? "เดือน"
+        : "วันที่";
+  const chartWidth = Math.max(720, chartData.length * (chartMode === "hour" ? 58 : chartMode === "day" ? 64 : 82));
+  const chartHeight = 300;
+  const chartMargin = { top: 32, right: 18, bottom: 54, left: 72 };
+  const plotWidth = chartWidth - chartMargin.left - chartMargin.right;
+  const plotHeight = chartHeight - chartMargin.top - chartMargin.bottom;
+  const yAxisRows = [1, 0.75, 0.5, 0.25, 0].map((ratio) => {
+    const value = Math.round(max * ratio);
+    return {
+      value,
+      y: chartMargin.top + (1 - ratio) * plotHeight,
+    };
+  });
+  const barSlot = chartData.length ? plotWidth / chartData.length : plotWidth;
+  const barWidth = Math.min(48, Math.max(18, barSlot * 0.52));
   const allFromValue = report.meta.oldestPaidAt ? localDate(new Date(report.meta.oldestPaidAt)) : "";
   const allToValue = todayText();
   const visibleFrom = rangeMode === "ALL" ? from || allFromValue : from;
@@ -132,6 +204,10 @@ export default function ReportsPage() {
       setFrom(monthStartText(new Date()));
       setTo(latest);
     }
+    if (mode === "YEAR") {
+      setFrom(yearStartText(new Date()));
+      setTo(latest);
+    }
     if (mode === "CUSTOM" && !from && !to) {
       setFrom(allFromValue || latest);
       setTo(allToValue || latest);
@@ -147,6 +223,7 @@ export default function ReportsPage() {
     { value: "TODAY", label: "วันนี้" },
     { value: "7D", label: "7 วันล่าสุด" },
     { value: "MONTH", label: "เดือนนี้" },
+    { value: "YEAR", label: "ปีนี้" },
     { value: "CUSTOM", label: "กำหนดเอง" },
   ];
 
@@ -222,16 +299,118 @@ export default function ReportsPage() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <section className="bg-white rounded-2xl border border-gray-100 p-5">
-          <h2 className="font-semibold">ยอดขายรายวัน</h2>
-          <div className="h-52 flex items-end gap-2 mt-5 border-b border-gray-100">
-            {report.daily.map((day) => (
-              <div key={day.date} className="flex-1 min-w-8 h-full flex flex-col justify-end items-center group">
-                <span className="text-[10px] text-gray-400 mb-1 opacity-0 group-hover:opacity-100">฿{day.amount.toFixed(0)}</span>
-                <div className="w-full max-w-12 bg-blue-500 rounded-t-lg" style={{ height: `${Math.max(5, day.amount / max * 85)}%` }} />
-                <span className="text-[10px] text-gray-400 mt-2">{day.date.slice(8)}</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="font-semibold">{chartTitle}</h2>
+              <p className="mt-1 text-sm text-gray-400">กราฟแท่งจะเปลี่ยนหน่วยตามช่วงวันที่ที่เลือก</p>
+            </div>
+            {bestPoint && (
+              <div className="rounded-xl bg-blue-50 px-3 py-2 text-right">
+                <p className="text-xs text-blue-500">สูงสุด</p>
+                <p className="font-semibold text-blue-700">{money(bestPoint.amount)}</p>
               </div>
-            ))}
-            {!report.daily.length && <p className="m-auto text-gray-400 text-sm">ยังไม่มียอดขายในช่วงนี้</p>}
+            )}
+          </div>
+          <div className="mt-5">
+            {!!chartData.length && (
+              <div>
+                <div className="overflow-x-auto">
+                  <svg
+                    role="img"
+                    aria-label={chartTitle}
+                    viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                    className="block h-[300px] max-w-none"
+                    style={{ width: chartWidth }}
+                  >
+                    <text x={0} y={14} className="fill-gray-400 text-[11px] font-medium">ยอดขาย (บาท)</text>
+                    {yAxisRows.map(({ value, y }) => (
+                      <g key={value}>
+                        <line
+                          x1={chartMargin.left}
+                          x2={chartWidth - chartMargin.right}
+                          y1={y}
+                          y2={y}
+                          stroke="#eef2f7"
+                          strokeDasharray={value === 0 ? undefined : "4 4"}
+                        />
+                        <text
+                          x={chartMargin.left - 12}
+                          y={y + 4}
+                          textAnchor="end"
+                          className="fill-gray-400 text-[10px] font-medium"
+                        >
+                          {compactMoney(value)}
+                        </text>
+                      </g>
+                    ))}
+                    <line
+                      x1={chartMargin.left}
+                      x2={chartMargin.left}
+                      y1={chartMargin.top}
+                      y2={chartMargin.top + plotHeight}
+                      stroke="#eef2f7"
+                    />
+                    {chartData.map((item, index) => {
+                      const x = chartMargin.left + index * barSlot + barSlot / 2;
+                      const barHeight = item.amount > 0 ? Math.max(8, (item.amount / max) * plotHeight) : 0;
+                      const y = chartMargin.top + plotHeight - barHeight;
+                      return (
+                        <g key={item.key || `${item.label}-${index}`}>
+                          {item.amount > 0 && (
+                            <>
+                              <rect
+                                x={x - barWidth / 2}
+                                y={y}
+                                width={barWidth}
+                                height={barHeight}
+                                rx={8}
+                                className="fill-blue-500"
+                              />
+                              <text
+                                x={x}
+                                y={Math.max(14, y - 8)}
+                                textAnchor="middle"
+                                className="fill-gray-700 text-[11px] font-semibold"
+                              >
+                                {money(item.amount)}
+                              </text>
+                            </>
+                          )}
+                          {item.amount === 0 && (
+                            <rect
+                              x={x - barWidth / 2}
+                              y={chartMargin.top + plotHeight - 8}
+                              width={barWidth}
+                              height={8}
+                              rx={8}
+                              className="fill-blue-100"
+                            />
+                          )}
+                          <text
+                            x={x}
+                            y={chartMargin.top + plotHeight + 22}
+                            textAnchor="middle"
+                            className="fill-gray-400 text-[10px] font-medium"
+                          >
+                            {item.label}
+                          </text>
+                          <title>{`${item.label} ${money(item.amount)} · ${item.orders} บิล`}</title>
+                        </g>
+                      );
+                    })}
+                    <text
+                      x={chartMargin.left + plotWidth / 2}
+                      y={chartHeight - 10}
+                      textAnchor="middle"
+                      className="fill-gray-400 text-[12px] font-medium"
+                    >
+                      {chartXAxisLabel}
+                    </text>
+                  </svg>
+                </div>
+              </div>
+            )}
+            {!chartData.length && <p className="py-12 text-center text-sm text-gray-400">ยังไม่มียอดขายในช่วงนี้</p>}
           </div>
         </section>
         <section className="bg-white rounded-2xl border border-gray-100 p-5">

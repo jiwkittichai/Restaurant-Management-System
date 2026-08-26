@@ -10,7 +10,7 @@
 - ระบบจัดการเมนูและหมวดหมู่
 - ระบบวัตถุดิบ สูตรอาหาร และการตัดสต็อก
 - ระบบบันทึกสถานะและช่องทางการชำระเงิน
-- ระบบชำระเงิน PromptPay ผ่าน Stripe Sandbox
+- ระบบชำระเงิน PromptPay แบบบันทึกยอดปกติ และรองรับ Stripe Sandbox เมื่อกำหนดค่า gateway
 - ระบบรายงานยอดขายและเมนูขายดี
 - ระบบบันทึกประวัติกิจกรรมของพนักงาน
 
@@ -49,6 +49,11 @@ npm install
 เปลี่ยนชื่อไฟล์ .env.example ให้เป็น .env
 ```
 
+ระบบ PromptPay ใช้งานได้ 2 แบบ:
+
+- ถ้าไม่ได้กำหนด `STRIPE_SECRET_KEY` ระบบจะบันทึกรับชำระเงินเป็น `พร้อมเพย์` ทันที เหมือนการรับเงินสด แต่แยกช่องทางการชำระเงินในรายงาน
+- ถ้ากำหนด `STRIPE_SECRET_KEY` ระบบจะเปิดโหมด PromptPay QR ผ่าน Stripe gateway ให้ลูกค้าสแกนและตรวจสอบสถานะการชำระเงินได้
+
 หากต้องการทดสอบ PromptPay ผ่าน Stripe Sandbox ให้เพิ่มค่าเหล่านี้ใน `.env`
 
 ```env
@@ -58,7 +63,7 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_PROMPTPAY_BILLING_EMAIL=customer@example.com
 ```
 
-เปิดใช้งาน PromptPay ใน Stripe Dashboard โหมดทดสอบก่อนใช้งาน โดยระบบจะสร้าง Stripe Checkout Session เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
+เปิดใช้งาน PromptPay ใน Stripe Dashboard โหมดทดสอบก่อนใช้งาน โดยระบบจะสร้าง QR ผ่าน Stripe เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
 
 ### 4. สร้าง Prisma Client
 

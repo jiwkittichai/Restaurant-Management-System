@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const allowedRoles = Object.values(StaffRole);
+const internalAuditActions = ["CREATE_CUSTOMER_PAYMENT_LINK"];
 
 function normalizeRoles(value: unknown): StaffRole[] {
   if (!Array.isArray(value)) return [];
@@ -20,6 +21,7 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     }),
     prisma.auditLog.findMany({
+      where: { action: { notIn: internalAuditActions } },
       take: 20, orderBy: { createdAt: "desc" },
       include: { employee: { select: { displayName:true } } },
     }),

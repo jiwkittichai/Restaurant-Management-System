@@ -70,6 +70,7 @@ export default function TakeawayPage() {
   const [billOrder, setBillOrder] = useState<BillOrder | null>(null);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<Order | null>(null);
+  const [promptPayGatewayEnabled, setPromptPayGatewayEnabled] = useState(false);
 
   const load = useCallback(() => fetch("/api/orders?view=takeaway").then((response) => response.json()).then(setOrders), []);
 
@@ -78,6 +79,13 @@ export default function TakeawayPage() {
     const timer = setInterval(load, 10000);
     return () => clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/payments/stripe/promptpay")
+      .then((response) => response.json())
+      .then((data) => setPromptPayGatewayEnabled(Boolean(data.enabled)))
+      .catch(() => setPromptPayGatewayEnabled(false));
+  }, []);
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
@@ -281,7 +289,14 @@ export default function TakeawayPage() {
         </div>
       )}
 
-      <BillModal order={billOrder} loading={loadingId === billOrder?.id} onClose={() => setBillOrder(null)} onConfirm={pay} onStripePromptPay={createStripePromptPay} onStripePromptPayStatus={checkStripePromptPay} />
+      <BillModal
+        order={billOrder}
+        loading={loadingId === billOrder?.id}
+        onClose={() => setBillOrder(null)}
+        onConfirm={pay}
+        onStripePromptPay={promptPayGatewayEnabled ? createStripePromptPay : undefined}
+        onStripePromptPayStatus={promptPayGatewayEnabled ? checkStripePromptPay : undefined}
+      />
 
       {detailOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/20">

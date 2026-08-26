@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "db:seed": "node prisma/seed.js",
+    "db:seed:reports": "node prisma/seed-report-orders.js",
+    "db:seed:all": "npm run db:seed && npm run db:seed:reports",
     "minio:init": "node scripts/init-minio.js"
   },
   "dependencies": {

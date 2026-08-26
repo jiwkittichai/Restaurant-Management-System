@@ -32,6 +32,7 @@ export default function TablesPage() {
   const [detailOrder, setDetailOrder] = useState<ActiveOrder | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<ActiveOrder | null>(null);
   const [paying, setPaying] = useState(false);
+  const [promptPayGatewayEnabled, setPromptPayGatewayEnabled] = useState(false);
 
   const load = useCallback(() => fetch("/api/tables").then((response) => response.json()).then(setTables), []);
 
@@ -44,6 +45,13 @@ export default function TablesPage() {
       window.removeEventListener("focus", load);
     };
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/payments/stripe/promptpay")
+      .then((response) => response.json())
+      .then((data) => setPromptPayGatewayEnabled(Boolean(data.enabled)))
+      .catch(() => setPromptPayGatewayEnabled(false));
+  }, []);
 
   const summary = useMemo(() => ({
     total: tables.length,
@@ -273,7 +281,14 @@ export default function TablesPage() {
         </div>
       )}
 
-      <BillModal order={billOrder} loading={paying} onClose={() => setBillOrder(null)} onConfirm={pay} onStripePromptPay={createStripePromptPay} onStripePromptPayStatus={checkStripePromptPay} />
+      <BillModal
+        order={billOrder}
+        loading={paying}
+        onClose={() => setBillOrder(null)}
+        onConfirm={pay}
+        onStripePromptPay={promptPayGatewayEnabled ? createStripePromptPay : undefined}
+        onStripePromptPayStatus={promptPayGatewayEnabled ? checkStripePromptPay : undefined}
+      />
 
       {detailOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/20">

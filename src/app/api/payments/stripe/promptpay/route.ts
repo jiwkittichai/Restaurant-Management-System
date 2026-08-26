@@ -1,7 +1,14 @@
 import { StaffRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/auth";
-import { completeStripePromptPayPaymentIntent, createPromptPayPaymentIntent } from "@/lib/stripe";
+import { completeStripePromptPayPaymentIntent, createPromptPayPaymentIntent, isStripePromptPayGatewayEnabled } from "@/lib/stripe";
+
+export async function GET() {
+  const auth = await authorizeApi([StaffRole.OWNER, StaffRole.CASHIER]);
+  if ("response" in auth) return auth.response;
+
+  return NextResponse.json({ enabled: isStripePromptPayGatewayEnabled() });
+}
 
 export async function POST(req: NextRequest) {
   const auth = await authorizeApi([StaffRole.OWNER, StaffRole.CASHIER]);

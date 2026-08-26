@@ -47,6 +47,10 @@ function stripeSecretKey() {
   return key;
 }
 
+export function isStripePromptPayGatewayEnabled() {
+  return Boolean(process.env.STRIPE_SECRET_KEY);
+}
+
 async function stripeRequest<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(`https://api.stripe.com/v1${path}`, {
     ...init,
@@ -172,7 +176,7 @@ async function markPromptPayOrderPaid(args: {
   });
 
   if (!result.alreadyPaid) {
-    await writeAudit(args.employeeId ?? null, "PAY_ORDER_STRIPE", "Order", result.order.id, {
+    await writeAudit(args.employeeId ?? null, "PAY_ORDER", "Order", result.order.id, {
       orderNumber: result.order.orderNumber,
       method: PaymentMethod.PROMPTPAY,
       provider: "stripe",
