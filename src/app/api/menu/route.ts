@@ -3,12 +3,79 @@ import { prisma } from "@/lib/prisma";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 
+type ModifierGroupInput = {
+  name?: string;
+  required?: boolean;
+  minSelect?: number;
+  maxSelect?: number;
+  options?: Array<{ name?: string; price?: number }>;
+};
+
+function normalizeModifierGroups(groups: ModifierGroupInput[] = []) {
+  return groups
+    .map((group, index) => {
+      const options = (group.options || [])
+        .map((option) => ({ name: option.name?.trim() || "", price: Math.max(0, Number(option.price || 0)) }))
+        .filter((option) => option.name);
+      const maxSelect = Math.max(1, Number(group.maxSelect || 1));
+      const minSelect = group.required ? Math.max(1, Math.min(Number(group.minSelect || 1), maxSelect)) : Math.max(0, Math.min(Number(group.minSelect || 0), maxSelect));
+      return {
+        name: group.name?.trim() || "",
+        required: Boolean(group.required),
+        minSelect,
+        maxSelect,
+        sortOrder: index,
+        options,
+      };
+    })
+    .filter((group) => group.name && group.options.length);
+}
+
+async function replaceModifierGroups(menuItemId: number, groups: ModifierGroupInput[]) {
+  const normalized = normalizeModifierGroups(groups);
+  await prisma.menuItemModifierGroup.deleteMany({ where: { menuItemId } });
+  for (const group of normalized) {
+    await prisma.menuItemModifierGroup.create({
+      data: {
+        menuItemId,
+        name: group.name,
+        required: group.required,
+        minSelect: group.minSelect,
+        maxSelect: group.maxSelect,
+        sortOrder: group.sortOrder,
+        options: {
+          create: group.options.map((option) => ({
+            menuItemId,
+            name: option.name,
+            price: option.price,
+          })),
+        },
+      },
+    });
+  }
+}
+
 export async function GET() {
   const auth=await authorizeApi();if("response" in auth)return auth.response;
   const items = await prisma.menuItem.findMany({
     include: {
       category: true,
       recipes: { include: { ingredient: { select: { stock: true } } } },
+      modifiers: {
+        where: { active: true },
+        select: { id: true, name: true, price: true, active: true },
+        orderBy: { id: "asc" },
+      },
+      modifierGroups: {
+        include: {
+          options: {
+            where: { active: true },
+            select: { id: true, name: true, price: true, active: true, groupId: true },
+            orderBy: { id: "asc" },
+          },
+        },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -47,6 +114,7 @@ export async function POST(req: NextRequest) {
       },
       include: { category: true },
     });
+    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(item.id, body.modifierGroups);
     await writeAudit(auth.user.id,"CREATE_MENU","MenuItem",item.id,{name:item.name});
     return NextResponse.json(item, { status: 201 });
   } catch {
@@ -86,6 +154,7 @@ export async function PATCH(req: NextRequest) {
       },
       include: { category: true },
     });
+    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(item.id, body.modifierGroups);
     await writeAudit(auth.user.id,"UPDATE_MENU","MenuItem",item.id,{name:item.name});
     return NextResponse.json(item);
   } catch {

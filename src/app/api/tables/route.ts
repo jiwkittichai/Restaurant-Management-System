@@ -13,7 +13,17 @@ export async function GET() {
         select: {
           id: true, orderNumber: true, subtotal: true, discount: true, total: true,
           status: true, paymentStatus: true, createdAt: true,
-          items: { select: { id: true, name: true, qty: true, price: true, note: true, status: true } },
+          items: {
+            select: {
+              id: true,
+              name: true,
+              qty: true,
+              price: true,
+              note: true,
+              status: true,
+              modifiers: { select: { id: true, name: true, price: true } },
+            },
+          },
         },
         take: 1,
         orderBy: { createdAt: "desc" },

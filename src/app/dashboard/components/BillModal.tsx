@@ -16,7 +16,7 @@ export type BillOrder = {
   customerName?: string;
   customerPhone?: string;
   createdAt?: string;
-  items: Array<{ id: number; name: string; qty: number; price: number; note?: string | null; status?: string }>;
+  items: Array<{ id: number; name: string; qty: number; price: number; note?: string | null; status?: string; modifiers?: Array<{ id: number; name: string; price: number }> }>;
 };
 
 type BillModalProps = {
@@ -87,6 +87,7 @@ function buildReceiptHtml(args: {
         <span>${escapeHtml(item.name)}</span>
         <b>${receiptMoney(item.price * item.qty)}</b>
       </div>
+      ${item.modifiers?.length ? `<div class="item-sub">${item.modifiers.map((modifier) => `+ ${escapeHtml(modifier.name)}`).join(", ")}</div>` : ""}
       <div class="item-sub">@ ${receiptMoney(item.price)}</div>
       ${item.note ? `<p>หมายเหตุ: ${escapeHtml(item.note)}</p>` : ""}
     </div>
@@ -325,6 +326,11 @@ export default function BillModal({ order, title = "เช็คบิล", load
                       {item.status && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">{itemStatusText[item.status] || item.status}</span>}
                     </div>
                     <p className="text-xs text-gray-400">{money(item.price)} / หน่วย</p>
+                    {!!item.modifiers?.length && (
+                      <p className="mt-1 text-xs text-blue-600">
+                        {item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}
+                      </p>
+                    )}
                     {item.note && <p className="mt-1 text-xs text-red-500">หมายเหตุ: {item.note}</p>}
                   </div>
                   <span className="text-center text-gray-600">{item.qty}</span>
@@ -474,6 +480,11 @@ export default function BillModal({ order, title = "เช็คบิล", load
                 <span>{item.name}</span>
                 <b>{receiptMoney(item.price * item.qty)}</b>
               </div>
+              {!!item.modifiers?.length && (
+                <div className="receipt-item-sub">
+                  <span>{item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}</span>
+                </div>
+              )}
               <div className="receipt-item-sub">
                 <span>@ {receiptMoney(item.price)}</span>
               </div>

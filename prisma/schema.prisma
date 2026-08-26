@@ -28,20 +28,66 @@ model Category {
 }
 
 model MenuItem {
-  id          Int         @id @default(autoincrement())
-  name        String
-  sku         String      @unique
-  description String?
-  price       Float
-  saleUnit    String       @default("จาน")
-  image       String?
-  available   Boolean     @default(true)
-  categoryId  Int
-  category    Category    @relation(fields: [categoryId], references: [id])
-  orderItems  OrderItem[]
-  recipes     Recipe[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id             Int                     @id @default(autoincrement())
+  name           String
+  sku            String                  @unique
+  description    String?
+  price          Float
+  saleUnit       String                  @default("จาน")
+  image          String?
+  available      Boolean                 @default(true)
+  categoryId     Int
+  category       Category                @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  recipes        Recipe[]
+  modifierGroups MenuItemModifierGroup[]
+  modifiers      MenuItemModifier[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+}
+
+model MenuItemModifierGroup {
+  id         Int                @id @default(autoincrement())
+  menuItemId Int
+  menuItem   MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  required   Boolean            @default(false)
+  minSelect  Int                @default(0)
+  maxSelect  Int                @default(1)
+  sortOrder  Int                @default(0)
+  options    MenuItemModifier[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([menuItemId, name])
+}
+
+model MenuItemModifier {
+  id         Int                      @id @default(autoincrement())
+  menuItemId Int
+  menuItem   MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  groupId    Int?
+  group      MenuItemModifierGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name       String
+  price      Float                    @default(0)
+  active     Boolean                  @default(true)
+  recipes    MenuItemModifierRecipe[]
+  orderItems OrderItemModifier[]
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  @@unique([menuItemId, name])
+}
+
+model MenuItemModifierRecipe {
+  id           Int              @id @default(autoincrement())
+  modifierId   Int
+  modifier     MenuItemModifier @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  ingredientId Int
+  ingredient   Ingredient       @relation(fields: [ingredientId], references: [id])
+  quantity     Float
+
+  @@unique([modifierId, ingredientId])
 }
 
 model RestaurantTable {
@@ -55,42 +101,54 @@ model RestaurantTable {
 }
 
 model Order {
-  id          Int              @id @default(autoincrement())
-  orderNumber String           @unique
-  tableId     Int?
-  table       RestaurantTable? @relation(fields: [tableId], references: [id])
-  type        OrderType        @default(DINE_IN)
-  queueNumber String?          @unique
-  customerName String?
-  customerPhone String?
+  id               Int              @id @default(autoincrement())
+  orderNumber      String           @unique
+  tableId          Int?
+  table            RestaurantTable? @relation(fields: [tableId], references: [id])
+  type             OrderType        @default(DINE_IN)
+  queueNumber      String?          @unique
+  customerName     String?
+  customerPhone    String?
   estimatedReadyAt DateTime?
-  pickedUpAt  DateTime?
-  status      OrderStatus      @default(SENT)
-  paymentStatus PaymentStatus  @default(UNPAID)
-  subtotal    Float
-  discount    Float            @default(0)
-  total       Float
-  note        String?
-  stockDeducted Boolean          @default(false)
-  items       OrderItem[]
-  payment     Payment?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  pickedUpAt       DateTime?
+  status           OrderStatus      @default(SENT)
+  paymentStatus    PaymentStatus    @default(UNPAID)
+  subtotal         Float
+  discount         Float            @default(0)
+  total            Float
+  note             String?
+  stockDeducted    Boolean          @default(false)
+  items            OrderItem[]
+  payment          Payment?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model OrderItem {
-  id         Int           @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   orderId    Int
-  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItemId Int
-  menuItem   MenuItem      @relation(fields: [menuItemId], references: [id])
+  menuItem   MenuItem            @relation(fields: [menuItemId], references: [id])
   name       String
   price      Float
   qty        Int
   note       String?
-  status     KitchenStatus @default(NEW)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  status     KitchenStatus       @default(NEW)
+  modifiers  OrderItemModifier[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+}
+
+model OrderItemModifier {
+  id          Int               @id @default(autoincrement())
+  orderItemId Int
+  orderItem   OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifierId  Int?
+  modifier    MenuItemModifier? @relation(fields: [modifierId], references: [id], onDelete: SetNull)
+  name        String
+  price       Float             @default(0)
+  createdAt   DateTime          @default(now())
 }
 
 model Payment {
@@ -105,17 +163,18 @@ model Payment {
 }
 
 model Ingredient {
-  id          Int             @id @default(autoincrement())
-  name        String          @unique
-  unit        String
-  stock       Float           @default(0)
-  minStock    Float           @default(0)
-  costPerUnit Float           @default(0)
-  active      Boolean         @default(true)
-  recipes     Recipe[]
-  movements   StockMovement[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              Int                      @id @default(autoincrement())
+  name            String                   @unique
+  unit            String
+  stock           Float                    @default(0)
+  minStock        Float                    @default(0)
+  costPerUnit     Float                    @default(0)
+  active          Boolean                  @default(true)
+  recipes         Recipe[]
+  modifierRecipes MenuItemModifierRecipe[]
+  movements       StockMovement[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 }
 
 model Recipe {
@@ -156,7 +215,7 @@ model Employee {
 
 model EmployeeRole {
   employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   role       StaffRole
 
   @@id([employeeId, role])

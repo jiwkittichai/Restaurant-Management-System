@@ -304,7 +304,22 @@ export default function TablesPage() {
               <div className="rounded-xl border border-gray-100 px-4 py-3"><p className="text-xs text-gray-400">ยอดบิล</p><p className="mt-1 font-medium text-blue-600">{money(detailOrder.total)}</p></div>
             </div>
             <div className="mt-5 divide-y divide-gray-100 rounded-2xl border border-gray-100">
-              {detailOrder.items.map((item) => <div key={item.id} className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-medium text-gray-900"><span className="mr-2 text-blue-600">{item.qty}x</span>{item.name}</p><p className="mt-1 text-xs text-gray-400">{money(item.price)} / หน่วย</p>{item.note && <p className="mt-1 text-xs text-red-500">หมายเหตุ: {item.note}</p>}</div><div className="text-right"><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-500">{itemStatusText[item.status || ""] || item.status}</span><p className="mt-2 font-medium">{money(item.price * item.qty)}</p></div></div></div>)}
+              {detailOrder.items.map((item) => (
+                <div key={item.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900"><span className="mr-2 text-blue-600">{item.qty}x</span>{item.name}</p>
+                      <p className="mt-1 text-xs text-gray-400">{money(item.price)} / หน่วย</p>
+                      {!!item.modifiers?.length && <p className="mt-1 text-xs text-blue-600">{item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}</p>}
+                      {item.note && <p className="mt-1 text-xs text-red-500">หมายเหตุ: {item.note}</p>}
+                    </div>
+                    <div className="text-right">
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-500">{itemStatusText[item.status || ""] || item.status}</span>
+                      <p className="mt-2 font-medium">{money(item.price * item.qty)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="sticky bottom-0 -mx-5 mt-6 border-t border-gray-100 bg-white p-5"><div className="flex gap-2"><button onClick={() => setConfirmingCancel(detailOrder)} className="flex-1 rounded-xl bg-red-50 px-4 py-3 text-red-500">ยกเลิกออเดอร์</button><button onClick={() => setBillOrder(detailOrder)} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-white">เช็คบิล</button></div></div>
           </div>

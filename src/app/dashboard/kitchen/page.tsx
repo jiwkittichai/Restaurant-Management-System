@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChefHat, Clock3, RefreshCw } from "lucide-react";
 
-type Item = { id: number; name: string; qty: number; note?: string; status: string };
+type Item = { id: number; name: string; qty: number; note?: string; status: string; modifiers?: Array<{ id: number; name: string; price: number }> };
 type Order = {
   id: number;
   orderNumber: string;
@@ -108,6 +108,7 @@ export default function KitchenPage() {
                           <span className="shrink-0 text-sm font-semibold text-blue-600">{item.qty}x</span>
                           <p className="truncate text-sm font-medium text-gray-900">{item.name}</p>
                         </div>
+                        {!!item.modifiers?.length && <p className="mt-1 truncate text-xs text-blue-600">{item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}</p>}
                         {item.note && <p className="mt-1 truncate text-xs text-red-500">หมายเหตุ: {item.note}</p>}
                       </div>
                       <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] ${itemBadgeClass[item.status] || "bg-gray-100 text-gray-500"}`}>

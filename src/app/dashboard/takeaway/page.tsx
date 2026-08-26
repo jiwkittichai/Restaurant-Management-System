@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import BillModal, { BillOrder } from "../components/BillModal";
 
-type Item = { id: number; name: string; qty: number; price: number; note?: string | null; status?: string };
+type Item = { id: number; name: string; qty: number; price: number; note?: string | null; status?: string; modifiers?: Array<{ id: number; name: string; price: number }> };
 type Order = BillOrder & {
   queueNumber: string;
   customerName?: string;
@@ -324,6 +324,7 @@ export default function TakeawayPage() {
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900"><span className="mr-2 text-blue-600">{item.qty}x</span>{item.name}</p>
                       <p className="mt-1 text-xs text-gray-400">{money(item.price)} / หน่วย</p>
+                      {!!item.modifiers?.length && <p className="mt-1 text-xs text-blue-600">{item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}</p>}
                       {item.note && <p className="mt-1 text-xs text-red-500">หมายเหตุ: {item.note}</p>}
                     </div>
                     <div className="text-right">

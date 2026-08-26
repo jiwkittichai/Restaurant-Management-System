@@ -8,7 +8,7 @@ export async function GET() {
   const ingredients = await prisma.ingredient.findMany({
     where: { active: true },
     include: {
-      _count: { select: { recipes: true } },
+      _count: { select: { recipes: true, modifierRecipes: true } },
       movements: { orderBy: { createdAt: "desc" }, take: 5 },
     },
     orderBy: { name: "asc" },

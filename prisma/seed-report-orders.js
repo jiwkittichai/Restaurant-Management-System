@@ -26,7 +26,24 @@ async function loadRealMenu() {
       sku: { not: { startsWith: "DEMO-REPORT-" } },
       available: true,
     },
-    include: { recipes: true },
+    include: {
+      recipes: true,
+      modifiers: {
+        where: { active: true },
+        include: { recipes: true },
+        orderBy: { id: "asc" },
+      },
+      modifierGroups: {
+        include: {
+          options: {
+            where: { active: true },
+            include: { recipes: true },
+            orderBy: { id: "asc" },
+          },
+        },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      },
+    },
     orderBy: { id: "asc" },
   });
   if (!items.length) {
@@ -51,11 +68,24 @@ function buildOrderItems(menuItems, seed) {
   const picked = [];
   for (let index = 0; index < count; index += 1) {
     const source = menuItems[Math.floor(rand(seed + index + 1) * menuItems.length)];
+    const modifiers = [];
+    for (const group of source.modifierGroups) {
+      if (group.name === "ระดับความเผ็ด" && rand(seed + index + group.id) > 0.45) {
+        const selected = group.options[Math.floor(rand(seed + index + group.id + 1) * group.options.length)];
+        if (selected) modifiers.push(selected);
+      } else if (group.name === "ตัวเลือกเสริม") {
+        for (const option of group.options) {
+          if (rand(seed + index + option.id + 11) > (option.name === "พิเศษ" ? 0.72 : 0.62)) modifiers.push(option);
+        }
+      }
+    }
+    const modifierTotal = modifiers.reduce((sum, modifier) => sum + modifier.price, 0);
     picked.push({
       source,
+      modifiers,
       menuItemId: source.id,
       name: source.name,
-      price: source.price,
+      price: source.price + modifierTotal,
       qty: 1 + Math.floor(rand(seed + index + 7) * 3),
       status: "SERVED",
     });
@@ -68,6 +98,11 @@ function summarizeRequirements(items) {
   for (const item of items) {
     for (const recipe of item.source.recipes) {
       required.set(recipe.ingredientId, (required.get(recipe.ingredientId) || 0) + recipe.quantity * item.qty);
+    }
+    for (const modifier of item.modifiers) {
+      for (const recipe of modifier.recipes) {
+        required.set(recipe.ingredientId, (required.get(recipe.ingredientId) || 0) + recipe.quantity * item.qty);
+      }
     }
   }
   return required;
@@ -182,10 +217,17 @@ async function main() {
             updatedAt: paidAt,
             pickedUpAt: type === "TAKEAWAY" ? paidAt : null,
             items: {
-              create: items.map(({ source, ...item }) => ({
+              create: items.map(({ source, modifiers, ...item }) => ({
                 ...item,
                 createdAt: paidAt,
                 updatedAt: paidAt,
+                modifiers: {
+                  create: modifiers.map((modifier) => ({
+                    modifierId: modifier.id,
+                    name: modifier.name,
+                    price: modifier.price,
+                  })),
+                },
               })),
             },
             payment: {
@@ -198,7 +240,7 @@ async function main() {
               },
             },
           },
-          include: { table: true, items: true, payment: true },
+          include: { table: true, items: { include: { modifiers: true } }, payment: true },
         });
 
         for (const [ingredientId, quantity] of required) {
@@ -230,7 +272,12 @@ async function main() {
               type: order.type,
               total: order.total,
               itemCount: items.reduce((sum, item) => sum + item.qty, 0),
-              items: items.map((item) => ({ name: item.name, qty: item.qty, price: item.price })),
+              items: items.map((item) => ({
+                name: item.name,
+                qty: item.qty,
+                price: item.price,
+                modifiers: item.modifiers.map((modifier) => ({ name: modifier.name, price: modifier.price })),
+              })),
               tableName: order.table?.name,
               queueNumber: order.queueNumber,
               source: REPORT_SEED_NOTE,

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 
-type CartItem = { menuItemId: number; qty: number; note?: string };
+type CartItem = { menuItemId: number; qty: number; note?: string; modifierIds?: number[] };
 
 export async function GET(req: NextRequest) {
   const view = req.nextUrl.searchParams.get("view");
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     : { createdAt: "asc" };
   const orders = await prisma.order.findMany({
     where,
-    include: { table: true, items: true, payment: true },
+    include: { table: true, items: { include: { modifiers: true } }, payment: true },
     orderBy,
   });
   return NextResponse.json(orders);
@@ -37,21 +37,59 @@ export async function POST(req: NextRequest) {
     const ids = [...new Set(items.map((item) => Number(item.menuItemId)))];
     const menu = await prisma.menuItem.findMany({
       where: { id: { in: ids }, available: true },
-      include: { recipes: { include: { ingredient: true } } },
+      include: {
+        recipes: { include: { ingredient: true } },
+        modifierGroups: {
+          include: {
+            options: {
+              where: { active: true },
+              include: { recipes: { include: { ingredient: true } } },
+            },
+          },
+        },
+        modifiers: {
+          where: { active: true },
+          include: { recipes: { include: { ingredient: true } } },
+        },
+      },
     });
     if (menu.length !== ids.length) return NextResponse.json({ error: "มีเมนูที่ไม่พร้อมขาย" }, { status: 400 });
 
     const menuMap = new Map(menu.map((item) => [item.id, item]));
     const normalized = items.map((item) => {
       const source = menuMap.get(Number(item.menuItemId))!;
-      return { source, qty: Math.max(1, Number(item.qty)), note: item.note?.trim() || null };
+      const requestedModifierIds = [...new Set((item.modifierIds || []).map(Number).filter(Boolean))];
+      const modifierById = new Map(source.modifiers.map((modifier) => [modifier.id, modifier]));
+      for (const group of source.modifierGroups) {
+        const selectedInGroup = group.options.filter((option) => requestedModifierIds.includes(option.id));
+        if (selectedInGroup.length < group.minSelect) throw new Error(`REQUIRED_MODIFIER:${group.name}`);
+        if (selectedInGroup.length > group.maxSelect) throw new Error(`TOO_MANY_MODIFIERS:${group.name}`);
+      }
+      const modifiers = requestedModifierIds.map((modifierId) => {
+        const modifier = modifierById.get(modifierId);
+        if (!modifier) throw new Error("INVALID_MODIFIER");
+        return modifier;
+      });
+      const modifierTotal = modifiers.reduce((sum, modifier) => sum + modifier.price, 0);
+      return {
+        source,
+        modifiers,
+        qty: Math.max(1, Number(item.qty)),
+        note: item.note?.trim() || null,
+        unitPrice: source.price + modifierTotal,
+      };
     });
-    const subtotal = normalized.reduce((sum, item) => sum + item.source.price * item.qty, 0);
+    const subtotal = normalized.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
     const safeDiscount = Math.min(Math.max(0, Number(discount)), subtotal);
     const orderType = tableId ? OrderType.DINE_IN : (type || OrderType.TAKEAWAY);
     const queueNumber = orderType === OrderType.TAKEAWAY ? `Q${Date.now().toString().slice(-6)}` : null;
     const required = new Map<number, { name: string; quantity: number }>();
     for (const item of normalized) for (const recipe of item.source.recipes) {
+      const current = required.get(recipe.ingredientId) || { name: recipe.ingredient.name, quantity: 0 };
+      current.quantity += recipe.quantity * item.qty;
+      required.set(recipe.ingredientId, current);
+    }
+    for (const item of normalized) for (const modifier of item.modifiers) for (const recipe of modifier.recipes) {
       const current = required.get(recipe.ingredientId) || { name: recipe.ingredient.name, quantity: 0 };
       current.quantity += recipe.quantity * item.qty;
       required.set(recipe.ingredientId, current);
@@ -67,8 +105,19 @@ export async function POST(req: NextRequest) {
           },
         })
         : null;
-      const itemData = normalized.map(({ source, qty, note: itemNote }) => ({
-        menuItemId: source.id, name: source.name, price: source.price, qty, note: itemNote,
+      const itemData = normalized.map(({ source, modifiers, qty, note: itemNote, unitPrice }) => ({
+        menuItemId: source.id,
+        name: source.name,
+        price: unitPrice,
+        qty,
+        note: itemNote,
+        modifiers: {
+          create: modifiers.map((modifier) => ({
+            modifierId: modifier.id,
+            name: modifier.name,
+            price: modifier.price,
+          })),
+        },
       }));
       const saved = active
         ? await tx.order.update({
@@ -119,6 +168,7 @@ export async function POST(req: NextRequest) {
       total:result.order.total,
       itemCount:normalized.reduce((sum,item)=>sum+item.qty,0),
       items:normalized.map(item=>({name:item.source.name,qty:item.qty,price:item.source.price})),
+      modifiers:normalized.flatMap(item=>item.modifiers.map(modifier=>({itemName:item.source.name,name:modifier.name,price:modifier.price}))),
       tableName:result.order.table?.name,
       queueNumber:result.order.queueNumber,
     });
@@ -126,6 +176,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")
         ? `วัตถุดิบไม่เพียงพอ: ${error.message.split(":")[1]}`
+        : error instanceof Error && error.message.startsWith("REQUIRED_MODIFIER:")
+          ? `กรุณาเลือก ${error.message.split(":")[1]}`
+          : error instanceof Error && error.message.startsWith("TOO_MANY_MODIFIERS:")
+            ? `เลือก ${error.message.split(":")[1]} เกินจำนวนที่กำหนด`
+            : error instanceof Error && error.message === "INVALID_MODIFIER"
+              ? "ตัวเลือกเสริมไม่ถูกต้อง"
         : "เปิดออเดอร์ไม่สำเร็จ";
     return NextResponse.json({ error: message }, { status: 409 });
   }
@@ -200,12 +256,22 @@ export async function PATCH(req: NextRequest) {
       const order = await prisma.$transaction(async (tx) => {
         const current = await tx.order.findUniqueOrThrow({
           where: { id: Number(body.orderId) },
-          include: { items: { include: { menuItem: { include: { recipes: true } } } } },
+          include: {
+            items: {
+              include: {
+                menuItem: { include: { recipes: true } },
+                modifiers: { include: { modifier: { include: { recipes: true } } } },
+              },
+            },
+          },
         });
         if (current.paymentStatus === PaymentStatus.PAID) throw new Error("PAID_ORDER");
         if (current.stockDeducted) {
           const restore = new Map<number, number>();
           for (const item of current.items) for (const recipe of item.menuItem.recipes) {
+            restore.set(recipe.ingredientId, (restore.get(recipe.ingredientId) || 0) + recipe.quantity * item.qty);
+          }
+          for (const item of current.items) for (const selected of item.modifiers) for (const recipe of selected.modifier?.recipes || []) {
             restore.set(recipe.ingredientId, (restore.get(recipe.ingredientId) || 0) + recipe.quantity * item.qty);
           }
           for (const [ingredientId, quantity] of restore) {
