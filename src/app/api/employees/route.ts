@@ -5,7 +5,7 @@ import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const allowedRoles = Object.values(StaffRole);
-const internalAuditActions = ["CREATE_CUSTOMER_PAYMENT_LINK"];
+const internalAuditActions = ["UPDATE_KITCHEN_STATUS"];
 
 function normalizeRoles(value: unknown): StaffRole[] {
   if (!Array.isArray(value)) return [];

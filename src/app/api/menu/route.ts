@@ -166,8 +166,8 @@ export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const { id } = await req.json();
-    await prisma.menuItem.delete({ where: { id: Number(id) } });
-    await writeAudit(auth.user.id,"DELETE_MENU","MenuItem",id);
+    const item = await prisma.menuItem.delete({ where: { id: Number(id) } });
+    await writeAudit(auth.user.id,"DELETE_MENU","MenuItem",item.id,{name:item.name,sku:item.sku,price:item.price});
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "เมนูนี้มีประวัติออเดอร์ จึงลบไม่ได้" }, { status: 409 });

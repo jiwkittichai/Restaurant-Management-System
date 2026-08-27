@@ -51,8 +51,8 @@ export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const { id } = await req.json();
-    await prisma.category.delete({ where: { id: Number(id) } });
-    await writeAudit(auth.user.id,"DELETE_CATEGORY","Category",id);
+    const category = await prisma.category.delete({ where: { id: Number(id) } });
+    await writeAudit(auth.user.id,"DELETE_CATEGORY","Category",category.id,{name:category.name,color:category.color});
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "ลบหมวดหมู่ที่มีเมนูอยู่ไม่ได้" }, { status: 409 });

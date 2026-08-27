@@ -19,6 +19,7 @@ export const roleText: Record<string, string> = {
 
 export const actionText: Record<string, string> = {
   LOGIN: "เข้าสู่ระบบ",
+  LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
   LOGIN_INACTIVE: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน",
   LOGOUT: "ออกจากระบบ",
   CREATE_EMPLOYEE: "สร้างบัญชีพนักงาน",
@@ -117,6 +118,7 @@ export function auditSummary(audit: Audit) {
   const name = asText(detailValue(details, "name"));
 
   if (audit.action === "CREATE_EMPLOYEE") return `สร้างบัญชี ${displayName}${username ? ` (@${username})` : ""}`;
+  if (audit.action === "LOGIN_FAILED") return `พยายามเข้าสู่ระบบไม่สำเร็จ${username ? ` (@${username})` : ""}`;
   if (audit.action === "UPDATE_EMPLOYEE") {
     const target = asText(detailValue(details, "targetName")) || `พนักงาน #${audit.entityId || "-"}`;
     const changes = auditChangeRows(audit).map((row) => row.label).join(", ");
@@ -133,10 +135,12 @@ export function auditSummary(audit: Audit) {
   if (audit.action === "UPDATE_RECIPE") return `แก้ไขสูตรอาหาร ${asText(detailValue(details, "ingredientCount"))} วัตถุดิบ`;
   if (audit.action === "CREATE_CATEGORY") return `เพิ่มหมวดหมู่ ${name}`;
   if (audit.action === "UPDATE_CATEGORY") return `แก้ไขหมวดหมู่ ${name}`;
+  if (audit.action === "DELETE_CATEGORY") return `ลบหมวดหมู่ ${name || `#${audit.entityId || "-"}`}`;
   if (audit.action === "CREATE_TABLE") return `เพิ่มโต๊ะ ${name}${detailValue(details, "seats") ? ` ${asText(detailValue(details, "seats"))} ที่นั่ง` : ""}`;
   if (audit.action === "UPDATE_TABLE_STATUS") return `เปลี่ยนสถานะโต๊ะเป็น ${asText(detailValue(details, "status"))}`;
   if (audit.action === "CREATE_MENU" || audit.action === "UPDATE_MENU") return `${actionText[audit.action]} ${name}`;
   if (audit.action === "TOGGLE_MENU") return `เปลี่ยนสถานะเมนูเป็น ${asText(detailValue(details, "available"))}`;
+  if (audit.action === "DELETE_MENU") return `ลบเมนู ${name || `#${audit.entityId || "-"}`}`;
   return actionText[audit.action] || audit.action;
 }
 

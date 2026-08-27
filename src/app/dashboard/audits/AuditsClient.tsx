@@ -12,6 +12,7 @@ type AuditMeta = {
 };
 
 type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "CUSTOM";
+const allActionsValue = "__ALL__";
 
 function localDate(date: Date) {
   const offset = date.getTimezoneOffset() * 60000;
@@ -46,7 +47,11 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
     setMessage("");
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (action) params.set("action", action);
+    if (action === allActionsValue) {
+      params.set("scope", "all");
+    } else if (action) {
+      params.set("action", action);
+    }
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     const response = await fetch(`/api/audits?${params.toString()}`);
@@ -144,7 +149,8 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
               onChange={(event) => setAction(event.target.value)}
               className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-8 text-sm outline-none focus:border-blue-400"
             >
-              <option value="">ทุกกิจกรรม</option>
+              <option value="">กิจกรรมสำคัญ</option>
+              <option value={allActionsValue}>ทั้งหมด</option>
               {actionOptions.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}

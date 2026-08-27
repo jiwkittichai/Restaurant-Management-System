@@ -3,13 +3,14 @@ import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const internalActions = ["CREATE_CUSTOMER_PAYMENT_LINK"];
+const defaultHiddenActions = ["UPDATE_KITCHEN_STATUS"];
 
 export async function GET(req: NextRequest) {
   const auth = await authorizeApi([StaffRole.OWNER]);
   if ("response" in auth) return auth.response;
 
   const action = req.nextUrl.searchParams.get("action") || "";
+  const scope = req.nextUrl.searchParams.get("scope") || "important";
   const employeeId = Number(req.nextUrl.searchParams.get("employeeId") || 0);
   const q = (req.nextUrl.searchParams.get("q") || "").trim().toLowerCase();
   const from = req.nextUrl.searchParams.get("from");
@@ -19,8 +20,8 @@ export async function GET(req: NextRequest) {
   const where: Prisma.AuditLogWhereInput = {};
   if (action) {
     where.action = action;
-  } else {
-    where.action = { notIn: internalActions };
+  } else if (scope !== "all") {
+    where.action = { notIn: defaultHiddenActions };
   }
   if (employeeId) {
     where.OR = [

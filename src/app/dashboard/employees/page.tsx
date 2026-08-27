@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { Audit, auditChangeRows, auditDetailRows, auditSummary, formatDate, roleText } from "../audit-utils";
+import { Audit, actionText, auditChangeRows, auditDetailRows, auditSummary, formatDate, roleText } from "../audit-utils";
 
 type Role = "OWNER" | "CASHIER" | "KITCHEN" | "STOCK";
 type Employee = { id: number; username: string; displayName: string; active: boolean; lastLoginAt?: string; createdAt: string; roles: Role[] };
@@ -403,26 +403,29 @@ export default function EmployeesPage() {
           {audits.map((item) => {
             const changes = auditChangeRows(item);
             return (
-              <button key={item.id} type="button" onClick={() => setSelectedAudit(item)} className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <button key={item.id} type="button" onClick={() => setSelectedAudit(item)} className="block w-full px-5 py-4 text-left hover:bg-gray-50">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">{item.employee?.displayName || "บัญชีที่ถูกลบ"}</p>
-                    <p className="mt-1 text-gray-600">{auditSummary(item)}</p>
-                  </div>
-                  <span className="text-gray-400 whitespace-nowrap">{formatDate(item.createdAt)}</span>
-                </div>
-                {changes.length > 0 && (
-                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    {changes.map((row) => (
-                      <div key={`${item.id}-${row.label}`} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
-                        <p className="font-medium text-gray-600">{row.label}</p>
-                        <p className="mt-1 text-gray-400">
-                          {row.before ? `${row.before} -> ${row.after || "-"}` : row.after}
-                        </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-gray-900">{item.employee?.displayName || "บัญชีที่ถูกลบ"}</span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-600">{actionText[item.action] || item.action}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">{auditSummary(item)}</p>
+                    {changes.length > 0 && (
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {changes.slice(0, 4).map((row) => (
+                          <div key={`${item.id}-${row.label}`} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
+                            <p className="font-medium text-gray-600">{row.label}</p>
+                            <p className="mt-1 text-gray-400">
+                              {row.before ? `${row.before} -> ${row.after || "-"}` : row.after}
+                            </p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
+                  <span className="whitespace-nowrap text-sm text-gray-400">{formatDate(item.createdAt)}</span>
+                </div>
               </button>
             );
           })}

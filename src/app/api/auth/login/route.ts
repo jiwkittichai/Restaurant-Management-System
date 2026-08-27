@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
   const username = String(body.username || "").trim().toLowerCase();
   const employee = await prisma.employee.findUnique({ where: { username }, include: { roles: true } });
   if (!employee || !(await verifyPassword(String(body.password || ""), employee.passwordHash))) {
+    await writeAudit(employee?.id ?? null, "LOGIN_FAILED", "Employee", employee?.id, { username });
     return NextResponse.json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 });
   }
   if (!employee.active) {

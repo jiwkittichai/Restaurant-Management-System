@@ -6,6 +6,7 @@ import { Audit } from "../audit-utils";
 import AuditsClient from "./AuditsClient";
 
 const INITIAL_LIMIT = 100;
+const defaultHiddenActions = ["UPDATE_KITCHEN_STATUS"];
 
 export default async function AuditsPage() {
   const user = await getCurrentUser();
@@ -14,13 +15,14 @@ export default async function AuditsPage() {
 
   const [audits, totalCount, oldestAudit, latestAudit] = await Promise.all([
     prisma.auditLog.findMany({
+      where: { action: { notIn: defaultHiddenActions } },
       take: INITIAL_LIMIT,
       orderBy: { createdAt: "desc" },
       include: { employee: { select: { displayName: true } } },
     }),
-    prisma.auditLog.count(),
-    prisma.auditLog.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
-    prisma.auditLog.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    prisma.auditLog.count({ where: { action: { notIn: defaultHiddenActions } } }),
+    prisma.auditLog.findFirst({ where: { action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
+    prisma.auditLog.findFirst({ where: { action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
 
   const initial = JSON.parse(JSON.stringify({
