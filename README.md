@@ -10,7 +10,7 @@
 - ระบบจัดการเมนูและหมวดหมู่
 - ระบบวัตถุดิบ สูตรอาหาร และการตัดสต็อก
 - ระบบบันทึกสถานะและช่องทางการชำระเงิน
-- ระบบชำระเงิน PromptPay แบบบันทึกยอดปกติ และรองรับ Stripe Sandbox เมื่อกำหนดค่า gateway
+- ระบบชำระเงิน PromptPay มี 2 รูปแบบ 1.บันทึกยอดปกติ และ 2.รองรับบริการ Stripe Payment เมื่อกำหนดค่า gateway 
 - ระบบรายงานยอดขายและเมนูขายดี
 - ระบบบันทึกประวัติกิจกรรมของพนักงาน
 
@@ -30,23 +30,23 @@
 
 ## การติดตั้งโปรเจค
 
-### 1. 
-
-```bash
-git clone https://github.com/jiwkittichai/Restaurant-Management-System.git
-cd Restaurant-Management-System
-```
-
-### 2. ติดตั้ง Dependencies
+### 1. ติดตั้ง Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. สร้างไฟล์ Environment
+### 2. สร้างไฟล์ Environment หรือ .env
 
 ```bash
-เปลี่ยนชื่อไฟล์ .env.example ให้เป็น .env
+cp .env.example .env
+```
+
+ค่าเริ่มต้นใน `.env.example` สามารถใช้รันบนเครื่อง local ได้ทันที โดยจะสร้างฐานข้อมูล MySQL, MinIO และบัญชีเจ้าของร้านสำหรับข้อมูล seed:
+
+```text
+username: admin
+password: admin1234
 ```
 
 ระบบ PromptPay ใช้งานได้ 2 แบบ:
@@ -54,7 +54,7 @@ npm install
 - ถ้าไม่ได้กำหนด `STRIPE_SECRET_KEY` ระบบจะบันทึกรับชำระเงินเป็น `พร้อมเพย์` ทันที เหมือนการรับเงินสด แต่แยกช่องทางการชำระเงินในรายงาน
 - ถ้ากำหนด `STRIPE_SECRET_KEY` ระบบจะเปิดโหมด PromptPay QR ผ่าน Stripe gateway ให้ลูกค้าสแกนและตรวจสอบสถานะการชำระเงินได้
 
-หากต้องการทดสอบ PromptPay ผ่าน Stripe Sandbox ให้เพิ่มค่าเหล่านี้ใน `.env`
+หากต้องการใช้บริการ PromptPay ผ่าน Stripe Payment Gateway ให้สมัครใช้งานได้ที่ Strip - https://stripe.com/th ให้เพิ่มค่าเหล่านี้ใน `.env`
 
 ```env
 STRIPE_SECRET_KEY=sk_test_xxx
@@ -63,15 +63,15 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_PROMPTPAY_BILLING_EMAIL=customer@example.com
 ```
 
-เปิดใช้งาน PromptPay ใน Stripe Dashboard โหมดทดสอบก่อนใช้งาน โดยระบบจะสร้าง QR ผ่าน Stripe เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
+เปิดใช้งาน PromptPay ใน Stripe Dashboard โดยระบบจะสร้าง QR ผ่าน Stripe เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
 
-### 4. สร้าง Prisma Client
+### 3. สร้าง Prisma Client
 
 ```bash
 npx prisma generate
 ```
 
-### 5. เปิดบริการ Docker
+### 4. เปิดบริการ Docker
 
 ```bash
 docker compose up -d
@@ -83,27 +83,20 @@ docker compose up -d
 docker compose ps
 ```
 
-### 6. สร้างโครงสร้างฐานข้อมูล
+### 5. สร้างโครงสร้างฐานข้อมูล
 
 ```bash
 npx prisma migrate deploy
 ```
 
-### 7. หากต้องการสร้างข้อมูลจำลองเริ่มต้น (ไม่บังคับ ทำหรือไม่ทำก็ได้)
+### 6. Seed ข้อมูลจำลอง *ทำหรือไม่ทำก็ได้ 
 
 ```bash
-npm run db:seed
+npm run db:seed:all
 ```
 
-คำสั่งนี้จะสร้างข้อมูลเริ่มต้น ได้แก่:
 
-- บัญชีเจ้าของร้าน
-- หมวดหมู่และเมนูตัวอย่าง
-- วัตถุดิบและสูตรอาหาร
-- โต๊ะอาหาร
-
-
-### 8. สร้าง MinIO Bucket
+### 7. สร้าง MinIO Bucket
 
 ```bash
 npm run minio:init
@@ -111,7 +104,7 @@ npm run minio:init
 
 คำสั่งนี้จะสร้าง Bucket ชื่อ `products` สำหรับจัดเก็บรูปภาพเมนู และสามารถรันซ้ำได้โดยไม่ลบรูปเดิม
 
-### 9. เปิดเว็บไซต์
+### 8. เปิดเว็บไซต์
 
 ```bash
 npm run dev
@@ -131,18 +124,3 @@ http://localhost:3000
 | phpMyAdmin | http://localhost:8080 |
 | MinIO API | http://localhost:9000 |
 | MinIO Console | http://localhost:9001 |
-
-
-## คำสั่งที่ใช้งานบ่อย
-
-```bash
-npm run dev
-npm run build
-npm run db:seed
-npm run minio:init
-docker compose up -d
-docker compose down
-docker compose ps
-npx prisma generate
-npx prisma migrate deploy
-```
