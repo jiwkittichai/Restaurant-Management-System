@@ -1,13 +1,15 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Pencil, Save, Tags, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Save, Tags, Trash2, X } from "lucide-react";
 
 type Category = { id: number; name: string; color: string; _count: { menuItems: number } };
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [search, setSearch] = useState("");
   const [name, setName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [error, setError] = useState("");
@@ -16,11 +18,16 @@ export default function CategoriesPage() {
   useEffect(() => { load(); }, [load]);
 
   async function add(e: FormEvent) {
-    e.preventDefault(); setError("");
+    e.preventDefault();
+    setError("");
+    setSaving(true);
     const res = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
     const data = await res.json();
+    setSaving(false);
     if (!res.ok) return setError(data.error);
-    setName(""); load();
+    setName("");
+    setAddingCategory(false);
+    load();
   }
 
   function startEdit(category: Category) {
@@ -52,14 +59,19 @@ export default function CategoriesPage() {
     load();
   }
 
+  const filteredCategories = categories.filter((category) => category.name.toLowerCase().includes(search.trim().toLowerCase()));
+
   return <div className="p-6">
-    <form onSubmit={add} className="bg-white rounded-2xl p-5 border border-gray-100 flex flex-col sm:flex-row gap-3">
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ค้นหาหมวดหมู่" className="flex-1 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400" />
-      <button className="bg-[#356DDB] text-white rounded-xl px-6 py-3">เพิ่มหมวดหมู่</button>
-    </form>
+    <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-5 sm:flex-row">
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาหมวดหมู่" className="flex-1 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400" />
+      <button type="button" onClick={() => { setAddingCategory(true); setError(""); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#356DDB] px-6 py-3 text-white">
+        <Plus size={18} />
+        เพิ่มหมวดหมู่
+      </button>
+    </section>
     {error && <p className="mt-3 text-red-500 text-sm">{error}</p>}
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
-      {categories.map((category) => {
+      {filteredCategories.map((category) => {
         const isEditing = editingId === category.id;
         return (
           <div key={category.id} className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center gap-4">
@@ -95,7 +107,41 @@ export default function CategoriesPage() {
           </div>
         );
       })}
-      {!categories.length && <p className="text-gray-400">ยังไม่มีหมวดหมู่</p>}
+      {!filteredCategories.length && <p className="text-gray-400">{categories.length ? "ไม่พบหมวดหมู่ตามคำค้นหา" : "ยังไม่มีหมวดหมู่"}</p>}
     </div>
+
+    {addingCategory && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <form onSubmit={add} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+            <div>
+              <h2 className="font-semibold text-gray-900">เพิ่มหมวดหมู่</h2>
+              <p className="mt-1 text-sm text-gray-400">สร้างหมวดหมู่ใหม่สำหรับจัดกลุ่มเมนูอาหาร</p>
+            </div>
+            <button type="button" onClick={() => { setAddingCategory(false); setName(""); }} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700">
+              <X size={20} />
+            </button>
+          </div>
+          <label className="mt-5 block text-sm text-gray-500">
+            ชื่อหมวดหมู่
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoFocus
+              placeholder="เช่น อาหารจานเดียว"
+              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 outline-none focus:border-blue-400"
+            />
+          </label>
+          <div className="mt-5 flex gap-2">
+            <button type="button" onClick={() => { setAddingCategory(false); setName(""); }} className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-gray-600">
+              ยกเลิก
+            </button>
+            <button disabled={saving} className="flex-1 rounded-xl bg-[#356DDB] px-4 py-3 text-white disabled:opacity-60">
+              บันทึก
+            </button>
+          </div>
+        </form>
+      </div>
+    )}
   </div>;
 }

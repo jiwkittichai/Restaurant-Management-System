@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Armchair, Eye, Plus, ReceiptText, Utensils, X } from "lucide-react";
+import { Armchair, Eye, Plus, ReceiptText, Search, Utensils, X } from "lucide-react";
 import BillModal, { BillOrder } from "../components/BillModal";
 
 type ActiveOrder = BillOrder & { status: string; paymentStatus: string; createdAt?: string };
 type Table = { id: number; name: string; seats: number; status: string; orders: ActiveOrder[] };
+type TableTab = "ALL" | "AVAILABLE" | "ACTIVE" | "READY";
 
 const statusText: Record<string, string> = { AVAILABLE: "ว่าง", OCCUPIED: "กำลังใช้งาน", RESERVED: "จอง", CLEANING: "รอทำความสะอาด" };
 const statusClass: Record<string, string> = { AVAILABLE: "bg-emerald-100 text-emerald-700", OCCUPIED: "bg-red-100 text-red-700", RESERVED: "bg-amber-100 text-amber-700", CLEANING: "bg-gray-100 text-gray-600" };
@@ -26,6 +27,8 @@ export default function TablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [name, setName] = useState("");
   const [seats, setSeats] = useState("2");
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<TableTab>("ALL");
   const [message, setMessage] = useState("");
   const [addingTable, setAddingTable] = useState(false);
   const [billOrder, setBillOrder] = useState<BillOrder | null>(null);
@@ -58,8 +61,36 @@ export default function TablesPage() {
     available: tables.filter((table) => table.status === "AVAILABLE").length,
     active: tables.filter((table) => table.orders[0]).length,
     ready: tables.filter((table) => ["READY", "SERVED"].includes(table.orders[0]?.status)).length,
-    cleaning: tables.filter((table) => table.status === "CLEANING").length,
   }), [tables]);
+  const tableTabs = [
+    { key: "ALL" as const, label: "ทั้งหมด", value: `${summary.total} โต๊ะ`, tone: "text-gray-900" },
+    { key: "AVAILABLE" as const, label: "ว่าง", value: `${summary.available} โต๊ะ`, tone: "text-emerald-600" },
+    { key: "ACTIVE" as const, label: "มีออเดอร์", value: `${summary.active} โต๊ะ`, tone: "text-blue-600" },
+    { key: "READY" as const, label: "พร้อมเช็คบิล", value: `${summary.ready} โต๊ะ`, tone: "text-indigo-600" },
+  ];
+  const filteredTables = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return tables.filter((table) => {
+      const order = table.orders[0];
+      const readyToBill = ["READY", "SERVED"].includes(order?.status);
+      const matchesTab =
+        activeTab === "ALL" ||
+        (activeTab === "AVAILABLE" && table.status === "AVAILABLE") ||
+        (activeTab === "ACTIVE" && Boolean(order)) ||
+        (activeTab === "READY" && readyToBill);
+      if (!matchesTab) return false;
+      if (!query) return true;
+      const searchable = [
+        table.name,
+        `${table.seats} ที่นั่ง`,
+        statusText[table.status],
+        order?.orderNumber,
+        order ? orderStatusText[order.status] : "",
+        readyToBill ? "พร้อมเช็คบิล" : "",
+      ].filter(Boolean).join(" ").toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [activeTab, search, tables]);
 
   async function add(event: FormEvent) {
     event.preventDefault();
@@ -154,22 +185,42 @@ export default function TablesPage() {
   return (
     <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
       <section className="bg-white rounded-2xl border border-gray-100 px-4 py-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="font-semibold text-gray-900">ภาพรวมโต๊ะอาหาร</h2>
             <p className="mt-0.5 text-sm text-gray-400">ดูสถานะโต๊ะ ออเดอร์ในครัว และยอดบิลได้จากหน้านี้</p>
           </div>
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:flex">
-              <div className="rounded-xl border border-gray-100 px-3 py-2"><p className="text-xs text-gray-400">ทั้งหมด</p><p className="font-semibold">{summary.total} โต๊ะ</p></div>
-              <div className="rounded-xl border border-gray-100 px-3 py-2"><p className="text-xs text-gray-400">ว่าง</p><p className="font-semibold text-emerald-600">{summary.available} โต๊ะ</p></div>
-              <div className="rounded-xl border border-gray-100 px-3 py-2"><p className="text-xs text-gray-400">มีออเดอร์</p><p className="font-semibold text-blue-600">{summary.active} โต๊ะ</p></div>
-              <div className="rounded-xl border border-gray-100 px-3 py-2"><p className="text-xs text-gray-400">พร้อมเช็คบิล</p><p className="font-semibold text-indigo-600">{summary.ready} โต๊ะ</p></div>
-              <div className="rounded-xl border border-gray-100 px-3 py-2"><p className="text-xs text-gray-400">ทำความสะอาด</p><p className="font-semibold text-gray-500">{summary.cleaning} โต๊ะ</p></div>
-            </div>
-            <button onClick={() => setAddingTable(true)} className="inline-flex w-fit items-center justify-center gap-2 rounded-xl bg-[#356DDB] px-4 py-3 text-white xl:h-[58px]">
-              <Plus size={17} /> เพิ่มโต๊ะ
-            </button>
+          <button
+            type="button"
+            title="เพิ่มโต๊ะ"
+            aria-label="เพิ่มโต๊ะ"
+            onClick={() => setAddingTable(true)}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#356DDB] text-white shadow-sm transition hover:bg-blue-700"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 xl:flex-row">
+          <div className="relative xl:min-w-[260px] xl:flex-[1.35]">
+            <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="ค้นหาโต๊ะ เลขออเดอร์ หรือสถานะ"
+              className="h-full min-h-[58px] w-full rounded-xl border border-gray-100 bg-white pl-11 pr-4 text-sm font-medium text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex-[4]">
+            {tableTabs.map((tab) => (
+              <TableFilterCard
+                key={tab.key}
+                active={activeTab === tab.key}
+                label={tab.label}
+                value={tab.value}
+                tone={tab.tone}
+                onClick={() => setActiveTab(tab.key)}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -177,7 +228,7 @@ export default function TablesPage() {
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {tables.map((table) => {
+        {filteredTables.map((table) => {
           const order = table.orders[0];
           const itemCount = order?.items.reduce((sum, item) => sum + item.qty, 0) || 0;
           const previewItems = order?.items.slice(0, 3) || [];
@@ -242,9 +293,8 @@ export default function TablesPage() {
                       <Utensils className="text-gray-300" size={24} />
                       <p className="mt-2 text-sm text-gray-400">ยังไม่มีออเดอร์</p>
                     </div>
-                    <div className="flex gap-2 pt-4">
-                      <button onClick={() => status(table.id, table.status === "RESERVED" ? "AVAILABLE" : "RESERVED")} className="flex-1 bg-amber-50 text-amber-700 rounded-xl py-2.5 text-sm">{table.status === "RESERVED" ? "ยกเลิกจอง" : "จองโต๊ะ"}</button>
-                      <button onClick={() => status(table.id, table.status === "CLEANING" ? "AVAILABLE" : "CLEANING")} className="flex-1 bg-gray-100 text-gray-600 rounded-xl py-2.5 text-sm">{table.status === "CLEANING" ? "ทำความสะอาดแล้ว" : "รอทำความสะอาด"}</button>
+                    <div className="pt-4">
+                      <button onClick={() => status(table.id, table.status === "RESERVED" ? "AVAILABLE" : "RESERVED")} className="w-full bg-amber-50 text-amber-700 rounded-xl py-2.5 text-sm">{table.status === "RESERVED" ? "ยกเลิกจอง" : "จองโต๊ะ"}</button>
                     </div>
                   </div>
                 )}
@@ -254,7 +304,7 @@ export default function TablesPage() {
         })}
       </div>
 
-      {!tables.length && <p className="text-center text-gray-400 mt-12">เพิ่มโต๊ะเพื่อเริ่มรับออเดอร์</p>}
+      {!filteredTables.length && <p className="text-center text-gray-400 mt-12">{tables.length ? "ไม่พบโต๊ะตามเงื่อนไขที่เลือก" : "เพิ่มโต๊ะเพื่อเริ่มรับออเดอร์"}</p>}
 
       {addingTable && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
@@ -336,5 +386,32 @@ export default function TablesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function TableFilterCard({
+  active,
+  label,
+  value,
+  tone,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  value: string;
+  tone: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-[112px] rounded-xl border px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${
+        active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-gray-100 bg-white"
+      }`}
+    >
+      <p className="truncate text-xs text-gray-400">{label}</p>
+      <p className={`font-semibold ${tone}`}>{value}</p>
+    </button>
   );
 }

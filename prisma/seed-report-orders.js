@@ -2,6 +2,25 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 const REPORT_SEED_NOTE = "REPORT_SEED";
+const FINAL_STOCK_NOTE = "ปรับยอดคงเหลือหลังจำลองข้อมูลขายให้เหมือนสต็อกร้านจริง";
+
+const finalStockSeed = [
+  { name: "ข้าวสาร", stock: 7200 },
+  { name: "เนื้อไก่", stock: 2600 },
+  { name: "หมูสับ", stock: 3000 },
+  { name: "หมูกรอบ", stock: 2100 },
+  { name: "กุ้ง", stock: 1800 },
+  { name: "ปลาหมึก", stock: 1500 },
+  { name: "ไข่ไก่", stock: 85 },
+  { name: "ใบกะเพรา", stock: 240 },
+  { name: "กระเทียม", stock: 160 },
+  { name: "พริกสด", stock: 130 },
+  { name: "ซอสปรุงรส", stock: 650 },
+  { name: "น้ำปลา", stock: 240 },
+  { name: "น้ำมันพืช", stock: 850 },
+  { name: "น้ำดื่ม", stock: 24 },
+  { name: "โค้ก", stock: 18 },
+];
 
 function rand(seed) {
   const value = Math.sin(seed) * 10000;
@@ -20,6 +39,30 @@ function addDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }
 
+function weightedPick(items, seed) {
+  const weights = {
+    "KAPRAO-PORK": 18,
+    "KAPRAO-CRISPY": 15,
+    "KAPRAO-CHK": 13,
+    "KAPRAO-SEAFOOD": 11,
+    "FRIEDRICE-PORK": 10,
+    "FRIEDRICE-CRISPY": 8,
+    "FRIEDRICE-SEAFOOD": 8,
+    OMELETTE: 7,
+    "OMELETTE-PORK": 6,
+    "OMELETTE-SHRIMP": 5,
+    "DRINK-WATER": 7,
+    "DRINK-COLA": 6,
+  };
+  const total = items.reduce((sum, item) => sum + (weights[item.sku] || 4), 0);
+  let cursor = rand(seed) * total;
+  for (const item of items) {
+    cursor -= weights[item.sku] || 4;
+    if (cursor <= 0) return item;
+  }
+  return items[items.length - 1];
+}
+
 async function loadRealMenu() {
   const items = await prisma.menuItem.findMany({
     where: {
@@ -27,6 +70,7 @@ async function loadRealMenu() {
       available: true,
     },
     include: {
+      category: true,
       recipes: true,
       modifiers: {
         where: { active: true },
@@ -64,18 +108,21 @@ async function loadRestaurantTables() {
 }
 
 function buildOrderItems(menuItems, seed) {
-  const count = 1 + Math.floor(rand(seed) * 3);
+  const mains = menuItems.filter((item) => item.category?.name !== "เครื่องดื่ม" && !item.sku.startsWith("DRINK-"));
+  const drinks = menuItems.filter((item) => item.sku.startsWith("DRINK-"));
+  const count = 2 + Math.floor(rand(seed) * 3);
   const picked = [];
   for (let index = 0; index < count; index += 1) {
-    const source = menuItems[Math.floor(rand(seed + index + 1) * menuItems.length)];
+    const useDrink = drinks.length > 0 && (index > 0 ? rand(seed + index + 23) > 0.78 : rand(seed + 99) > 0.94);
+    const source = useDrink ? weightedPick(drinks, seed + index + 1) : weightedPick(mains.length ? mains : menuItems, seed + index + 1);
     const modifiers = [];
     for (const group of source.modifierGroups) {
-      if (group.name === "ระดับความเผ็ด" && rand(seed + index + group.id) > 0.45) {
+      if (group.name === "ระดับความเผ็ด" && rand(seed + index + group.id) > 0.55) {
         const selected = group.options[Math.floor(rand(seed + index + group.id + 1) * group.options.length)];
         if (selected) modifiers.push(selected);
       } else if (group.name === "ตัวเลือกเสริม") {
         for (const option of group.options) {
-          if (rand(seed + index + option.id + 11) > (option.name === "พิเศษ" ? 0.72 : 0.62)) modifiers.push(option);
+          if (rand(seed + index + option.id + 11) > (option.name === "พิเศษ" ? 0.58 : 0.72)) modifiers.push(option);
         }
       }
     }
@@ -86,7 +133,9 @@ function buildOrderItems(menuItems, seed) {
       menuItemId: source.id,
       name: source.name,
       price: source.price + modifierTotal,
-      qty: 1 + Math.floor(rand(seed + index + 7) * 3),
+      qty: source.sku.startsWith("DRINK-")
+        ? 1 + Math.floor(rand(seed + index + 7) * 2)
+        : 1 + (rand(seed + index + 7) > 0.82 ? 1 : 0),
       status: "SERVED",
     });
   }
@@ -122,22 +171,35 @@ async function main() {
     },
     select: { id: true, orderNumber: true },
   });
-  if (existing.length) {
-    const orderIds = existing.map((order) => String(order.id));
-    const orderNumbers = existing.map((order) => order.orderNumber);
+  const seededAudits = await prisma.auditLog.findMany({
+    where: { entityType: "Order" },
+    select: { entityId: true, details: true },
+  });
+  const auditOrderIds = seededAudits
+    .filter((audit) => audit.details && typeof audit.details === "object" && !Array.isArray(audit.details) && audit.details.source === REPORT_SEED_NOTE)
+    .map((audit) => Number(audit.entityId))
+    .filter((id) => Number.isInteger(id));
+  const existingIds = [...new Set([...existing.map((order) => order.id), ...auditOrderIds])];
+  if (existingIds.length) {
+    const existingOrders = await prisma.order.findMany({
+      where: { id: { in: existingIds } },
+      select: { id: true, orderNumber: true },
+    });
+    const orderIds = existingOrders.map((order) => String(order.id));
+    const orderNumbers = existingOrders.map((order) => order.orderNumber);
     await prisma.auditLog.deleteMany({
       where: { entityType: "Order", entityId: { in: orderIds } },
     });
     await prisma.stockMovement.deleteMany({
       where: { reference: { in: orderNumbers } },
     });
-    await prisma.order.deleteMany({ where: { id: { in: existing.map((order) => order.id) } } });
+    await prisma.order.deleteMany({ where: { id: { in: existingOrders.map((order) => order.id) } } });
   }
   await prisma.menuItem.deleteMany({ where: { sku: { startsWith: "DEMO-REPORT-" } } });
   await prisma.category.deleteMany({ where: { name: "Demo Reports" } });
   await prisma.restaurantTable.deleteMany({ where: { name: "Demo Report" } });
   await prisma.stockMovement.deleteMany({
-    where: { note: "ปรับสต็อกตั้งต้นสำหรับข้อมูลจำลองรายงาน" },
+    where: { note: { in: ["ปรับสต็อกตั้งต้นสำหรับข้อมูลจำลองรายงาน", FINAL_STOCK_NOTE] } },
   });
 
   const menuItems = await loadRealMenu();
@@ -151,13 +213,15 @@ async function main() {
   for (let month = 0; month <= maxMonth; month += 1) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const maxDay = year === today.getFullYear() && month === today.getMonth() ? today.getDate() : daysInMonth;
-    for (const day of [3, 7, 11, 16, 21, 26].filter((value) => value <= maxDay)) {
-      saleDateMap.set(keyOf(year, month, day), { year, month, day, count: 2 + Math.floor(rand(year + month * 31 + day) * 5) });
-    }
-    if (year === today.getFullYear() && month === today.getMonth()) {
-      for (let day = 1; day <= maxDay; day += 1) {
-        saleDateMap.set(keyOf(year, month, day), { year, month, day, count: 1 + Math.floor(rand(year + day) * 4) });
-      }
+    for (let day = 1; day <= maxDay; day += 1) {
+      const weekday = new Date(year, month, day).getDay();
+      const weekendBoost = weekday === 0 || weekday === 6 ? 2 : 0;
+      saleDateMap.set(keyOf(year, month, day), {
+        year,
+        month,
+        day,
+        count: 5 + weekendBoost + Math.floor(rand(year + month * 31 + day) * 4),
+      });
     }
   }
 
@@ -168,7 +232,7 @@ async function main() {
         year: date.getFullYear(),
         month: date.getMonth(),
         day: date.getDate(),
-        count: 3 + Math.floor(rand(year + index) * 4),
+        count: 6 + Math.floor(rand(year + index) * 4),
       });
     }
     saleDateMap.set(keyOf(today.getFullYear(), today.getMonth(), today.getDate()), {
@@ -188,7 +252,7 @@ async function main() {
       const items = buildOrderItems(menuItems, seed);
       const required = summarizeRequirements(items);
       const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-      const discount = rand(seed + 2) > 0.82 ? Math.round(subtotal * 0.05) : 0;
+      const discount = 0;
       const total = subtotal - discount;
       const method = rand(seed + 3) > 0.42 ? "PROMPTPAY" : "CASH";
       const type = rand(seed + 5) > 0.3 ? "DINE_IN" : "TAKEAWAY";
@@ -211,7 +275,7 @@ async function main() {
             subtotal,
             discount,
             total,
-            note: REPORT_SEED_NOTE,
+            note: null,
             stockDeducted: required.size > 0,
             createdAt: paidAt,
             updatedAt: paidAt,
@@ -305,6 +369,24 @@ async function main() {
       });
       created += 1;
     }
+  }
+
+  for (const item of finalStockSeed) {
+    const current = await prisma.ingredient.findUnique({ where: { name: item.name } });
+    if (!current) continue;
+    const quantity = item.stock - current.stock;
+    await prisma.ingredient.update({
+      where: { id: current.id },
+      data: { stock: item.stock },
+    });
+    await prisma.stockMovement.create({
+      data: {
+        ingredientId: current.id,
+        type: "ADJUSTMENT",
+        quantity,
+        note: FINAL_STOCK_NOTE,
+      },
+    });
   }
 
   console.log(`Created ${created} realistic paid orders from existing menu items and tables for ${year}.`);

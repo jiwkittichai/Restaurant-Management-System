@@ -8,6 +8,7 @@ import {
   Phone,
   ReceiptText,
   RefreshCw,
+  Search,
   ShoppingBag,
   UserRound,
   WalletCards,
@@ -25,6 +26,7 @@ type Order = BillOrder & {
   createdAt: string;
   items: Item[];
 };
+type QueueTab = "ALL" | "UNPAID" | "READY" | "PAID";
 
 const statusText: Record<string, string> = {
   SENT: "รอครัว",
@@ -67,6 +69,8 @@ export default function TakeawayPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [message, setMessage] = useState("");
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<QueueTab>("ALL");
   const [billOrder, setBillOrder] = useState<BillOrder | null>(null);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<Order | null>(null);
@@ -87,17 +91,48 @@ export default function TakeawayPage() {
       .catch(() => setPromptPayGatewayEnabled(false));
   }, []);
 
-  const sortedOrders = useMemo(
-    () => [...orders].sort((a, b) => priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [orders],
-  );
-
   const summary = useMemo(() => ({
     total: orders.length,
     unpaid: orders.filter((order) => order.paymentStatus === "UNPAID").length,
     ready: orders.filter((order) => order.status === "READY").length,
     paid: orders.filter((order) => order.paymentStatus === "PAID").length,
   }), [orders]);
+  const filteredOrders = useMemo(() => {
+    const visible = activeTab === "ALL"
+      ? orders
+      : orders.filter((order) => {
+        if (activeTab === "UNPAID") return order.paymentStatus === "UNPAID";
+        if (activeTab === "READY") return order.status === "READY";
+        return order.paymentStatus === "PAID";
+      });
+    const query = search.trim().toLowerCase();
+    const searched = query
+      ? visible.filter((order) => {
+        const searchable = [
+          order.queueNumber,
+          order.orderNumber,
+          order.customerName,
+          order.customerPhone,
+          statusText[order.status],
+          order.paymentStatus === "PAID" ? "ชำระแล้ว" : "ยังไม่ชำระ",
+          ...order.items.flatMap((item) => [
+            item.name,
+            item.note,
+            itemStatusText[item.status || ""],
+            ...(item.modifiers?.map((modifier) => modifier.name) || []),
+          ]),
+        ].filter(Boolean).join(" ").toLowerCase();
+        return searchable.includes(query);
+      })
+      : visible;
+    return [...searched].sort((a, b) => priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [activeTab, orders, search]);
+  const summaryCards = [
+    { key: "ALL" as const, label: "ทั้งหมด", value: `${summary.total} คิว`, tone: "text-gray-900" },
+    { key: "UNPAID" as const, label: "ยังไม่ชำระ", value: `${summary.unpaid} คิว`, tone: "text-red-500" },
+    { key: "PAID" as const, label: "ชำระแล้ว", value: `${summary.paid} คิว`, tone: "text-blue-600" },
+    { key: "READY" as const, label: "พร้อมรับ", value: `${summary.ready} คิว`, tone: "text-emerald-600" },
+  ];
 
   async function action(orderId: number, actionName: string, extra: Record<string, unknown> = {}) {
     setLoadingId(orderId);
@@ -166,21 +201,42 @@ export default function TakeawayPage() {
   return (
     <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
       <section className="rounded-2xl border border-gray-100 bg-white px-4 py-3">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="font-semibold text-gray-900">คิวซื้อกลับบ้าน</h2>
             <p className="mt-0.5 text-sm text-gray-400">ติดตามการชำระเงินและส่งมอบอาหารให้ลูกค้า</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <SummaryCard label="ทั้งหมด" value={`${summary.total} คิว`} />
-              <SummaryCard label="ยังไม่ชำระ" value={`${summary.unpaid} คิว`} tone="text-red-500" />
-              <SummaryCard label="พร้อมรับ" value={`${summary.ready} คิว`} tone="text-emerald-600" />
-              <SummaryCard label="ชำระแล้ว" value={`${summary.paid} คิว`} tone="text-blue-600" />
-            </div>
-            <button onClick={load} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 text-sm font-medium text-gray-600 hover:bg-gray-200">
-              <RefreshCw size={15} /> รีเฟรช
-            </button>
+          <button
+            type="button"
+            title="รีเฟรช"
+            aria-label="รีเฟรช"
+            onClick={load}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition hover:bg-gray-200"
+          >
+            <RefreshCw size={17} />
+          </button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 xl:flex-row">
+          <div className="relative xl:min-w-[260px] xl:flex-[1.35]">
+            <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="ค้นหาคิว เลขออเดอร์ ลูกค้า หรือเมนู"
+              className="h-full min-h-[58px] w-full rounded-xl border border-gray-100 bg-white pl-11 pr-4 text-sm font-medium text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex-[4]">
+            {summaryCards.map((card) => (
+              <SummaryCard
+                key={card.key}
+                active={activeTab === card.key}
+                label={card.label}
+                value={card.value}
+                tone={card.tone}
+                onClick={() => setActiveTab(card.key)}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -188,7 +244,7 @@ export default function TakeawayPage() {
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {sortedOrders.map((order) => {
+        {filteredOrders.map((order) => {
           const preview = order.items.slice(0, 3);
           const itemCount = order.items.reduce((sum, item) => sum + item.qty, 0);
           const readyToPickup = order.status === "READY" && order.paymentStatus === "PAID";
@@ -282,10 +338,10 @@ export default function TakeawayPage() {
         })}
       </div>
 
-      {!orders.length && (
+      {!filteredOrders.length && (
         <div className="mt-20 text-center text-gray-400">
           <ShoppingBag size={52} className="mx-auto mb-3 opacity-25" />
-          <p>ไม่มีคิวซื้อกลับบ้านที่กำลังดำเนินการ</p>
+          <p>{orders.length ? "ไม่มีคิวตามเงื่อนไขที่เลือก" : "ไม่มีคิวซื้อกลับบ้านที่กำลังดำเนินการ"}</p>
         </div>
       )}
 
@@ -355,11 +411,29 @@ export default function TakeawayPage() {
   );
 }
 
-function SummaryCard({ label, value, tone = "text-gray-900" }: { label: string; value: string; tone?: string }) {
+function SummaryCard({
+  active,
+  label,
+  value,
+  tone = "text-gray-900",
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  value: string;
+  tone?: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="min-w-[104px] rounded-xl border border-gray-100 px-3 py-2">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-[104px] rounded-xl border px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${
+        active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-gray-100 bg-white"
+      }`}
+    >
       <p className="text-xs text-gray-400">{label}</p>
       <p className={`font-semibold ${tone}`}>{value}</p>
-    </div>
+    </button>
   );
 }

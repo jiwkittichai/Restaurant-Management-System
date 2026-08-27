@@ -11,6 +11,7 @@ export default function MenuPage() {
   const [items, setItems] = useState<Menu[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState<Menu | null>(null);
   const load = useCallback(() => fetch("/api/menu").then((r) => r.json()).then(setItems), []);
   useEffect(() => { load(); }, [load]);
 
@@ -18,9 +19,13 @@ export default function MenuPage() {
     await fetch("/api/menu", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, available: !item.available }) }); load();
   }
   async function remove(id: number) {
-    if (!confirm("ลบเมนูนี้ใช่หรือไม่?")) return;
     const res = await fetch("/api/menu", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
-    const data = await res.json(); if (!res.ok) setError(data.error); else load();
+    const data = await res.json();
+    if (!res.ok) setError(data.error);
+    else {
+      setConfirmingDelete(null);
+      load();
+    }
   }
   const filtered = items.filter((i) => `${i.name} ${i.sku} ${i.category.name}`.toLowerCase().includes(search.toLowerCase()));
 
@@ -36,9 +41,24 @@ export default function MenuPage() {
         <td className="p-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden">{item.image && <img src={item.image} alt="" className="w-full h-full object-cover" />}</div><div><p className="font-medium">{item.name}</p><p className="text-xs text-gray-400">{item.sku}</p></div></div></td>
         <td className="p-4 text-gray-500">{item.category.name}</td><td className="p-4 text-right font-medium">฿{item.price.toFixed(2)}</td>
         <td className="p-4 text-center"><button onClick={() => toggle(item)} className={`px-3 py-1 rounded-full text-xs ${item.available ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{item.available ? "พร้อมขาย" : "ปิดขาย"}</button><p className={`text-[11px] mt-1 ${item.maxServings===0?"text-red-500":"text-gray-400"}`}>{!item.stockTracked?"ยังไม่มีสูตร":item.maxServings===0?"วัตถุดิบหมด":`ขายได้ ${item.maxServings} ${item.saleUnit||"จาน"}`}</p></td>
-        <td className="p-4"><div className="flex justify-center gap-2"><button aria-label={`แก้ไข ${item.name}`} onClick={() => router.push(`/dashboard/products/${item.id}/edit`)} className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"><Pencil size={16} /></button><button aria-label={`ลบ ${item.name}`} onClick={() => remove(item.id)} className="p-2 rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500"><Trash2 size={16} /></button></div></td>
+        <td className="p-4"><div className="flex justify-center gap-2"><button aria-label={`แก้ไข ${item.name}`} onClick={() => router.push(`/dashboard/products/${item.id}/edit`)} className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"><Pencil size={16} /></button><button aria-label={`ลบ ${item.name}`} onClick={() => setConfirmingDelete(item)} className="p-2 rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500"><Trash2 size={16} /></button></div></td>
       </tr>)}</tbody></table>
       {!filtered.length && <p className="text-center py-10 text-gray-400">ยังไม่มีเมนูอาหาร</p>}
     </div>
+
+    {confirmingDelete && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+          <h2 className="font-semibold text-gray-900">ลบเมนูอาหาร</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            ต้องการลบ {confirmingDelete.name} หรือไม่? หากเมนูนี้มีประวัติออเดอร์หรือข้อมูลที่เกี่ยวข้อง ระบบจะไม่อนุญาตให้ลบ
+          </p>
+          <div className="mt-5 flex gap-2">
+            <button type="button" onClick={() => setConfirmingDelete(null)} className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-gray-600">ยกเลิก</button>
+            <button type="button" onClick={() => remove(confirmingDelete.id)} className="flex-1 rounded-xl bg-red-500 px-4 py-3 text-white">ลบเมนู</button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>;
 }

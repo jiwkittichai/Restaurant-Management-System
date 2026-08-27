@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   const orders = await prisma.order.findMany({
     where: { paymentStatus: "PAID", payment: range === "all" ? { isNot: null } : { paidAt: { gte: from, lte: to } } },
-    include: { items: true, payment: true, table: true },
+    include: { items: { include: { menuItem: true, modifiers: true } }, payment: true, table: true },
     orderBy: { payment: { paidAt: "desc" } },
   });
 
@@ -148,8 +148,35 @@ export async function GET(req: NextRequest) {
       })),
     chartMode: bucketMode,
     recent: orders.slice(0, 20).map((order) => ({
-      id: order.id, orderNumber: order.orderNumber, table: order.table?.name || "ซื้อกลับบ้าน",
-      total: order.total, method: order.payment?.method, paidAt: order.payment?.paidAt,
+      id: order.id,
+      orderNumber: order.orderNumber,
+      table: order.table?.name || "ซื้อกลับบ้าน",
+      type: order.type,
+      status: order.status,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      total: order.total,
+      note: order.note,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      method: order.payment?.method,
+      paidAt: order.payment?.paidAt,
+      receivedAmount: order.payment?.receivedAmount,
+      changeAmount: order.payment?.changeAmount,
+      items: order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        qty: item.qty,
+        price: item.price,
+        saleUnit: item.menuItem.saleUnit || "หน่วย",
+        note: item.note,
+        status: item.status,
+        modifiers: item.modifiers.map((modifier) => ({
+          id: modifier.id,
+          name: modifier.name,
+          price: modifier.price,
+        })),
+      })),
     })),
   });
 }

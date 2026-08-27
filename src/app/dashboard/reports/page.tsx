@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarDays, ClipboardList, Percent, ReceiptText } from "lucide-react";
+import { Banknote, CalendarDays, ClipboardList, Percent, ReceiptText, X } from "lucide-react";
 
 type Report = {
   summary: { sales: number; discounts: number; orders: number; average: number };
@@ -11,7 +11,35 @@ type Report = {
   daily: Array<{ date: string; amount: number; orders?: number; average?: number }>;
   chart?: Array<{ key?: string; label: string; amount: number; orders: number; average: number }>;
   chartMode?: "hour" | "day" | "month" | "year";
-  recent: Array<{ id: number; orderNumber: string; table: string; total: number; method: string; paidAt: string }>;
+  recent: ReportOrder[];
+};
+
+type ReportOrder = {
+  id: number;
+  orderNumber: string;
+  table: string;
+  type: string;
+  status: string;
+  subtotal: number;
+  discount: number;
+  total: number;
+  note?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  method: string;
+  paidAt: string;
+  receivedAmount?: number | null;
+  changeAmount?: number | null;
+  items: Array<{
+    id: number;
+    name: string;
+    qty: number;
+    price: number;
+    saleUnit: string;
+    note?: string | null;
+    status: string;
+    modifiers?: Array<{ id: number; name: string; price: number }>;
+  }>;
 };
 
 const empty: Report = {
@@ -25,6 +53,7 @@ const empty: Report = {
 };
 
 const methodText: Record<string, string> = { CASH: "เงินสด", PROMPTPAY: "พร้อมเพย์", CARD: "บัตร" };
+const orderTypeText: Record<string, string> = { DINE_IN: "ทานที่ร้าน", TAKEAWAY: "ซื้อกลับบ้าน" };
 type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "YEAR" | "CUSTOM";
 
 function localDate(date: Date) {
@@ -72,6 +101,7 @@ export default function ReportsPage() {
   const [from, setFrom] = useState(() => todayText());
   const [to, setTo] = useState(() => todayText());
   const [report, setReport] = useState<Report>(empty);
+  const [selectedOrder, setSelectedOrder] = useState<ReportOrder | null>(null);
 
   const reportQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -451,8 +481,25 @@ export default function ReportsPage() {
           </thead>
           <tbody>
             {report.recent.map((row) => (
-              <tr key={row.id} className="border-t border-gray-100">
-                <td className="p-3">{row.orderNumber}</td>
+              <tr
+                key={row.id}
+                tabIndex={0}
+                role="button"
+                aria-label={`ดูรายละเอียด ${row.orderNumber}`}
+                className={`cursor-pointer border-t border-gray-100 transition focus:outline-none ${
+                  selectedOrder?.id === row.id
+                    ? "bg-gray-100"
+                    : "hover:bg-gray-50 focus:bg-gray-50"
+                }`}
+                onClick={() => setSelectedOrder(row)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedOrder(row);
+                  }
+                }}
+              >
+                <td className="p-3 font-medium text-gray-900">{row.orderNumber}</td>
                 <td className="p-3">{row.table}</td>
                 <td className="p-3 text-gray-500">{new Date(row.paidAt).toLocaleString("th-TH")}</td>
                 <td className="p-3">{methodText[row.method] || row.method}</td>
@@ -463,6 +510,109 @@ export default function ReportsPage() {
         </table>
         {!report.recent.length && <p className="text-center py-8 text-gray-400">ยังไม่มีประวัติการชำระเงิน</p>}
       </section>
+
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/20">
+          <button
+            type="button"
+            aria-label="ปิดรายละเอียดบิล"
+            className="hidden flex-1 cursor-default sm:block"
+            onClick={() => setSelectedOrder(null)}
+          />
+          <div className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <ReceiptText size={22} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-900">รายละเอียดบิลออเดอร์</h2>
+                  <p className="text-sm text-gray-400">{selectedOrder.orderNumber} · {selectedOrder.table}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-gray-100 px-4 py-3">
+                <p className="text-xs text-gray-400">ประเภทออเดอร์</p>
+                <p className="mt-1 font-medium">{orderTypeText[selectedOrder.type] || selectedOrder.type}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 px-4 py-3">
+                <p className="text-xs text-gray-400">ช่องทางชำระเงิน</p>
+                <p className="mt-1 font-medium">{methodText[selectedOrder.method] || selectedOrder.method}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 px-4 py-3">
+                <p className="text-xs text-gray-400">เวลาชำระเงิน</p>
+                <p className="mt-1 font-medium">{new Date(selectedOrder.paidAt).toLocaleString("th-TH")}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-gray-100 px-4 py-3">
+              <p className="text-xs text-gray-400">หมายเหตุ</p>
+              <p className="mt-1 font-medium text-gray-900">{selectedOrder.note || "-"}</p>
+            </div>
+
+            {(selectedOrder.customerName || selectedOrder.customerPhone) && (
+              <div className="mt-3 rounded-xl border border-gray-100 px-4 py-3">
+                <p className="text-xs text-gray-400">ข้อมูลลูกค้า</p>
+                {selectedOrder.customerName && <p className="mt-1 font-medium">{selectedOrder.customerName}</p>}
+                {selectedOrder.customerPhone && <p className="text-sm text-gray-500">{selectedOrder.customerPhone}</p>}
+              </div>
+            )}
+
+            <div className="mt-5">
+              <h3 className="font-semibold text-gray-900">รายการอาหาร</h3>
+              <div className="mt-3 divide-y divide-gray-100 rounded-2xl border border-gray-100">
+                {selectedOrder.items.map((item) => (
+                  <div key={item.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900">
+                          <span className="mr-2 text-blue-600">{item.qty}x</span>{item.name}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">{money(item.price)} / {item.saleUnit || "หน่วย"}</p>
+                        {!!item.modifiers?.length && (
+                          <p className="mt-1 text-xs text-blue-600">
+                            {item.modifiers.map((modifier) => `+ ${modifier.name}${modifier.price ? ` ${money(modifier.price)}` : ""}`).join(", ")}
+                          </p>
+                        )}
+                        {item.note && <p className="mt-1 text-xs text-red-500">หมายเหตุ: {item.note}</p>}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-medium">{money(item.price * item.qty)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 -mx-5 mt-6 border-t border-gray-100 bg-white p-5">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-gray-500"><span>ยอดอาหาร</span><span>{money(selectedOrder.subtotal)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>ส่วนลด</span><span>{money(selectedOrder.discount)}</span></div>
+                {selectedOrder.receivedAmount != null && (
+                  <div className="flex justify-between text-gray-500"><span>รับเงิน</span><span>{money(selectedOrder.receivedAmount)}</span></div>
+                )}
+                {selectedOrder.changeAmount != null && (
+                  <div className="flex justify-between text-gray-500"><span>เงินทอน</span><span>{money(selectedOrder.changeAmount)}</span></div>
+                )}
+                <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-semibold text-gray-900">
+                  <span>รวมสุทธิ</span>
+                  <span className="text-blue-600">{money(selectedOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

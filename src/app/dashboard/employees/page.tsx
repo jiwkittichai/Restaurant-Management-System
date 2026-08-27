@@ -389,8 +389,8 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      <section className="bg-white rounded-2xl border border-gray-100 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+        <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">กิจกรรมล่าสุด</h2>
             <p className="mt-1 text-sm text-gray-400">แสดงรายละเอียดจากประวัติที่ระบบบันทึกไว้</p>
@@ -399,11 +399,11 @@ export default function EmployeesPage() {
             ดูประวัติทั้งหมด
           </Link>
         </div>
-        <div className="mt-3 divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100">
           {audits.map((item) => {
             const changes = auditChangeRows(item);
             return (
-              <button key={item.id} type="button" onClick={() => setSelectedAudit(item)} className="block w-full py-3 text-left text-sm hover:bg-gray-50">
+              <button key={item.id} type="button" onClick={() => setSelectedAudit(item)} className="block w-full px-5 py-3 text-left text-sm hover:bg-gray-50">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-medium text-gray-900">{item.employee?.displayName || "บัญชีที่ถูกลบ"}</p>
@@ -426,7 +426,7 @@ export default function EmployeesPage() {
               </button>
             );
           })}
-          {!audits.length && <p className="text-gray-400 py-5">ยังไม่มีกิจกรรม</p>}
+          {!audits.length && <p className="px-5 py-5 text-gray-400">ยังไม่มีกิจกรรม</p>}
         </div>
       </section>
 
