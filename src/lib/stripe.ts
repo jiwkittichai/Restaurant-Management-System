@@ -71,12 +71,13 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}) {
 export async function createPromptPayCheckoutSession(args: {
   orderId: number;
   origin: string;
+  restaurantId?: number;
 }) {
   const order = await prisma.order.findUnique({
     where: { id: args.orderId },
     include: { table: true, payment: true },
   });
-  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (!order || (args.restaurantId && order.restaurantId !== args.restaurantId)) throw new Error("ORDER_NOT_FOUND");
   if (order.payment || order.paymentStatus === PaymentStatus.PAID) throw new Error("ALREADY_PAID");
   if (order.total <= 0) throw new Error("INVALID_AMOUNT");
 
@@ -104,12 +105,12 @@ export async function retrieveCheckoutSession(sessionId: string) {
   return stripeRequest<StripeCheckoutSession>(`/checkout/sessions/${encodeURIComponent(sessionId)}`);
 }
 
-export async function createPromptPayPaymentIntent(args: { orderId: number }) {
+export async function createPromptPayPaymentIntent(args: { orderId: number; restaurantId?: number }) {
   const order = await prisma.order.findUnique({
     where: { id: args.orderId },
     include: { payment: true },
   });
-  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (!order || (args.restaurantId && order.restaurantId !== args.restaurantId)) throw new Error("ORDER_NOT_FOUND");
   if (order.payment || order.paymentStatus === PaymentStatus.PAID) throw new Error("ALREADY_PAID");
   if (order.total <= 0) throw new Error("INVALID_AMOUNT");
 
@@ -143,6 +144,7 @@ export async function retrievePaymentIntent(paymentIntentId: string) {
 
 async function markPromptPayOrderPaid(args: {
   orderId: number;
+  restaurantId?: number;
   employeeId?: number | null;
   providerDetails: Prisma.InputJsonObject;
 }) {
@@ -151,11 +153,13 @@ async function markPromptPayOrderPaid(args: {
       where: { id: args.orderId },
       include: { payment: true },
     });
+    if (args.restaurantId && current.restaurantId !== args.restaurantId) throw new Error("ORDER_NOT_FOUND");
     if (current.payment) return { order: current, payment: current.payment, alreadyPaid: true };
 
     const payment = await tx.payment.create({
       data: {
         orderId: current.id,
+        restaurantId: current.restaurantId,
         method: PaymentMethod.PROMPTPAY,
         amount: current.total,
         receivedAmount: current.total,
@@ -190,6 +194,7 @@ async function markPromptPayOrderPaid(args: {
 
 export async function completeStripePromptPayPaymentIntent(args: {
   paymentIntentId: string;
+  restaurantId?: number;
   employeeId?: number | null;
 }) {
   const paymentIntent = await retrievePaymentIntent(args.paymentIntentId);
@@ -200,6 +205,7 @@ export async function completeStripePromptPayPaymentIntent(args: {
 
   const result = await markPromptPayOrderPaid({
     orderId,
+    restaurantId: args.restaurantId,
     employeeId: args.employeeId,
     providerDetails: {
       stripePaymentIntentId: paymentIntent.id,
@@ -212,6 +218,7 @@ export async function completeStripePromptPayPaymentIntent(args: {
 
 export async function completeStripePromptPayOrder(args: {
   sessionId: string;
+  restaurantId?: number;
   employeeId?: number | null;
 }) {
   const session = await retrieveCheckoutSession(args.sessionId);
@@ -222,6 +229,7 @@ export async function completeStripePromptPayOrder(args: {
 
   const result = await markPromptPayOrderPaid({
     orderId,
+    restaurantId: args.restaurantId,
     employeeId: args.employeeId,
     providerDetails: {
       stripeCheckoutSessionId: session.id,

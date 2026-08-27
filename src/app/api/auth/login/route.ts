@@ -12,7 +12,7 @@ function landing(roles: string[]) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const username = String(body.username || "").trim().toLowerCase();
+  const username = String(body.username || "").trim().toLowerCase().replace(/^@+/, "");
   const employee = await prisma.employee.findUnique({ where: { username }, include: { roles: true } });
   if (!employee || !(await verifyPassword(String(body.password || ""), employee.passwordHash))) {
     await writeAudit(employee?.id ?? null, "LOGIN_FAILED", "Employee", employee?.id, { username });

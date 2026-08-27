@@ -11,6 +11,7 @@ const SESSION_HOURS = 12;
 
 export type CurrentUser = {
   id: number;
+  restaurantId: number;
   username: string;
   displayName: string;
   roles: StaffRole[];
@@ -54,6 +55,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
   return {
     id: session.employee.id,
+    restaurantId: session.employee.restaurantId,
     username: session.employee.username,
     displayName: session.employee.displayName,
     roles: session.employee.roles.map((item) => item.role),
@@ -76,8 +78,14 @@ export async function writeAudit(
   entityId?: string | number | null,
   details?: Prisma.InputJsonObject,
 ) {
+  const employee = employeeId
+    ? await prisma.employee.findUnique({ where: { id: employeeId }, select: { restaurantId: true } })
+    : null;
+  const restaurantId = employee?.restaurantId;
+  if (!restaurantId) return;
   await prisma.auditLog.create({
     data: {
+      restaurantId,
       employeeId,
       action,
       entityType,

@@ -6,6 +6,7 @@ import { authorizeApi, writeAudit } from "@/lib/auth";
 export async function GET() {
   const auth=await authorizeApi([StaffRole.OWNER,StaffRole.CASHIER]);if("response" in auth)return auth.response;
   const tables = await prisma.restaurantTable.findMany({
+    where: { restaurantId: auth.user.restaurantId },
     orderBy: { id: "asc" },
     include: {
       orders: {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { name, seats = 2 } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error: "กรุณาระบุชื่อโต๊ะ" }, { status: 400 });
     const table = await prisma.restaurantTable.create({
-      data: { name: name.trim(), seats: Math.max(1, Number(seats)) },
+      data: { restaurantId: auth.user.restaurantId, name: name.trim(), seats: Math.max(1, Number(seats)) },
     });
     await writeAudit(auth.user.id,"CREATE_TABLE","RestaurantTable",table.id,{name:table.name,seats:table.seats});
     return NextResponse.json(table, { status: 201 });
@@ -52,8 +53,10 @@ export async function PATCH(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER,StaffRole.CASHIER]);if("response" in auth)return auth.response;
   try {
     const { id, status } = await req.json();
+    const current = await prisma.restaurantTable.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
+    if (!current) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
     const table = await prisma.restaurantTable.update({
-      where: { id: Number(id) },
+      where: { id: current.id },
       data: { status },
     });
     await writeAudit(auth.user.id,"UPDATE_TABLE_STATUS","RestaurantTable",table.id,{status:table.status});

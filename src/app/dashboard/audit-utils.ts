@@ -22,6 +22,7 @@ export const actionText: Record<string, string> = {
   LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
   LOGIN_INACTIVE: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน",
   LOGOUT: "ออกจากระบบ",
+  REGISTER_RESTAURANT: "สมัครร้านใหม่",
   CREATE_EMPLOYEE: "สร้างบัญชีพนักงาน",
   UPDATE_EMPLOYEE: "แก้ไขบัญชีพนักงาน",
   CREATE_ORDER: "สร้างออเดอร์",
@@ -118,6 +119,7 @@ export function auditSummary(audit: Audit) {
   const name = asText(detailValue(details, "name"));
 
   if (audit.action === "CREATE_EMPLOYEE") return `สร้างบัญชี ${displayName}${username ? ` (@${username})` : ""}`;
+  if (audit.action === "REGISTER_RESTAURANT") return `สมัครร้านใหม่ ${asText(detailValue(details, "restaurantName"))}${username ? ` โดย @${username}` : ""}`;
   if (audit.action === "LOGIN_FAILED") return `พยายามเข้าสู่ระบบไม่สำเร็จ${username ? ` (@${username})` : ""}`;
   if (audit.action === "UPDATE_EMPLOYEE") {
     const target = asText(detailValue(details, "targetName")) || `พนักงาน #${audit.entityId || "-"}`;

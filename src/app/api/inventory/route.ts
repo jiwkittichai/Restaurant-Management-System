@@ -6,10 +6,10 @@ import { authorizeApi, writeAudit } from "@/lib/auth";
 export async function GET() {
   const auth=await authorizeApi([StaffRole.OWNER,StaffRole.STOCK]);if("response" in auth)return auth.response;
   const ingredients = await prisma.ingredient.findMany({
-    where: { active: true },
+    where: { restaurantId: auth.user.restaurantId, active: true },
     include: {
       _count: { select: { recipes: true, modifierRecipes: true } },
-      movements: { orderBy: { createdAt: "desc" }, take: 5 },
+      movements: { where: { restaurantId: auth.user.restaurantId }, orderBy: { createdAt: "desc" }, take: 5 },
     },
     orderBy: { name: "asc" },
   });
@@ -28,11 +28,12 @@ export async function POST(req: NextRequest) {
       const created = await tx.ingredient.create({
         data: {
           name: body.name.trim(), unit: body.unit.trim(), stock,
+          restaurantId: auth.user.restaurantId,
           minStock: Math.max(0, Number(body.minStock || 0)),
         },
       });
       if (stock > 0) await tx.stockMovement.create({
-        data: { ingredientId: created.id, type: "STOCK_IN", quantity: stock, note: "ยอดตั้งต้น" },
+        data: { restaurantId: auth.user.restaurantId, ingredientId: created.id, type: "STOCK_IN", quantity: stock, note: "ยอดตั้งต้น" },
       });
       return created;
     });
@@ -52,9 +53,9 @@ export async function PATCH(req: NextRequest) {
       const quantity = Number(body.quantity);
       if (!(quantity > 0)) return NextResponse.json({ error: "จำนวนรับเข้าต้องมากกว่า 0" }, { status: 400 });
       const ingredient = await prisma.$transaction(async (tx) => {
-        const current = await tx.ingredient.findUniqueOrThrow({ where: { id } });
+        const current = await tx.ingredient.findFirstOrThrow({ where: { id, restaurantId: auth.user.restaurantId } });
         const updated = await tx.ingredient.update({ where: { id }, data: { stock: { increment: quantity } } });
-        await tx.stockMovement.create({ data: { ingredientId: id, type: "STOCK_IN", quantity, note: body.note?.trim() || "รับวัตถุดิบเข้า" } });
+        await tx.stockMovement.create({ data: { restaurantId: auth.user.restaurantId, ingredientId: id, type: "STOCK_IN", quantity, note: body.note?.trim() || "รับวัตถุดิบเข้า" } });
         return { current, updated };
       });
       await writeAudit(auth.user.id,"STOCK_IN","Ingredient",id,{
@@ -70,9 +71,9 @@ export async function PATCH(req: NextRequest) {
     if (body.action === "adjust") {
       const stock = Math.max(0, Number(body.stock));
       const ingredient = await prisma.$transaction(async (tx) => {
-        const current = await tx.ingredient.findUniqueOrThrow({ where: { id } });
+        const current = await tx.ingredient.findFirstOrThrow({ where: { id, restaurantId: auth.user.restaurantId } });
         const updated = await tx.ingredient.update({ where: { id }, data: { stock } });
-        await tx.stockMovement.create({ data: { ingredientId: id, type: "ADJUSTMENT", quantity: stock - current.stock, note: body.note?.trim() || "ปรับยอดคงเหลือ" } });
+        await tx.stockMovement.create({ data: { restaurantId: auth.user.restaurantId, ingredientId: id, type: "ADJUSTMENT", quantity: stock - current.stock, note: body.note?.trim() || "ปรับยอดคงเหลือ" } });
         return { current, updated };
       });
       await writeAudit(auth.user.id,"ADJUST_STOCK","Ingredient",id,{
@@ -85,7 +86,7 @@ export async function PATCH(req: NextRequest) {
       });
       return NextResponse.json(ingredient.updated);
     }
-    const current = await prisma.ingredient.findUniqueOrThrow({ where: { id } });
+    const current = await prisma.ingredient.findFirstOrThrow({ where: { id, restaurantId: auth.user.restaurantId } });
     const nextStock = body.stock === undefined ? current.stock : Math.max(0, Number(body.stock));
     const ingredient = await prisma.$transaction(async (tx) => {
       const updated = await tx.ingredient.update({
@@ -99,7 +100,7 @@ export async function PATCH(req: NextRequest) {
       });
       if (nextStock !== current.stock) {
         await tx.stockMovement.create({
-          data: { ingredientId: id, type: "ADJUSTMENT", quantity: nextStock - current.stock, note: body.note?.trim() || "แก้ไขข้อมูลวัตถุดิบ" },
+          data: { restaurantId: auth.user.restaurantId, ingredientId: id, type: "ADJUSTMENT", quantity: nextStock - current.stock, note: body.note?.trim() || "แก้ไขข้อมูลวัตถุดิบ" },
         });
       }
       return updated;
@@ -119,7 +120,9 @@ export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER,StaffRole.STOCK]);if("response" in auth)return auth.response;
   try {
     const { id } = await req.json();
-    const ingredient = await prisma.ingredient.delete({ where: { id: Number(id) } });
+    const current = await prisma.ingredient.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
+    if (!current) return NextResponse.json({ error: "ไม่พบวัตถุดิบ" }, { status: 404 });
+    const ingredient = await prisma.ingredient.delete({ where: { id: current.id } });
     await writeAudit(auth.user.id,"DELETE_INGREDIENT","Ingredient",id,{name:ingredient.name,stock:ingredient.stock,unit:ingredient.unit});
     return NextResponse.json({ success: true });
   } catch {

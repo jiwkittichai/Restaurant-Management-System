@@ -17,11 +17,12 @@ export async function GET() {
   if ("response" in auth) return auth.response;
   const [employees, recentAudits] = await Promise.all([
     prisma.employee.findMany({
+      where: { restaurantId: auth.user.restaurantId },
       select: { id:true, username:true, displayName:true, active:true, lastLoginAt:true, createdAt:true, roles:{select:{role:true}} },
       orderBy: { createdAt: "asc" },
     }),
     prisma.auditLog.findMany({
-      where: { action: { notIn: internalAuditActions } },
+      where: { restaurantId: auth.user.restaurantId, action: { notIn: internalAuditActions } },
       take: 20, orderBy: { createdAt: "desc" },
       include: { employee: { select: { displayName:true } } },
     }),
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error:"กรุณากรอกชื่อผู้ใช้ ชื่อพนักงาน รหัสผ่านอย่างน้อย 8 ตัว และเลือกบทบาท" }, { status:400 });
     }
     const employee = await prisma.employee.create({
-      data: { username, displayName, passwordHash:await hashPassword(password), roles:{create:roles.map(role=>({role}))} },
+      data: { restaurantId: auth.user.restaurantId, username, displayName, passwordHash:await hashPassword(password), roles:{create:roles.map(role=>({role}))} },
       select: { id:true, username:true, displayName:true },
     });
     await writeAudit(auth.user.id,"CREATE_EMPLOYEE","Employee",employee.id,{username,displayName,roles});
@@ -58,7 +59,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const id = Number(body.id);
-    const current = await prisma.employee.findUniqueOrThrow({where:{id},include:{roles:true}});
+    const current = await prisma.employee.findFirstOrThrow({where:{id, restaurantId: auth.user.restaurantId},include:{roles:true}});
     const currentRoles = current.roles.map(item=>item.role);
     const roles = body.roles === undefined ? null : normalizeRoles(body.roles);
     if (roles && !roles.length) return NextResponse.json({error:"พนักงานต้องมีอย่างน้อยหนึ่งบทบาท"},{status:400});

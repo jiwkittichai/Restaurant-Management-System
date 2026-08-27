@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   const to = range === "all" ? undefined : toText ? new Date(`${toText}T23:59:59.999`) : now;
 
   const orders = await prisma.order.findMany({
-    where: { paymentStatus: "PAID", payment: range === "all" ? { isNot: null } : { paidAt: { gte: from, lte: to } } },
+    where: { restaurantId: auth.user.restaurantId, paymentStatus: "PAID", payment: range === "all" ? { isNot: null } : { paidAt: { gte: from, lte: to } } },
     include: { items: { include: { menuItem: true, modifiers: true } }, payment: true, table: true },
     orderBy: { payment: { paidAt: "desc" } },
   });

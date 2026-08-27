@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { orderId } = await req.json() as { orderId?: number };
     if (!orderId) return NextResponse.json({ error: "ไม่พบออเดอร์" }, { status: 400 });
 
-    const payment = await createPromptPayPaymentIntent({ orderId: Number(orderId) });
+    const payment = await createPromptPayPaymentIntent({ orderId: Number(orderId), restaurantId: auth.user.restaurantId });
     return NextResponse.json(payment);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
@@ -45,7 +45,7 @@ export async function PATCH(req: NextRequest) {
     const { paymentIntentId } = await req.json() as { paymentIntentId?: string };
     if (!paymentIntentId) return NextResponse.json({ error: "ไม่พบรายการชำระเงิน" }, { status: 400 });
 
-    const result = await completeStripePromptPayPaymentIntent({ paymentIntentId, employeeId: auth.user.id });
+    const result = await completeStripePromptPayPaymentIntent({ paymentIntentId, restaurantId: auth.user.restaurantId, employeeId: auth.user.id });
     return NextResponse.json({
       paid: result.paid,
       status: result.paymentIntent.status,

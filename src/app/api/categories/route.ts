@@ -4,8 +4,9 @@ import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 
 export async function GET() {
-  const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
+  const auth=await authorizeApi([StaffRole.OWNER,StaffRole.CASHIER]);if("response" in auth)return auth.response;
   const categories = await prisma.category.findMany({
+    where: { restaurantId: auth.user.restaurantId },
     orderBy: { name: "asc" },
     include: { _count: { select: { menuItems: true } } },
   });
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   try {
     const { name, color = "#356DDB" } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error: "กรุณาระบุชื่อหมวดหมู่" }, { status: 400 });
-    const category = await prisma.category.create({ data: { name: name.trim(), color } });
+    const category = await prisma.category.create({ data: { restaurantId: auth.user.restaurantId, name: name.trim(), color } });
     await writeAudit(auth.user.id,"CREATE_CATEGORY","Category",category.id,{name:category.name});
     return NextResponse.json(category, { status: 201 });
   } catch {
@@ -30,7 +31,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const { id, name } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error: "กรุณาระบุชื่อหมวดหมู่" }, { status: 400 });
-    const current = await prisma.category.findUnique({ where: { id: Number(id) } });
+    const current = await prisma.category.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
     if (!current) return NextResponse.json({ error: "ไม่พบหมวดหมู่" }, { status: 404 });
     const category = await prisma.category.update({
       where: { id: Number(id) },
@@ -51,7 +52,9 @@ export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const { id } = await req.json();
-    const category = await prisma.category.delete({ where: { id: Number(id) } });
+    const current = await prisma.category.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
+    if (!current) return NextResponse.json({ error: "ไม่พบหมวดหมู่" }, { status: 404 });
+    const category = await prisma.category.delete({ where: { id: current.id } });
     await writeAudit(auth.user.id,"DELETE_CATEGORY","Category",category.id,{name:category.name,color:category.color});
     return NextResponse.json({ success: true });
   } catch {

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!orderId) return NextResponse.json({ error: "ไม่พบออเดอร์" }, { status: 400 });
 
     const origin = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
-    const session = await createPromptPayCheckoutSession({ orderId: Number(orderId), origin });
+    const session = await createPromptPayCheckoutSession({ orderId: Number(orderId), origin, restaurantId: auth.user.restaurantId });
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

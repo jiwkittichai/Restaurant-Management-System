@@ -350,11 +350,11 @@ export default function InventoryPage() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <label className="text-sm text-gray-500">
                 ชื่อวัตถุดิบ
-                <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="เช่น หมูสับ" autoFocus className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 outline-none focus:border-blue-400" />
+                <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="ชื่อวัตถุดิบ" autoFocus className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 outline-none focus:border-blue-400" />
               </label>
               <label className="text-sm text-gray-500">
                 หน่วย
-                <input required value={form.unit} onChange={(event) => setForm({ ...form, unit: event.target.value })} placeholder="เช่น กรัม ขวด กระป๋อง" className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 outline-none focus:border-blue-400" />
+                <input required value={form.unit} onChange={(event) => setForm({ ...form, unit: event.target.value })} placeholder="หน่วย" className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 outline-none focus:border-blue-400" />
               </label>
               <label className="text-sm text-gray-500">
                 ยอดตั้งต้น

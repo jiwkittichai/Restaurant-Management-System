@@ -6,6 +6,7 @@ import { authorizeApi, writeAudit } from "@/lib/auth";
 export async function GET() {
   const auth=await authorizeApi([StaffRole.OWNER,StaffRole.STOCK]);if("response" in auth)return auth.response;
   const menu = await prisma.menuItem.findMany({
+    where: { restaurantId: auth.user.restaurantId },
     include: {
       category: true,
       recipes: { include: { ingredient: true } },
@@ -32,18 +33,25 @@ export async function PUT(req: NextRequest) {
     };
     const valid = (ingredients || []).filter((item) => Number(item.quantity) > 0);
     await prisma.$transaction(async (tx) => {
+      const ingredientIds = valid.map((item) => Number(item.ingredientId));
+      const ingredientCount = ingredientIds.length
+        ? await tx.ingredient.count({ where: { id: { in: ingredientIds }, restaurantId: auth.user.restaurantId } })
+        : 0;
+      if (ingredientCount !== ingredientIds.length) throw new Error("INVALID_INGREDIENT");
       if (targetType === "modifier") {
-        await tx.menuItemModifierRecipe.deleteMany({ where: { modifierId: Number(modifierId) } });
+        const modifier = await tx.menuItemModifier.findFirstOrThrow({ where: { id: Number(modifierId), restaurantId: auth.user.restaurantId } });
+        await tx.menuItemModifierRecipe.deleteMany({ where: { modifierId: modifier.id } });
         if (valid.length) await tx.menuItemModifierRecipe.createMany({
           data: valid.map((item) => ({
-            modifierId: Number(modifierId), ingredientId: Number(item.ingredientId), quantity: Number(item.quantity),
+            modifierId: modifier.id, ingredientId: Number(item.ingredientId), quantity: Number(item.quantity),
           })),
         });
       } else {
-        await tx.recipe.deleteMany({ where: { menuItemId: Number(menuItemId) } });
+        const menuItem = await tx.menuItem.findFirstOrThrow({ where: { id: Number(menuItemId), restaurantId: auth.user.restaurantId } });
+        await tx.recipe.deleteMany({ where: { menuItemId: menuItem.id } });
         if (valid.length) await tx.recipe.createMany({
           data: valid.map((item) => ({
-            menuItemId: Number(menuItemId), ingredientId: Number(item.ingredientId), quantity: Number(item.quantity),
+            menuItemId: menuItem.id, ingredientId: Number(item.ingredientId), quantity: Number(item.quantity),
           })),
         });
       }

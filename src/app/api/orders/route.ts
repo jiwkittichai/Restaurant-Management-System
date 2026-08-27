@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
   const allowed=view==="history"?[StaffRole.OWNER]:view==="takeaway"?[StaffRole.OWNER,StaffRole.CASHIER]:[StaffRole.OWNER,StaffRole.CASHIER,StaffRole.KITCHEN];
   const auth=await authorizeApi(allowed);if("response" in auth)return auth.response;
   const where: Prisma.OrderWhereInput = view === "history"
-    ? {}
+    ? { restaurantId: auth.user.restaurantId }
     : view === "takeaway"
-      ? { type: OrderType.TAKEAWAY, status: { notIn: [OrderStatus.SERVED, OrderStatus.CANCELLED] } }
-      : { status: { in: [OrderStatus.SENT, OrderStatus.PREPARING, OrderStatus.READY] } };
+      ? { restaurantId: auth.user.restaurantId, type: OrderType.TAKEAWAY, status: { notIn: [OrderStatus.SERVED, OrderStatus.CANCELLED] } }
+      : { restaurantId: auth.user.restaurantId, status: { in: [OrderStatus.SENT, OrderStatus.PREPARING, OrderStatus.READY] } };
   const orderBy: Prisma.OrderOrderByWithRelationInput = view === "history" || view === "takeaway"
     ? { createdAt: "desc" }
     : { createdAt: "asc" };
@@ -35,8 +35,12 @@ export async function POST(req: NextRequest) {
     if (!items?.length) return NextResponse.json({ error: "ยังไม่มีรายการอาหาร" }, { status: 400 });
 
     const ids = [...new Set(items.map((item) => Number(item.menuItemId)))];
+    if (tableId) {
+      const table = await prisma.restaurantTable.findFirst({ where: { id: Number(tableId), restaurantId: auth.user.restaurantId } });
+      if (!table) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
+    }
     const menu = await prisma.menuItem.findMany({
-      where: { id: { in: ids }, available: true },
+      where: { restaurantId: auth.user.restaurantId, id: { in: ids }, available: true },
       include: {
         recipes: { include: { ingredient: true } },
         modifierGroups: {
@@ -100,6 +104,7 @@ export async function POST(req: NextRequest) {
         ? await tx.order.findFirst({
           where: {
             tableId: Number(tableId),
+            restaurantId: auth.user.restaurantId,
             paymentStatus: PaymentStatus.UNPAID,
             status: { not: OrderStatus.CANCELLED },
           },
@@ -134,6 +139,7 @@ export async function POST(req: NextRequest) {
         })
         : await tx.order.create({
           data: {
+            restaurantId: auth.user.restaurantId,
             orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
             tableId: orderType === OrderType.DINE_IN && tableId ? Number(tableId) : null,
             type: orderType,
@@ -151,12 +157,12 @@ export async function POST(req: NextRequest) {
         });
       for (const [ingredientId, requirement] of required) {
         const result = await tx.ingredient.updateMany({
-          where: { id: ingredientId, stock: { gte: requirement.quantity } },
+          where: { id: ingredientId, restaurantId: auth.user.restaurantId, stock: { gte: requirement.quantity } },
           data: { stock: { decrement: requirement.quantity } },
         });
         if (!result.count) throw new Error(`OUT_OF_STOCK:${requirement.name}`);
         await tx.stockMovement.create({
-          data: { ingredientId, type: "STOCK_OUT", quantity: requirement.quantity, reference: saved.orderNumber, note: active ? "ตัดจากรายการที่สั่งเพิ่ม" : "ตัดจากออเดอร์" },
+          data: { restaurantId: auth.user.restaurantId, ingredientId, type: "STOCK_OUT", quantity: requirement.quantity, reference: saved.orderNumber, note: active ? "ตัดจากรายการที่สั่งเพิ่ม" : "ตัดจากออเดอร์" },
         });
       }
       if (orderType === OrderType.DINE_IN && tableId) await tx.restaurantTable.update({ where: { id: Number(tableId) }, data: { status: "OCCUPIED" } });
@@ -193,9 +199,9 @@ export async function PATCH(req: NextRequest) {
     const allowed=body.action==="item-status"?[StaffRole.OWNER,StaffRole.KITCHEN]:[StaffRole.OWNER,StaffRole.CASHIER];
     const auth=await authorizeApi(allowed);if("response" in auth)return auth.response;
     if (body.action === "item-status") {
-      const current = await prisma.orderItem.findUniqueOrThrow({ where: { id: Number(body.itemId) }, include: { order: true } });
+      const current = await prisma.orderItem.findFirstOrThrow({ where: { id: Number(body.itemId), order: { restaurantId: auth.user.restaurantId } }, include: { order: true } });
       const item = await prisma.orderItem.update({
-        where: { id: Number(body.itemId) },
+        where: { id: current.id },
         data: { status: body.status as KitchenStatus },
       });
       const siblings = await prisma.orderItem.findMany({ where: { orderId: item.orderId } });
@@ -218,7 +224,7 @@ export async function PATCH(req: NextRequest) {
     }
     if (body.action === "pay") {
       const order = await prisma.$transaction(async (tx) => {
-        const current = await tx.order.findUniqueOrThrow({ where: { id: Number(body.orderId) }, include: { payment: true } });
+        const current = await tx.order.findFirstOrThrow({ where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId }, include: { payment: true } });
         if (current.payment) throw new Error("ALREADY_PAID");
         const method = body.method as PaymentMethod;
         if (method !== PaymentMethod.CASH && method !== PaymentMethod.PROMPTPAY) throw new Error("INVALID_PAYMENT_METHOD");
@@ -226,7 +232,7 @@ export async function PATCH(req: NextRequest) {
         if (!Number.isFinite(receivedAmount) || receivedAmount < current.total) throw new Error("INSUFFICIENT_PAYMENT");
         const changeAmount = method === PaymentMethod.CASH ? Math.max(0, receivedAmount - current.total) : 0;
         const payment = await tx.payment.create({
-          data: { orderId: current.id, method, amount: current.total, receivedAmount, changeAmount },
+          data: { restaurantId: auth.user.restaurantId, orderId: current.id, method, amount: current.total, receivedAmount, changeAmount },
         });
         const paid = await tx.order.update({
           where: { id: current.id },
@@ -242,7 +248,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(order);
     }
     if (body.action === "pickup") {
-      const current = await prisma.order.findUniqueOrThrow({ where: { id: Number(body.orderId) } });
+      const current = await prisma.order.findFirstOrThrow({ where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId } });
       if (current.type !== OrderType.TAKEAWAY) throw new Error("NOT_TAKEAWAY");
       if (current.paymentStatus !== PaymentStatus.PAID) throw new Error("PAYMENT_REQUIRED");
       if (current.status !== OrderStatus.READY) throw new Error("NOT_READY");
@@ -254,8 +260,8 @@ export async function PATCH(req: NextRequest) {
     }
     if (body.action === "cancel") {
       const order = await prisma.$transaction(async (tx) => {
-        const current = await tx.order.findUniqueOrThrow({
-          where: { id: Number(body.orderId) },
+        const current = await tx.order.findFirstOrThrow({
+          where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId },
           include: {
             items: {
               include: {
@@ -276,7 +282,7 @@ export async function PATCH(req: NextRequest) {
           }
           for (const [ingredientId, quantity] of restore) {
             await tx.ingredient.update({ where: { id: ingredientId }, data: { stock: { increment: quantity } } });
-            await tx.stockMovement.create({ data: { ingredientId, type: "STOCK_IN", quantity, reference: current.orderNumber, note: "คืนจากการยกเลิกออเดอร์" } });
+            await tx.stockMovement.create({ data: { restaurantId: auth.user.restaurantId, ingredientId, type: "STOCK_IN", quantity, reference: current.orderNumber, note: "คืนจากการยกเลิกออเดอร์" } });
           }
         }
         const cancelled = await tx.order.update({ where: { id: current.id }, data: { status: OrderStatus.CANCELLED, stockDeducted: false } });

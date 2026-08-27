@@ -15,14 +15,14 @@ export default async function AuditsPage() {
 
   const [audits, totalCount, oldestAudit, latestAudit] = await Promise.all([
     prisma.auditLog.findMany({
-      where: { action: { notIn: defaultHiddenActions } },
+      where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } },
       take: INITIAL_LIMIT,
       orderBy: { createdAt: "desc" },
       include: { employee: { select: { displayName: true } } },
     }),
-    prisma.auditLog.count({ where: { action: { notIn: defaultHiddenActions } } }),
-    prisma.auditLog.findFirst({ where: { action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
-    prisma.auditLog.findFirst({ where: { action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    prisma.auditLog.count({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } } }),
+    prisma.auditLog.findFirst({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
+    prisma.auditLog.findFirst({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
 
   const initial = JSON.parse(JSON.stringify({

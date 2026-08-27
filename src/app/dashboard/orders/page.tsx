@@ -6,20 +6,20 @@ import { Minus, Plus, Search, ShoppingBag, Trash2, Utensils, Package } from "luc
 type Modifier = { id:number; name:string; price:number };
 type ModifierGroup = { id:number; name:string; required:boolean; minSelect:number; maxSelect:number; options:Modifier[] };
 type Menu = { id:number; name:string; price:number; saleUnit:string; image?:string; available:boolean; sellable:boolean; stockTracked:boolean; maxServings:number|null; modifiers:Modifier[]; modifierGroups:ModifierGroup[]; category:{ id:number; name:string } };
+type Category = { id:number; name:string };
 type ActiveOrder = { id:number; orderNumber:string; subtotal:number; discount:number; total:number; status:string; paymentStatus:string; items:Array<{id:number;name:string;qty:number;price:number;status:string;modifiers?:Modifier[]}> };
 type Table = { id:number; name:string; status:string; orders:ActiveOrder[] };
 type Cart = Menu & { lineId:string; qty:number; note:string; modifierIds:number[] };
 type OrderType = "DINE_IN" | "TAKEAWAY";
 
 export default function OrdersPage() {
-  const [menu,setMenu]=useState<Menu[]>([]);const [tables,setTables]=useState<Table[]>([]);const [cart,setCart]=useState<Cart[]>([]);
+  const [menu,setMenu]=useState<Menu[]>([]);const [categories,setCategories]=useState<Category[]>([]);const [tables,setTables]=useState<Table[]>([]);const [cart,setCart]=useState<Cart[]>([]);
   const [category,setCategory]=useState<number|"all">("all");const [orderType,setOrderType]=useState<OrderType>("DINE_IN");
   const [tableId,setTableId]=useState("");const [customerName,setCustomerName]=useState("");const [customerPhone,setCustomerPhone]=useState("");
   const [search,setSearch]=useState("");const [discount,setDiscount]=useState("0");const [note,setNote]=useState("");const [message,setMessage]=useState("");const [loading,setLoading]=useState(false);
-  const load=useCallback(()=>Promise.all([fetch("/api/menu").then(r=>r.json()),fetch("/api/tables").then(r=>r.json())]).then(([m,t])=>{setMenu(m);setTables(t);}),[]);
+  const load=useCallback(()=>Promise.all([fetch("/api/menu").then(r=>r.json()),fetch("/api/categories").then(r=>r.json()),fetch("/api/tables").then(r=>r.json())]).then(([m,c,t])=>{setMenu(Array.isArray(m)?m:[]);setCategories(Array.isArray(c)?c:[]);setTables(Array.isArray(t)?t:[]);}),[]);
   useEffect(()=>{load();},[load]);
 
-  const categories=useMemo(()=>[...new Map(menu.map(i=>[i.category.id,i.category])).values()],[menu]);
   const selectedTable=tables.find(table=>table.id===Number(tableId));const activeOrder=selectedTable?.orders[0];
   const filtered=menu.filter(i=>(category==="all"||i.category.id===category)&&i.name.toLowerCase().includes(search.toLowerCase()));
   const subtotal=cart.reduce((sum,item)=>sum+lineUnitPrice(item)*item.qty,0);const total=Math.max(0,subtotal-Number(discount||0));
@@ -49,7 +49,7 @@ export default function OrdersPage() {
       <div className="relative mb-4"><Search className="absolute left-4 top-3.5 text-gray-400" size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาเมนูอาหาร" className="w-full bg-white rounded-xl py-3 pl-11 pr-4 outline-none"/></div>
       <div className="flex gap-2 overflow-x-auto pb-4"><button onClick={()=>setCategory("all")} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${category==="all"?"bg-[#356DDB] text-white":"bg-white text-gray-500"}`}>ทั้งหมด</button>{categories.map(c=><button key={c.id} onClick={()=>setCategory(c.id)} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${category===c.id?"bg-[#356DDB] text-white":"bg-white text-gray-500"}`}>{c.name}</button>)}</div>
       <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4">{filtered.map(item=><button key={item.id} disabled={!item.sellable} onClick={()=>add(item)} className={`relative bg-white text-left rounded-2xl border p-3 transition ${item.sellable?"border-gray-100 hover:shadow-md":"border-red-100 opacity-60 cursor-not-allowed"}`}><span className={`absolute z-10 top-5 right-5 px-2.5 py-1 rounded-full text-[11px] font-medium shadow-sm ${!item.available||item.maxServings===0?"bg-red-500 text-white":item.stockTracked&&item.maxServings!==null&&item.maxServings<=5?"bg-amber-400 text-amber-950":"bg-white/90 text-gray-500"}`}>{!item.available?"ปิดขาย":item.maxServings===0?"หมด":item.stockTracked?`เหลือ ${item.maxServings} ${unit(item)}`:"ไม่ติดตามสต็อก"}</span><div className="aspect-[4/3] rounded-xl bg-gray-100 overflow-hidden mb-3">{item.image?<img src={item.image} alt={item.name} className="w-full h-full object-cover object-center"/>:<div className="w-full h-full grid place-items-center text-gray-300"><ShoppingBag/></div>}</div><p className="font-medium truncate">{item.name}</p><div className="flex justify-between mt-1"><span className="text-xs text-gray-400">{item.category.name}</span><span className="text-blue-600 font-semibold">฿{item.price.toFixed(2)}</span></div></button>)}</div>
-      {!filtered.length&&<p className="text-center text-gray-400 mt-16">ยังไม่มีเมนูพร้อมขาย</p>}
+      {!filtered.length&&<p className="text-center text-gray-400 mt-16">{category==="all"?"ยังไม่มีเมนูพร้อมขาย":"ยังไม่มีเมนูในหมวดนี้"}</p>}
     </section>
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white p-5">
       <h2 className="font-semibold text-lg">รายการออเดอร์</h2>

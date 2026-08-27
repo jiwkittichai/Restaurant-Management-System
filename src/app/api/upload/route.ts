@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `${Date.now()}-${file.name}`;
+    const filename = `restaurants/${auth.user.restaurantId}/${Date.now()}-${file.name}`;
 
     await minioClient.putObject("products", filename, buffer);
     await writeAudit(auth.user.id,"UPLOAD_MENU_IMAGE","MinioObject",filename);

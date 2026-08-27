@@ -31,12 +31,13 @@ function normalizeModifierGroups(groups: ModifierGroupInput[] = []) {
     .filter((group) => group.name && group.options.length);
 }
 
-async function replaceModifierGroups(menuItemId: number, groups: ModifierGroupInput[]) {
+async function replaceModifierGroups(restaurantId: number, menuItemId: number, groups: ModifierGroupInput[]) {
   const normalized = normalizeModifierGroups(groups);
   await prisma.menuItemModifierGroup.deleteMany({ where: { menuItemId } });
   for (const group of normalized) {
     await prisma.menuItemModifierGroup.create({
       data: {
+        restaurantId,
         menuItemId,
         name: group.name,
         required: group.required,
@@ -45,6 +46,7 @@ async function replaceModifierGroups(menuItemId: number, groups: ModifierGroupIn
         sortOrder: group.sortOrder,
         options: {
           create: group.options.map((option) => ({
+            restaurantId,
             menuItemId,
             name: option.name,
             price: option.price,
@@ -58,6 +60,7 @@ async function replaceModifierGroups(menuItemId: number, groups: ModifierGroupIn
 export async function GET() {
   const auth=await authorizeApi();if("response" in auth)return auth.response;
   const items = await prisma.menuItem.findMany({
+    where: { restaurantId: auth.user.restaurantId },
     include: {
       category: true,
       recipes: { include: { ingredient: { select: { stock: true } } } },
@@ -102,6 +105,8 @@ export async function POST(req: NextRequest) {
     if (!body.name?.trim() || !body.categoryId || Number(body.price) < 0) {
       return NextResponse.json({ error: "ข้อมูลเมนูไม่ครบ" }, { status: 400 });
     }
+    const category = await prisma.category.findFirst({ where: { id: Number(body.categoryId), restaurantId: auth.user.restaurantId } });
+    if (!category) return NextResponse.json({ error: "ไม่พบหมวดหมู่" }, { status: 404 });
     const item = await prisma.menuItem.create({
       data: {
         name: body.name.trim(),
@@ -111,10 +116,11 @@ export async function POST(req: NextRequest) {
         saleUnit: body.saleUnit?.trim() || "จาน",
         image: body.image || null,
         categoryId: Number(body.categoryId),
+        restaurantId: auth.user.restaurantId,
       },
       include: { category: true },
     });
-    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(item.id, body.modifierGroups);
+    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(auth.user.restaurantId, item.id, body.modifierGroups);
     await writeAudit(auth.user.id,"CREATE_MENU","MenuItem",item.id,{name:item.name});
     return NextResponse.json(item, { status: 201 });
   } catch {
@@ -129,8 +135,10 @@ export async function PATCH(req: NextRequest) {
     if (!body.id) return NextResponse.json({ error: "ไม่พบรหัสเมนู" }, { status: 400 });
 
     if (body.name === undefined) {
+      const current = await prisma.menuItem.findFirst({ where: { id: Number(body.id), restaurantId: auth.user.restaurantId } });
+      if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
       const item = await prisma.menuItem.update({
-        where: { id: Number(body.id) },
+        where: { id: current.id },
         data: { available: Boolean(body.available) },
       });
       await writeAudit(auth.user.id,"TOGGLE_MENU","MenuItem",item.id,{available:item.available});
@@ -140,8 +148,12 @@ export async function PATCH(req: NextRequest) {
     if (!body.name?.trim() || !body.sku?.trim() || !body.saleUnit?.trim() || !body.categoryId || Number(body.price) < 0) {
       return NextResponse.json({ error: "ข้อมูลเมนูไม่ครบ" }, { status: 400 });
     }
+    const current = await prisma.menuItem.findFirst({ where: { id: Number(body.id), restaurantId: auth.user.restaurantId } });
+    if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
+    const category = await prisma.category.findFirst({ where: { id: Number(body.categoryId), restaurantId: auth.user.restaurantId } });
+    if (!category) return NextResponse.json({ error: "ไม่พบหมวดหมู่" }, { status: 404 });
     const item = await prisma.menuItem.update({
-      where: { id: Number(body.id) },
+      where: { id: current.id },
       data: {
         name: body.name.trim(),
         sku: body.sku.trim(),
@@ -154,7 +166,7 @@ export async function PATCH(req: NextRequest) {
       },
       include: { category: true },
     });
-    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(item.id, body.modifierGroups);
+    if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(auth.user.restaurantId, item.id, body.modifierGroups);
     await writeAudit(auth.user.id,"UPDATE_MENU","MenuItem",item.id,{name:item.name});
     return NextResponse.json(item);
   } catch {
@@ -166,7 +178,9 @@ export async function DELETE(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const { id } = await req.json();
-    const item = await prisma.menuItem.delete({ where: { id: Number(id) } });
+    const current = await prisma.menuItem.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
+    if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
+    const item = await prisma.menuItem.delete({ where: { id: current.id } });
     await writeAudit(auth.user.id,"DELETE_MENU","MenuItem",item.id,{name:item.name,sku:item.sku,price:item.price});
     return NextResponse.json({ success: true });
   } catch {

@@ -17,7 +17,7 @@ export default async function StripeSuccessPage({ searchParams }: PageProps) {
 
   if (sessionId && user) {
     try {
-      const result = await completeStripePromptPayOrder({ sessionId, employeeId: user.id });
+      const result = await completeStripePromptPayOrder({ sessionId, restaurantId: user.restaurantId, employeeId: user.id });
       if (result.paid) {
         state = "paid";
         title = "รับชำระเงินแล้ว";

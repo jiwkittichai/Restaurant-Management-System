@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { LockKeyhole, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -30,7 +31,7 @@ export default function LoginPage() {
           </div>
           <p className="text-sm text-gray-400">Restaurant Management System</p>
           <h1 className="mt-1 text-2xl font-semibold">เข้าสู่ระบบ</h1>
-          <p className="mt-2 text-sm text-gray-400">เข้าสู่ระบบด้วยบัญชีพนักงานของคุณ</p>
+          <p className="mt-2 text-sm text-gray-400">เข้าสู่ระบบด้วยบัญชีของคุณ</p>
         </div>
         <form onSubmit={submit} className="mt-7 space-y-4">
           <label className="block">
@@ -50,6 +51,12 @@ export default function LoginPage() {
           {error&&<p className="text-sm text-red-500">{error}</p>}
           <button disabled={loading} className="w-full rounded-xl bg-[#356DDB] text-white py-3 disabled:opacity-50">{loading?"กำลังเข้าสู่ระบบ...":"เข้าสู่ระบบ"}</button>
         </form>
+        <p className="mt-5 text-center text-sm text-gray-500">
+          ยังไม่มีร้านในระบบ{" "}
+          <Link href="/register" className="font-medium text-blue-600">
+            สมัครใช้งาน
+          </Link>
+        </p>
       </div>
     </main>
   );

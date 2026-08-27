@@ -146,28 +146,40 @@ async function main() {
   const existingOwner = await prisma.employee.findUnique({ where: { username: ownerUsername } });
   const salt = randomBytes(16).toString("hex");
   const passwordHash = `scrypt$${salt}$${scryptSync(ownerPassword, salt, 64).toString("hex")}`;
-  const owner = existingOwner || await prisma.employee.create({
-    data: { username: ownerUsername, displayName: "เจ้าของร้าน", passwordHash },
+  const restaurant = await prisma.restaurant.upsert({
+    where: { slug: process.env.SEED_RESTAURANT_SLUG || "default-restaurant" },
+    update: { name: process.env.SEED_RESTAURANT_NAME || "ร้านตัวอย่าง" },
+    create: {
+      slug: process.env.SEED_RESTAURANT_SLUG || "default-restaurant",
+      name: process.env.SEED_RESTAURANT_NAME || "ร้านตัวอย่าง",
+    },
   });
+  const owner = existingOwner || await prisma.employee.create({
+    data: { restaurantId: restaurant.id, username: ownerUsername, displayName: "เจ้าของร้าน", passwordHash },
+  });
+  if (owner.restaurantId !== restaurant.id) {
+    await prisma.employee.update({ where: { id: owner.id }, data: { restaurantId: restaurant.id } });
+  }
   await prisma.employeeRole.upsert({
     where: { employeeId_role: { employeeId: owner.id, role: "OWNER" } },
     update: {},
     create: { employeeId: owner.id, role: "OWNER" },
   });
+  await prisma.restaurant.update({ where: { id: restaurant.id }, data: { ownerId: owner.id } });
 
   const categories = {};
   for (const name of categoriesSeed) {
     categories[name] = await prisma.category.upsert({
-      where: { name },
+      where: { restaurantId_name: { restaurantId: restaurant.id, name } },
       update: { active: true },
-      create: { name },
+      create: { restaurantId: restaurant.id, name },
     });
   }
 
   const menuItems = {};
   for (const item of menuSeed) {
     menuItems[item.sku] = await prisma.menuItem.upsert({
-      where: { sku: item.sku },
+      where: { restaurantId_sku: { restaurantId: restaurant.id, sku: item.sku } },
       update: {
         name: item.name,
         description: item.description,
@@ -177,6 +189,7 @@ async function main() {
         available: true,
       },
       create: {
+        restaurantId: restaurant.id,
         sku: item.sku,
         name: item.name,
         description: item.description,
@@ -187,14 +200,14 @@ async function main() {
     });
   }
   await prisma.menuItem.updateMany({
-    where: { sku: { in: retiredSampleSkus } },
+    where: { restaurantId: restaurant.id, sku: { in: retiredSampleSkus } },
     data: { available: false },
   });
 
   const ingredients = {};
   for (const item of ingredientSeed) {
     ingredients[item.name] = await prisma.ingredient.upsert({
-      where: { name: item.name },
+      where: { restaurantId_name: { restaurantId: restaurant.id, name: item.name } },
       update: {
         unit: item.unit,
         stock: item.stock,
@@ -202,7 +215,7 @@ async function main() {
         costPerUnit: item.costPerUnit,
         active: true,
       },
-      create: item,
+      create: { ...item, restaurantId: restaurant.id },
     });
   }
 
@@ -222,6 +235,7 @@ async function main() {
     for (const groupSeed of groups) {
       const group = await prisma.menuItemModifierGroup.create({
         data: {
+          restaurantId: restaurant.id,
           menuItemId: menuItems[sku].id,
           name: groupSeed.name,
           required: groupSeed.required,
@@ -233,6 +247,7 @@ async function main() {
       for (const optionSeed of groupSeed.options) {
         const modifier = await prisma.menuItemModifier.create({
           data: {
+            restaurantId: restaurant.id,
             menuItemId: menuItems[sku].id,
             groupId: group.id,
             name: optionSeed.name,
@@ -255,9 +270,9 @@ async function main() {
 
   for (let index = 1; index <= 8; index += 1) {
     await prisma.restaurantTable.upsert({
-      where: { name: `โต๊ะ ${index}` },
+      where: { restaurantId_name: { restaurantId: restaurant.id, name: `โต๊ะ ${index}` } },
       update: { seats: index <= 4 ? 2 : 4 },
-      create: { name: `โต๊ะ ${index}`, seats: index <= 4 ? 2 : 4 },
+      create: { restaurantId: restaurant.id, name: `โต๊ะ ${index}`, seats: index <= 4 ? 2 : 4 },
     });
   }
 }

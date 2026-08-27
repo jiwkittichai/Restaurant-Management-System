@@ -8,29 +8,63 @@ datasource db {
 }
 
 model Product {
-  id       Int     @id @default(autoincrement())
-  name     String
-  sku      String
-  category String
-  qty      Int
-  price    Float
-  image    String?
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  sku          String
+  category     String
+  qty          Int
+  price        Float
+  image        String?
+
+  @@unique([restaurantId, sku])
+}
+
+model Restaurant {
+  id             Int                     @id @default(autoincrement())
+  name           String
+  slug           String                  @unique
+  ownerId        Int?
+  owner          Employee?               @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  products       Product[]
+  categories     Category[]
+  menuItems      MenuItem[]
+  modifierGroups MenuItemModifierGroup[]
+  modifiers      MenuItemModifier[]
+  tables         RestaurantTable[]
+  orders         Order[]
+  payments       Payment[]
+  ingredients    Ingredient[]
+  stockMovements StockMovement[]
+  employees      Employee[]              @relation("RestaurantEmployees")
+  auditLogs      AuditLog[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([ownerId])
 }
 
 model Category {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
-  color     String     @default("#356DDB")
-  active    Boolean    @default(true)
-  menuItems MenuItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  color        String     @default("#356DDB")
+  active       Boolean    @default(true)
+  menuItems    MenuItem[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([restaurantId, name])
 }
 
 model MenuItem {
+  restaurantId   Int
+  restaurant     Restaurant              @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   id             Int                     @id @default(autoincrement())
   name           String
-  sku            String                  @unique
+  sku            String
   description    String?
   price          Float
   saleUnit       String                  @default("จาน")
@@ -44,39 +78,47 @@ model MenuItem {
   modifiers      MenuItemModifier[]
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
+
+  @@unique([restaurantId, sku])
 }
 
 model MenuItemModifierGroup {
-  id         Int                @id @default(autoincrement())
-  menuItemId Int
-  menuItem   MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  name       String
-  required   Boolean            @default(false)
-  minSelect  Int                @default(0)
-  maxSelect  Int                @default(1)
-  sortOrder  Int                @default(0)
-  options    MenuItemModifier[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  id           Int                @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menuItemId   Int
+  menuItem     MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name         String
+  required     Boolean            @default(false)
+  minSelect    Int                @default(0)
+  maxSelect    Int                @default(1)
+  sortOrder    Int                @default(0)
+  options      MenuItemModifier[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   @@unique([menuItemId, name])
+  @@index([restaurantId])
 }
 
 model MenuItemModifier {
-  id         Int                      @id @default(autoincrement())
-  menuItemId Int
-  menuItem   MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  groupId    Int?
-  group      MenuItemModifierGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name       String
-  price      Float                    @default(0)
-  active     Boolean                  @default(true)
-  recipes    MenuItemModifierRecipe[]
-  orderItems OrderItemModifier[]
-  createdAt  DateTime                 @default(now())
-  updatedAt  DateTime                 @updatedAt
+  id           Int                      @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menuItemId   Int
+  menuItem     MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  groupId      Int?
+  group        MenuItemModifierGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name         String
+  price        Float                    @default(0)
+  active       Boolean                  @default(true)
+  recipes      MenuItemModifierRecipe[]
+  orderItems   OrderItemModifier[]
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
 
   @@unique([menuItemId, name])
+  @@index([restaurantId])
 }
 
 model MenuItemModifierRecipe {
@@ -91,22 +133,28 @@ model MenuItemModifierRecipe {
 }
 
 model RestaurantTable {
-  id        Int         @id @default(autoincrement())
-  name      String      @unique
-  seats     Int         @default(2)
-  status    TableStatus @default(AVAILABLE)
-  orders    Order[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id           Int         @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  seats        Int         @default(2)
+  status       TableStatus @default(AVAILABLE)
+  orders       Order[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([restaurantId, name])
 }
 
 model Order {
   id               Int              @id @default(autoincrement())
-  orderNumber      String           @unique
+  restaurantId     Int
+  restaurant       Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderNumber      String
   tableId          Int?
   table            RestaurantTable? @relation(fields: [tableId], references: [id])
   type             OrderType        @default(DINE_IN)
-  queueNumber      String?          @unique
+  queueNumber      String?
   customerName     String?
   customerPhone    String?
   estimatedReadyAt DateTime?
@@ -122,6 +170,9 @@ model Order {
   payment          Payment?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+
+  @@unique([restaurantId, orderNumber])
+  @@unique([restaurantId, queueNumber])
 }
 
 model OrderItem {
@@ -153,6 +204,8 @@ model OrderItemModifier {
 
 model Payment {
   id             Int           @id @default(autoincrement())
+  restaurantId   Int
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orderId        Int           @unique
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   method         PaymentMethod
@@ -160,11 +213,15 @@ model Payment {
   receivedAmount Float?
   changeAmount   Float?
   paidAt         DateTime      @default(now())
+
+  @@index([restaurantId])
 }
 
 model Ingredient {
   id              Int                      @id @default(autoincrement())
-  name            String                   @unique
+  restaurantId    Int
+  restaurant      Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name            String
   unit            String
   stock           Float                    @default(0)
   minStock        Float                    @default(0)
@@ -175,6 +232,8 @@ model Ingredient {
   movements       StockMovement[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
+
+  @@unique([restaurantId, name])
 }
 
 model Recipe {
@@ -190,6 +249,8 @@ model Recipe {
 
 model StockMovement {
   id           Int               @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   ingredientId Int
   ingredient   Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   type         StockMovementType
@@ -197,20 +258,27 @@ model StockMovement {
   reference    String?
   note         String?
   createdAt    DateTime          @default(now())
+
+  @@index([restaurantId])
 }
 
 model Employee {
-  id           Int            @id @default(autoincrement())
-  username     String         @unique
-  displayName  String
-  passwordHash String
-  active       Boolean        @default(true)
-  lastLoginAt  DateTime?
-  roles        EmployeeRole[]
-  sessions     AuthSession[]
-  auditLogs    AuditLog[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id               Int            @id @default(autoincrement())
+  restaurantId     Int
+  restaurant       Restaurant     @relation("RestaurantEmployees", fields: [restaurantId], references: [id], onDelete: Cascade)
+  ownedRestaurants Restaurant[]   @relation("RestaurantOwner")
+  username         String         @unique
+  displayName      String
+  passwordHash     String
+  active           Boolean        @default(true)
+  lastLoginAt      DateTime?
+  roles            EmployeeRole[]
+  sessions         AuthSession[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([restaurantId, username])
 }
 
 model EmployeeRole {
@@ -233,16 +301,19 @@ model AuthSession {
 }
 
 model AuditLog {
-  id         Int       @id @default(autoincrement())
-  employeeId Int?
-  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-  action     String
-  entityType String
-  entityId   String?
-  details    Json?
-  createdAt  DateTime  @default(now())
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  employeeId   Int?
+  employee     Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  action       String
+  entityType   String
+  entityId     String?
+  details      Json?
+  createdAt    DateTime   @default(now())
 
   @@index([employeeId])
+  @@index([restaurantId])
   @@index([createdAt])
 }
 

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const to = req.nextUrl.searchParams.get("to");
   const take = Math.min(Math.max(Number(req.nextUrl.searchParams.get("take") || 100), 20), 300);
 
-  const where: Prisma.AuditLogWhereInput = {};
+  const where: Prisma.AuditLogWhereInput = { restaurantId: auth.user.restaurantId };
   if (action) {
     where.action = action;
   } else if (scope !== "all") {
