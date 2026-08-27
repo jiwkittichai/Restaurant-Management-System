@@ -219,17 +219,23 @@ model Payment {
 }
 
 model PaymentSettings {
-  id                   Int        @id @default(autoincrement())
-  restaurantId         Int        @unique
-  restaurant           Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  promptPayEnabled     Boolean    @default(false)
-  promptPayMode        String     @default("MANUAL_QR")
-  promptPayAccountName String?
-  promptPayIdentifier  String?
-  promptPayQrImageUrl  String?
-  stripeEnabled        Boolean    @default(false)
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  id                     Int        @id @default(autoincrement())
+  restaurantId           Int        @unique
+  restaurant             Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  promptPayEnabled       Boolean    @default(false)
+  promptPayMode          String     @default("MANUAL_QR")
+  promptPayAccountName   String?
+  promptPayIdentifier    String?
+  promptPayQrImageUrl    String?
+  stripeEnabled          Boolean    @default(false)
+  stripeAccountId        String?
+  stripeChargesEnabled   Boolean    @default(false)
+  stripePayoutsEnabled   Boolean    @default(false)
+  stripeDetailsSubmitted Boolean    @default(false)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  @@index([stripeAccountId])
 }
 
 model Ingredient {

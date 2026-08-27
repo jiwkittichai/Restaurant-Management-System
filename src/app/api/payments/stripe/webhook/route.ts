@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
     if (event.type === "payment_intent.succeeded") {
       if (event.data.object.object === "payment_intent") {
-        await completeStripePromptPayPaymentIntent({ paymentIntentId: event.data.object.id });
+        await completeStripePromptPayPaymentIntent({ paymentIntentId: event.data.object.id, stripeAccountId: event.account });
       }
     }
 

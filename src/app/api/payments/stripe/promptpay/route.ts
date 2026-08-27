@@ -30,9 +30,15 @@ export async function POST(req: NextRequest) {
           ? "ไม่พบออเดอร์"
           : code === "PROMPTPAY_QR_NOT_READY"
             ? "Stripe ยังไม่ได้ส่ง QR PromptPay กลับมา"
-            : error instanceof Error
-              ? error.message
-              : "สร้าง QR PromptPay ไม่สำเร็จ";
+            : code === "STRIPE_NOT_ENABLED"
+              ? "ร้านนี้ยังไม่ได้เปิดใช้งาน Stripe PromptPay"
+              : code === "STRIPE_ACCOUNT_MISSING"
+                ? "ร้านนี้ยังไม่ได้เชื่อมต่อ Stripe"
+                : code === "STRIPE_ACCOUNT_NOT_READY"
+                  ? "บัญชี Stripe ของร้านยังไม่พร้อมรับชำระเงิน"
+                  : error instanceof Error
+                    ? error.message
+                    : "สร้าง QR PromptPay ไม่สำเร็จ";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

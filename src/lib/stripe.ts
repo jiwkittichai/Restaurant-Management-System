@@ -38,7 +38,21 @@ type StripePaymentIntent = {
 type StripeEvent = {
   id: string;
   type: string;
+  account?: string;
   data: { object: StripeCheckoutSession | StripePaymentIntent };
+};
+
+type StripeAccount = {
+  id: string;
+  object: "account";
+  charges_enabled?: boolean;
+  payouts_enabled?: boolean;
+  details_submitted?: boolean;
+};
+
+type StripeAccountLink = {
+  object: "account_link";
+  url: string;
 };
 
 function stripeSecretKey() {
@@ -51,11 +65,12 @@ export function isStripePromptPayGatewayEnabled() {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
-async function stripeRequest<T>(path: string, init: RequestInit = {}) {
+async function stripeRequest<T>(path: string, init: RequestInit = {}, stripeAccountId?: string | null) {
   const response = await fetch(`https://api.stripe.com/v1${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${stripeSecretKey()}`,
+      ...(stripeAccountId ? { "Stripe-Account": stripeAccountId } : {}),
       ...(init.body instanceof URLSearchParams ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
       ...init.headers,
     },
@@ -66,6 +81,45 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}) {
     throw new Error(message);
   }
   return data as T;
+}
+
+export async function createStripeConnectedAccount(args: { email?: string; businessName?: string }) {
+  const params = new URLSearchParams();
+  params.append("type", "express");
+  params.append("country", process.env.STRIPE_CONNECT_COUNTRY || "TH");
+  if (args.email) params.append("email", args.email);
+  if (args.businessName) params.append("business_profile[name]", args.businessName);
+  params.append("capabilities[transfers][requested]", "true");
+
+  return stripeRequest<StripeAccount>("/accounts", { method: "POST", body: params });
+}
+
+export async function createStripeAccountLink(args: { accountId: string; origin: string }) {
+  const params = new URLSearchParams();
+  params.append("account", args.accountId);
+  params.append("type", "account_onboarding");
+  params.append("refresh_url", `${args.origin}/dashboard/settings/payments?stripe=refresh`);
+  params.append("return_url", `${args.origin}/dashboard/settings/payments?stripe=return`);
+
+  return stripeRequest<StripeAccountLink>("/account_links", { method: "POST", body: params });
+}
+
+export async function retrieveStripeConnectedAccount(accountId: string) {
+  return stripeRequest<StripeAccount>(`/accounts/${encodeURIComponent(accountId)}`);
+}
+
+export async function syncStripeConnectStatus(restaurantId: number) {
+  const settings = await prisma.paymentSettings.findUnique({ where: { restaurantId } });
+  if (!settings?.stripeAccountId) return settings;
+  const account = await retrieveStripeConnectedAccount(settings.stripeAccountId);
+  return prisma.paymentSettings.update({
+    where: { restaurantId },
+    data: {
+      stripeChargesEnabled: Boolean(account.charges_enabled),
+      stripePayoutsEnabled: Boolean(account.payouts_enabled),
+      stripeDetailsSubmitted: Boolean(account.details_submitted),
+    },
+  });
 }
 
 export async function createPromptPayCheckoutSession(args: {
@@ -113,6 +167,10 @@ export async function createPromptPayPaymentIntent(args: { orderId: number; rest
   if (!order || (args.restaurantId && order.restaurantId !== args.restaurantId)) throw new Error("ORDER_NOT_FOUND");
   if (order.payment || order.paymentStatus === PaymentStatus.PAID) throw new Error("ALREADY_PAID");
   if (order.total <= 0) throw new Error("INVALID_AMOUNT");
+  const settings = await syncStripeConnectStatus(order.restaurantId);
+  if (!settings?.stripeEnabled || settings.promptPayMode !== "STRIPE") throw new Error("STRIPE_NOT_ENABLED");
+  if (!settings.stripeAccountId) throw new Error("STRIPE_ACCOUNT_MISSING");
+  if (!settings.stripeChargesEnabled) throw new Error("STRIPE_ACCOUNT_NOT_READY");
 
   const params = new URLSearchParams();
   params.append("amount", String(Math.round(order.total * 100)));
@@ -124,9 +182,10 @@ export async function createPromptPayPaymentIntent(args: { orderId: number; rest
   params.append("confirm", "true");
   params.append("metadata[orderId]", String(order.id));
   params.append("metadata[orderNumber]", order.orderNumber);
+  params.append("metadata[restaurantId]", String(order.restaurantId));
   params.append("description", `บิล ${order.orderNumber}`);
 
-  const paymentIntent = await stripeRequest<StripePaymentIntent>("/payment_intents", { method: "POST", body: params });
+  const paymentIntent = await stripeRequest<StripePaymentIntent>("/payment_intents", { method: "POST", body: params }, settings.stripeAccountId);
   const qr = paymentIntent.next_action?.promptpay_display_qr_code;
   if (!qr?.image_url_png && !qr?.image_url_svg) throw new Error("PROMPTPAY_QR_NOT_READY");
 
@@ -138,8 +197,8 @@ export async function createPromptPayPaymentIntent(args: { orderId: number; rest
   };
 }
 
-export async function retrievePaymentIntent(paymentIntentId: string) {
-  return stripeRequest<StripePaymentIntent>(`/payment_intents/${encodeURIComponent(paymentIntentId)}`);
+export async function retrievePaymentIntent(paymentIntentId: string, stripeAccountId?: string | null) {
+  return stripeRequest<StripePaymentIntent>(`/payment_intents/${encodeURIComponent(paymentIntentId)}`, {}, stripeAccountId);
 }
 
 async function markPromptPayOrderPaid(args: {
@@ -195,21 +254,29 @@ async function markPromptPayOrderPaid(args: {
 export async function completeStripePromptPayPaymentIntent(args: {
   paymentIntentId: string;
   restaurantId?: number;
+  stripeAccountId?: string | null;
   employeeId?: number | null;
 }) {
-  const paymentIntent = await retrievePaymentIntent(args.paymentIntentId);
+  let stripeAccountId = args.stripeAccountId || null;
+  if (!stripeAccountId && args.restaurantId) {
+    const settings = await prisma.paymentSettings.findUnique({ where: { restaurantId: args.restaurantId } });
+    stripeAccountId = settings?.stripeAccountId || null;
+  }
+  const paymentIntent = await retrievePaymentIntent(args.paymentIntentId, stripeAccountId);
   if (paymentIntent.status !== "succeeded") return { paid: false, order: null, paymentIntent };
 
   const orderId = Number(paymentIntent.metadata?.orderId);
   if (!Number.isInteger(orderId)) throw new Error("ORDER_NOT_FOUND");
+  const restaurantId = args.restaurantId || Number(paymentIntent.metadata?.restaurantId) || undefined;
 
   const result = await markPromptPayOrderPaid({
     orderId,
-    restaurantId: args.restaurantId,
+    restaurantId,
     employeeId: args.employeeId,
     providerDetails: {
       stripePaymentIntentId: paymentIntent.id,
       stripePaymentIntentStatus: paymentIntent.status,
+      stripeAccountId: stripeAccountId || undefined,
     },
   });
 

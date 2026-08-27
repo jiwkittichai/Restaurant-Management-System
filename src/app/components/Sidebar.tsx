@@ -65,8 +65,8 @@ const initialSidebarItems: SidebarItem[] = [
   { name: "เมนูอาหาร", path: "/dashboard/products", icon: "UtensilsCrossed", roles: ["OWNER"] },
   { name: "หมวดหมู่", path: "/dashboard/categories", icon: "Tags", roles: ["OWNER"] },
   { name: "รายงานยอดขาย", path: "/dashboard/reports", icon: "ChartNoAxesCombined", roles: ["OWNER"] },
-  { name: "ตั้งค่า", path: "/dashboard/settings", icon: "Settings", roles: ["OWNER"] },
-  { name: "จัดการพนักงาน", path: "/dashboard/employees", icon: "Users", roles: ["OWNER"] }
+  { name: "จัดการพนักงาน", path: "/dashboard/employees", icon: "Users", roles: ["OWNER"] },
+  { name: "ตั้งค่า", path: "/dashboard/settings", icon: "Settings", roles: ["OWNER"] }
 ];
 
 const Sidebar = ({ roles }: { roles: string[] }) => {

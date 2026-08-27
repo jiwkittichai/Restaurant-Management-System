@@ -11,12 +11,18 @@ const defaultSettings = {
   promptPayIdentifier: "",
   promptPayQrImageUrl: "",
   stripeEnabled: false,
+  stripeAccountId: "",
+  stripeChargesEnabled: false,
+  stripePayoutsEnabled: false,
+  stripeDetailsSubmitted: false,
 };
 
 function serialize(settings: typeof defaultSettings) {
   return {
     ...settings,
     stripeGatewayReady: isStripePromptPayGatewayEnabled(),
+    stripeConnected: Boolean(settings.stripeAccountId),
+    stripeReady: Boolean(settings.stripeAccountId && settings.stripeChargesEnabled),
   };
 }
 
@@ -35,6 +41,10 @@ export async function GET() {
     promptPayIdentifier: settings.promptPayIdentifier || "",
     promptPayQrImageUrl: settings.promptPayQrImageUrl || "",
     stripeEnabled: settings.stripeEnabled,
+    stripeAccountId: settings.stripeAccountId || "",
+    stripeChargesEnabled: settings.stripeChargesEnabled,
+    stripePayoutsEnabled: settings.stripePayoutsEnabled,
+    stripeDetailsSubmitted: settings.stripeDetailsSubmitted,
   } : defaultSettings));
 }
 
@@ -56,6 +66,10 @@ export async function PATCH(req: NextRequest) {
   if (data.promptPayEnabled && promptPayMode === "MANUAL_QR" && !data.promptPayQrImageUrl) {
     return NextResponse.json({ error: "กรุณาอัปโหลดรูป QR พร้อมเพย์" }, { status: 400 });
   }
+  const current = await prisma.paymentSettings.findUnique({ where: { restaurantId: auth.user.restaurantId } });
+  if (data.promptPayEnabled && promptPayMode === "STRIPE" && (!current?.stripeAccountId || !current.stripeChargesEnabled)) {
+    return NextResponse.json({ error: "กรุณาเชื่อมต่อ Stripe ให้พร้อมใช้งานก่อน" }, { status: 400 });
+  }
 
   const settings = await prisma.paymentSettings.upsert({
     where: { restaurantId: auth.user.restaurantId },
@@ -76,5 +90,9 @@ export async function PATCH(req: NextRequest) {
     promptPayIdentifier: settings.promptPayIdentifier || "",
     promptPayQrImageUrl: settings.promptPayQrImageUrl || "",
     stripeEnabled: settings.stripeEnabled,
+    stripeAccountId: settings.stripeAccountId || "",
+    stripeChargesEnabled: settings.stripeChargesEnabled,
+    stripePayoutsEnabled: settings.stripePayoutsEnabled,
+    stripeDetailsSubmitted: settings.stripeDetailsSubmitted,
   }));
 }
