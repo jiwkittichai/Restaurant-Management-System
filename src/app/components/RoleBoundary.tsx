@@ -7,6 +7,7 @@ const access: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard/employees", roles: ["OWNER"] },
   { prefix: "/dashboard/audits", roles: ["OWNER"] },
   { prefix: "/dashboard/reports", roles: ["OWNER"] },
+  { prefix: "/dashboard/settings", roles: ["OWNER"] },
   { prefix: "/dashboard/categories", roles: ["OWNER"] },
   { prefix: "/dashboard/products", roles: ["OWNER"] },
   { prefix: "/dashboard/inventory", roles: ["OWNER", "STOCK"] },

@@ -25,8 +25,19 @@ type BillModalProps = {
   loading?: boolean;
   onClose: () => void;
   onConfirm: (payload: { orderId: number; method: PaymentMethod; receivedAmount: number; changeAmount: number }) => Promise<void>;
+  promptPaySettings?: PromptPaySettings | null;
   onStripePromptPay?: (orderId: number) => Promise<PromptPayQrPayment>;
   onStripePromptPayStatus?: (paymentIntentId: string) => Promise<{ paid: boolean; status: string }>;
+};
+
+export type PromptPaySettings = {
+  promptPayEnabled: boolean;
+  promptPayMode: "MANUAL_QR" | "STRIPE";
+  promptPayAccountName?: string;
+  promptPayIdentifier?: string;
+  promptPayQrImageUrl?: string;
+  stripeEnabled?: boolean;
+  stripeGatewayReady?: boolean;
 };
 
 type PromptPayQrPayment = {
@@ -166,7 +177,7 @@ function buildReceiptHtml(args: {
 </html>`;
 }
 
-export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm, onStripePromptPay, onStripePromptPayStatus }: BillModalProps) {
+export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm, promptPaySettings, onStripePromptPay, onStripePromptPayStatus }: BillModalProps) {
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [received, setReceived] = useState("");
   const [error, setError] = useState("");
@@ -194,6 +205,10 @@ export default function BillModal({ order, title = "เช็คบิล", load
   const printableReceived = method === "CASH" ? receivedAmount : order?.total || 0;
   const printableChange = method === "CASH" ? changeAmount : 0;
   const now = new Date();
+  const promptPayEnabled = Boolean(promptPaySettings?.promptPayEnabled);
+  const useStripePromptPay = promptPayEnabled && promptPaySettings?.promptPayMode === "STRIPE" && Boolean(promptPaySettings?.stripeEnabled) && Boolean(onStripePromptPay);
+  const useManualPromptPay = promptPayEnabled && !useStripePromptPay;
+  const paymentOptions = (promptPayEnabled ? Object.keys(methodText) : ["CASH"]) as PaymentMethod[];
 
   useEffect(() => {
     if (!promptPayQr || !onStripePromptPayStatus || promptPayPaid) return;
@@ -211,7 +226,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
       onClose();
       return;
     }
-    if (method === "PROMPTPAY" && onStripePromptPay) {
+    if (method === "PROMPTPAY" && useStripePromptPay) {
       if (promptPayQr) await checkPromptPayStatus();
       else await createPromptPayQr();
       return;
@@ -349,7 +364,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
           <div className="mt-5 rounded-xl border border-gray-100 p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700"><WalletCards size={17} /> วิธีชำระเงิน</p>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(methodText) as PaymentMethod[]).map((option) => (
+              {paymentOptions.map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -388,7 +403,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
                 </div>
               </div>
             )}
-            {method === "PROMPTPAY" && onStripePromptPay && (
+            {method === "PROMPTPAY" && useStripePromptPay && (
               <div className={`mt-4 rounded-xl border px-4 py-4 ${promptPayPaid ? "border-emerald-100 bg-emerald-50" : "border-gray-100 bg-gray-50"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -423,11 +438,36 @@ export default function BillModal({ order, title = "เช็คบิล", load
                 )}
               </div>
             )}
-            {method === "PROMPTPAY" && !onStripePromptPay && (
+            {method === "PROMPTPAY" && useManualPromptPay && (
+              <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">สแกนจ่ายพร้อมเพย์</p>
+                    <p className="mt-1 text-xs text-gray-600">ยอดชำระ {money(order.total)}</p>
+                  </div>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-600">QR ร้าน</span>
+                </div>
+                {promptPaySettings?.promptPayQrImageUrl ? (
+                  <div className="mt-4 grid place-items-center">
+                    <div className="rounded-xl bg-white p-4 shadow-sm">
+                      <img src={promptPaySettings.promptPayQrImageUrl} alt="QR พร้อมเพย์" className="h-64 w-64 object-contain sm:h-72 sm:w-72" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-medium text-amber-700">ยังไม่ได้อัปโหลดรูป QR พร้อมเพย์</p>
+                )}
+                <div className="mt-4 rounded-xl bg-white px-4 py-3 text-sm">
+                  <div className="flex justify-between gap-3"><span className="text-gray-400">ชื่อบัญชี</span><span className="text-right font-semibold text-gray-900">{promptPaySettings?.promptPayAccountName || "-"}</span></div>
+                  <div className="mt-1 flex justify-between gap-3"><span className="text-gray-400">เลขบัญชี / พร้อมเพย์</span><span className="text-right font-semibold text-gray-900">{promptPaySettings?.promptPayIdentifier || "-"}</span></div>
+                </div>
+                <p className="mt-3 text-xs text-blue-700">ตรวจสอบสลิปหรือยอดเข้าแอปธนาคารก่อนกดยืนยันรับชำระ</p>
+              </div>
+            )}
+            {method === "PROMPTPAY" && !promptPayEnabled && (
               <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-4">
-                <p className="text-sm font-semibold text-gray-900">บันทึกรับชำระพร้อมเพย์</p>
+                <p className="text-sm font-semibold text-gray-900">ยังไม่ได้เปิดใช้งานพร้อมเพย์</p>
                 <p className="mt-1 text-xs text-gray-500">
-                  ยังไม่ได้ตั้งค่า Stripe gateway ระบบจะบันทึกยอดชำระเป็นพร้อมเพย์โดยไม่สร้าง QR
+                  กรุณาเปิดใช้งานในหน้าตั้งค่าการชำระเงินก่อนรับชำระด้วยพร้อมเพย์
                 </p>
                 <p className="mt-3 text-lg font-semibold text-blue-600">{money(order.total)}</p>
               </div>
@@ -441,7 +481,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
             <Printer size={16} /> พิมพ์บิล
           </button>
           <button onClick={submit} disabled={loading || stripeLoading} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-            {loading || stripeLoading ? "กำลังดำเนินการ..." : promptPayPaid ? "ปิดหน้าต่าง" : method === "PROMPTPAY" && onStripePromptPay ? (promptPayQr ? "ตรวจสอบการชำระเงิน" : "สร้าง QR") : `รับชำระ ${money(order.total)}`}
+            {loading || stripeLoading ? "กำลังดำเนินการ..." : promptPayPaid ? "ปิดหน้าต่าง" : method === "PROMPTPAY" && useStripePromptPay ? (promptPayQr ? "ตรวจสอบการชำระเงิน" : "สร้าง QR") : `รับชำระ ${money(order.total)}`}
           </button>
         </div>
         </div>

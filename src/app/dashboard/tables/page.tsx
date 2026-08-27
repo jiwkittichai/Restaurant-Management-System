@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Armchair, Eye, Plus, ReceiptText, Search, Utensils, X } from "lucide-react";
-import BillModal, { BillOrder } from "../components/BillModal";
+import BillModal, { BillOrder, PromptPaySettings } from "../components/BillModal";
 
 type ActiveOrder = BillOrder & { status: string; paymentStatus: string; createdAt?: string };
 type Table = { id: number; name: string; seats: number; status: string; orders: ActiveOrder[] };
@@ -35,7 +35,7 @@ export default function TablesPage() {
   const [detailOrder, setDetailOrder] = useState<ActiveOrder | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<ActiveOrder | null>(null);
   const [paying, setPaying] = useState(false);
-  const [promptPayGatewayEnabled, setPromptPayGatewayEnabled] = useState(false);
+  const [promptPaySettings, setPromptPaySettings] = useState<PromptPaySettings | null>(null);
 
   const load = useCallback(() => fetch("/api/tables").then((response) => response.json()).then(setTables), []);
 
@@ -50,10 +50,10 @@ export default function TablesPage() {
   }, [load]);
 
   useEffect(() => {
-    fetch("/api/payments/stripe/promptpay")
+    fetch("/api/payment-settings")
       .then((response) => response.json())
-      .then((data) => setPromptPayGatewayEnabled(Boolean(data.enabled)))
-      .catch(() => setPromptPayGatewayEnabled(false));
+      .then((data) => setPromptPaySettings(data))
+      .catch(() => setPromptPaySettings(null));
   }, []);
 
   const summary = useMemo(() => ({
@@ -338,8 +338,9 @@ export default function TablesPage() {
         loading={paying}
         onClose={() => setBillOrder(null)}
         onConfirm={pay}
-        onStripePromptPay={promptPayGatewayEnabled ? createStripePromptPay : undefined}
-        onStripePromptPayStatus={promptPayGatewayEnabled ? checkStripePromptPay : undefined}
+        promptPaySettings={promptPaySettings}
+        onStripePromptPay={promptPaySettings?.promptPayMode === "STRIPE" && promptPaySettings.stripeEnabled && promptPaySettings.stripeGatewayReady ? createStripePromptPay : undefined}
+        onStripePromptPayStatus={promptPaySettings?.promptPayMode === "STRIPE" && promptPaySettings.stripeEnabled && promptPaySettings.stripeGatewayReady ? checkStripePromptPay : undefined}
       />
 
       {detailOrder && (

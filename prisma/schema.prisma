@@ -22,25 +22,26 @@ model Product {
 }
 
 model Restaurant {
-  id             Int                     @id @default(autoincrement())
-  name           String
-  slug           String                  @unique
-  ownerId        Int?
-  owner          Employee?               @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  products       Product[]
-  categories     Category[]
-  menuItems      MenuItem[]
-  modifierGroups MenuItemModifierGroup[]
-  modifiers      MenuItemModifier[]
-  tables         RestaurantTable[]
-  orders         Order[]
-  payments       Payment[]
-  ingredients    Ingredient[]
-  stockMovements StockMovement[]
-  employees      Employee[]              @relation("RestaurantEmployees")
-  auditLogs      AuditLog[]
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  id              Int                     @id @default(autoincrement())
+  name            String
+  slug            String                  @unique
+  ownerId         Int?
+  owner           Employee?               @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  products        Product[]
+  categories      Category[]
+  menuItems       MenuItem[]
+  modifierGroups  MenuItemModifierGroup[]
+  modifiers       MenuItemModifier[]
+  tables          RestaurantTable[]
+  orders          Order[]
+  payments        Payment[]
+  ingredients     Ingredient[]
+  stockMovements  StockMovement[]
+  employees       Employee[]              @relation("RestaurantEmployees")
+  auditLogs       AuditLog[]
+  paymentSettings PaymentSettings?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@index([ownerId])
 }
@@ -215,6 +216,20 @@ model Payment {
   paidAt         DateTime      @default(now())
 
   @@index([restaurantId])
+}
+
+model PaymentSettings {
+  id                   Int        @id @default(autoincrement())
+  restaurantId         Int        @unique
+  restaurant           Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  promptPayEnabled     Boolean    @default(false)
+  promptPayMode        String     @default("MANUAL_QR")
+  promptPayAccountName String?
+  promptPayIdentifier  String?
+  promptPayQrImageUrl  String?
+  stripeEnabled        Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 }
 
 model Ingredient {

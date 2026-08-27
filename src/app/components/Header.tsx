@@ -24,6 +24,8 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
     "/dashboard/products/create": "เพิ่มเมนูอาหาร",
     "/dashboard/categories": "หมวดหมู่เมนู",
     "/dashboard/reports": "รายงานยอดขาย",
+    "/dashboard/settings": "ตั้งค่า",
+    "/dashboard/settings/payments": "ตั้งค่า",
     "/dashboard/employees": "จัดการพนักงาน",
     "/dashboard/employees/create": "เพิ่มพนักงาน",
     "/dashboard/audits": "ประวัติกิจกรรม",

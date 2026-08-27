@@ -48,6 +48,8 @@ export const actionText: Record<string, string> = {
   TOGGLE_MENU: "เปลี่ยนสถานะเมนู",
   DELETE_MENU: "ลบเมนู",
   UPLOAD_MENU_IMAGE: "อัปโหลดรูปเมนู",
+  UPLOAD_PROMPTPAY_QR: "อัปโหลด QR พร้อมเพย์",
+  UPDATE_PAYMENT_SETTINGS: "แก้ไขการตั้งค่าชำระเงิน",
 };
 
 const statusText: Record<string, string> = {

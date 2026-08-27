@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   try {
     const data = await req.formData();
     const file = data.get("file") as File;
+    const purpose = String(data.get("purpose") || "");
 
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const filename = `restaurants/${auth.user.restaurantId}/${Date.now()}-${file.name}`;
 
     await minioClient.putObject("products", filename, buffer);
-    await writeAudit(auth.user.id,"UPLOAD_MENU_IMAGE","MinioObject",filename);
+    await writeAudit(auth.user.id,purpose==="promptpay_qr"?"UPLOAD_PROMPTPAY_QR":"UPLOAD_MENU_IMAGE","MinioObject",filename);
 
     const url = `${process.env.NEXT_PUBLIC_MINIO_PUBLIC_URL}/${filename}`;
     return NextResponse.json({ url });
