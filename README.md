@@ -35,7 +35,7 @@
 npm install
 ```
 
-### 2. สร้างไฟล์ Environment หรือ .env
+### 2. สร้างไฟล์ .env หรือ เปลี่ยนชื่อไฟล์ .env.example เป็น .env
 
 ```bash
 cp .env.example .env
