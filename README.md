@@ -35,11 +35,8 @@
 npm install
 ```
 
-### 2. สร้างไฟล์ .env หรือ เปลี่ยนชื่อไฟล์ .env.example เป็น .env
+### 2. เปลี่ยนชื่อไฟล์ .env.example เป็น .env
 
-```bash
-cp .env.example .env
-```
 
 ค่าเริ่มต้นใน `.env.example` สามารถใช้รันบนเครื่อง local ได้ทันที โดยจะสร้างฐานข้อมูล MySQL, MinIO และบัญชีเจ้าของร้านสำหรับข้อมูล seed:
 
