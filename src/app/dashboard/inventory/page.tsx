@@ -159,9 +159,9 @@ export default function InventoryPage() {
 
   const lowStockCount = ingredients.filter((item) => item.stock <= item.minStock).length;
   const stockCards = [
-    { key: "ALL" as const, label: "ทั้งหมด", value: `${ingredients.length} รายการ`, tone: "text-gray-900", icon: PackageOpen, iconClass: "bg-blue-50 text-blue-600" },
-    { key: "LOW" as const, label: "ใกล้หมด", value: `${lowStockCount} รายการ`, tone: lowStockCount ? "text-amber-600" : "text-emerald-600", icon: AlertTriangle, iconClass: lowStockCount ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600" },
-    { key: "READY" as const, label: "พร้อมใช้", value: `${Math.max(0, ingredients.length - lowStockCount)} รายการ`, tone: "text-emerald-600", icon: CheckCircle2, iconClass: "bg-emerald-50 text-emerald-600" },
+    { key: "ALL" as const, label: "ทั้งหมด", value: `${ingredients.length} รายการ`, tone: "text-gray-900", icon: PackageOpen, iconClass: "bg-blue-50 text-blue-600", activeClass: "border-blue-300 bg-blue-50 shadow-sm", hoverClass: "hover:border-blue-200 hover:bg-blue-50/40" },
+    { key: "LOW" as const, label: "ใกล้หมด", value: `${lowStockCount} รายการ`, tone: "text-amber-600", icon: AlertTriangle, iconClass: "bg-amber-50 text-amber-600", activeClass: "border-amber-300 bg-amber-50 shadow-sm", hoverClass: "hover:border-amber-200 hover:bg-amber-50/50" },
+    { key: "READY" as const, label: "พร้อมใช้", value: `${Math.max(0, ingredients.length - lowStockCount)} รายการ`, tone: "text-emerald-600", icon: CheckCircle2, iconClass: "bg-emerald-50 text-emerald-600", activeClass: "border-emerald-300 bg-emerald-50 shadow-sm", hoverClass: "hover:border-emerald-200 hover:bg-emerald-50/40" },
   ];
   const filteredIngredients = ingredients.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase());
@@ -213,6 +213,8 @@ export default function InventoryPage() {
                 tone={card.tone}
                 icon={card.icon}
                 iconClass={card.iconClass}
+                activeClass={card.activeClass}
+                hoverClass={card.hoverClass}
                 onClick={() => setStockFilter(card.key)}
               />
             ))}
@@ -400,6 +402,8 @@ function StockFilterCard({
   tone,
   icon: Icon,
   iconClass,
+  activeClass,
+  hoverClass,
   onClick,
 }: {
   active: boolean;
@@ -408,14 +412,16 @@ function StockFilterCard({
   tone: string;
   icon: typeof PackageOpen;
   iconClass: string;
+  activeClass: string;
+  hoverClass: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${
-        active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-gray-100 bg-white"
+      className={`rounded-xl border px-3 py-2 text-left transition ${hoverClass} ${
+        active ? activeClass : "border-gray-100 bg-white"
       }`}
     >
       <div className="flex items-center gap-2.5">

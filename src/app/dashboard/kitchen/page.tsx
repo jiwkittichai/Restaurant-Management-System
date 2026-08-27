@@ -85,10 +85,10 @@ export default function KitchenPage() {
       .filter((order) => order.items.length > 0);
   }, [activeTab, orders, search]);
   const monitorCards = [
-    { key: "ALL" as const, label: "ทั้งหมด", value: `${monitor.ALL} ออเดอร์`, tone: "text-gray-900" },
-    { key: "NEW" as const, label: "รอครัวรับ", value: `${monitor.NEW} รายการ`, tone: "text-blue-600" },
-    { key: "PREPARING" as const, label: "กำลังทำ", value: `${monitor.PREPARING} รายการ`, tone: "text-amber-700" },
-    { key: "READY" as const, label: "พร้อมเสิร์ฟ", value: `${monitor.READY} รายการ`, tone: "text-emerald-600" },
+    { key: "ALL" as const, label: "ทั้งหมด", value: `${monitor.ALL} ออเดอร์`, tone: "text-gray-900", activeClass: "border-blue-300 bg-blue-50 shadow-sm", hoverClass: "hover:border-blue-200 hover:bg-blue-50/40" },
+    { key: "NEW" as const, label: "รอครัวรับ", value: `${monitor.NEW} รายการ`, tone: "text-blue-600", activeClass: "border-blue-300 bg-blue-50 shadow-sm", hoverClass: "hover:border-blue-200 hover:bg-blue-50/40" },
+    { key: "PREPARING" as const, label: "กำลังทำ", value: `${monitor.PREPARING} รายการ`, tone: "text-amber-700", activeClass: "border-amber-300 bg-amber-50 shadow-sm", hoverClass: "hover:border-amber-200 hover:bg-amber-50/50" },
+    { key: "READY" as const, label: "พร้อมเสิร์ฟ", value: `${monitor.READY} รายการ`, tone: "text-emerald-600", activeClass: "border-emerald-300 bg-emerald-50 shadow-sm", hoverClass: "hover:border-emerald-200 hover:bg-emerald-50/40" },
   ];
 
   async function update(itemId: number, status: string) {
@@ -152,6 +152,8 @@ export default function KitchenPage() {
                 label={card.label}
                 value={card.value}
                 tone={card.tone}
+                activeClass={card.activeClass}
+                hoverClass={card.hoverClass}
                 onClick={() => setActiveTab(card.key)}
               />
             ))}
@@ -231,20 +233,24 @@ function KitchenFilterCard({
   label,
   value,
   tone,
+  activeClass,
+  hoverClass,
   onClick,
 }: {
   active: boolean;
   label: string;
   value: string;
   tone: string;
+  activeClass: string;
+  hoverClass: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${
-        active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-gray-100 bg-white"
+      className={`rounded-xl border px-3 py-2 text-left transition ${hoverClass} ${
+        active ? activeClass : "border-gray-100 bg-white"
       }`}
     >
       <p className="truncate text-xs text-gray-400">{label}</p>

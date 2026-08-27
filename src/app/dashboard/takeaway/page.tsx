@@ -128,10 +128,10 @@ export default function TakeawayPage() {
     return [...searched].sort((a, b) => priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [activeTab, orders, search]);
   const summaryCards = [
-    { key: "ALL" as const, label: "ทั้งหมด", value: `${summary.total} คิว`, tone: "text-gray-900" },
-    { key: "UNPAID" as const, label: "ยังไม่ชำระ", value: `${summary.unpaid} คิว`, tone: "text-red-500" },
-    { key: "PAID" as const, label: "ชำระแล้ว", value: `${summary.paid} คิว`, tone: "text-blue-600" },
-    { key: "READY" as const, label: "พร้อมรับ", value: `${summary.ready} คิว`, tone: "text-emerald-600" },
+    { key: "ALL" as const, label: "ทั้งหมด", value: `${summary.total} คิว`, tone: "text-gray-900", activeClass: "border-blue-300 bg-blue-50 shadow-sm", hoverClass: "hover:border-blue-200 hover:bg-blue-50/40" },
+    { key: "UNPAID" as const, label: "ยังไม่ชำระ", value: `${summary.unpaid} คิว`, tone: "text-red-500", activeClass: "border-red-300 bg-red-50 shadow-sm", hoverClass: "hover:border-red-200 hover:bg-red-50/40" },
+    { key: "PAID" as const, label: "ชำระแล้ว", value: `${summary.paid} คิว`, tone: "text-blue-600", activeClass: "border-blue-300 bg-blue-50 shadow-sm", hoverClass: "hover:border-blue-200 hover:bg-blue-50/40" },
+    { key: "READY" as const, label: "พร้อมรับ", value: `${summary.ready} คิว`, tone: "text-emerald-600", activeClass: "border-emerald-300 bg-emerald-50 shadow-sm", hoverClass: "hover:border-emerald-200 hover:bg-emerald-50/40" },
   ];
 
   async function action(orderId: number, actionName: string, extra: Record<string, unknown> = {}) {
@@ -234,6 +234,8 @@ export default function TakeawayPage() {
                 label={card.label}
                 value={card.value}
                 tone={card.tone}
+                activeClass={card.activeClass}
+                hoverClass={card.hoverClass}
                 onClick={() => setActiveTab(card.key)}
               />
             ))}
@@ -416,20 +418,24 @@ function SummaryCard({
   label,
   value,
   tone = "text-gray-900",
+  activeClass,
+  hoverClass,
   onClick,
 }: {
   active: boolean;
   label: string;
   value: string;
   tone?: string;
+  activeClass: string;
+  hoverClass: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-w-[104px] rounded-xl border px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${
-        active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-gray-100 bg-white"
+      className={`min-w-[104px] rounded-xl border px-3 py-2 text-left transition ${hoverClass} ${
+        active ? activeClass : "border-gray-100 bg-white"
       }`}
     >
       <p className="text-xs text-gray-400">{label}</p>
