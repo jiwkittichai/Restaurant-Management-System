@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useState } from "react";
-import { CheckCircle2, CreditCard, ExternalLink, Pencil, QrCode, RefreshCw, Save, UploadCloud, X } from "lucide-react";
+import { CheckCircle2, Pencil, QrCode, Save, UploadCloud, X } from "lucide-react";
 import Link from "next/link";
 
 type PromptPayMode = "MANUAL_QR" | "STRIPE";
@@ -45,7 +45,6 @@ export default function PaymentSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -53,7 +52,7 @@ export default function PaymentSettingsPage() {
     fetch("/api/payment-settings")
       .then((response) => response.json())
       .then((data) => {
-        const next = { ...emptySettings, ...data };
+        const next = { ...emptySettings, ...data, promptPayMode: "MANUAL_QR" as PromptPayMode, stripeEnabled: false };
         setSettings(next);
         setSavedSettings(next);
       })
@@ -90,7 +89,7 @@ export default function PaymentSettingsPage() {
       const response = await fetch("/api/payment-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, promptPayMode: "MANUAL_QR", stripeEnabled: false }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "บันทึกการตั้งค่าไม่สำเร็จ");
@@ -106,43 +105,8 @@ export default function PaymentSettingsPage() {
     }
   }
 
-  async function connectStripe() {
-    setConnectingStripe(true);
-    setMessage("");
-    setError("");
-    try {
-      const response = await fetch("/api/payment-settings/stripe/connect", { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "สร้างลิงก์เชื่อมต่อ Stripe ไม่สำเร็จ");
-      window.location.href = data.url;
-    } catch (connectError) {
-      setError(connectError instanceof Error ? connectError.message : "สร้างลิงก์เชื่อมต่อ Stripe ไม่สำเร็จ");
-      setConnectingStripe(false);
-    }
-  }
-
-  async function refreshStripeStatus() {
-    setConnectingStripe(true);
-    setMessage("");
-    setError("");
-    try {
-      const response = await fetch("/api/payment-settings/stripe/connect");
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "ตรวจสอบสถานะ Stripe ไม่สำเร็จ");
-      const next = { ...settings, ...data };
-      setSettings(next);
-      setSavedSettings((current) => ({ ...current, ...data }));
-      setMessage(data.stripeReady ? "บัญชี Stripe พร้อมใช้งานแล้ว" : "อัปเดตสถานะ Stripe แล้ว");
-    } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : "ตรวจสอบสถานะ Stripe ไม่สำเร็จ");
-    } finally {
-      setConnectingStripe(false);
-    }
-  }
-
   if (loading) return <div className="p-6 text-sm text-gray-400">กำลังโหลดการตั้งค่า...</div>;
   const disabled = !editing || saving || uploading;
-  const canUseStripe = settings.stripeGatewayReady && settings.stripeConnected && settings.stripeReady;
 
   return (
     <div className="space-y-6 p-4 lg:p-6">
@@ -193,49 +157,6 @@ export default function PaymentSettingsPage() {
             <div>
               <h3 className="font-semibold text-gray-900">QR พร้อมเพย์ของร้าน</h3>
               <p className="mt-1 text-sm text-gray-500">แสดง QR ที่ร้านอัปโหลด แล้วกดยืนยันหลังลูกค้าจ่าย</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          role="button"
-          tabIndex={editing ? 0 : -1}
-          onClick={() => {
-            if (!editing) return;
-            if (!canUseStripe) {
-              setError("กรุณาเชื่อมต่อ Stripe ให้พร้อมใช้งานก่อน");
-              return;
-            }
-            setSettings({ ...settings, promptPayMode: "STRIPE", stripeEnabled: true });
-          }}
-          className={`rounded-2xl border bg-white p-5 text-left transition ${editing ? "cursor-pointer" : "cursor-default"} ${settings.promptPayMode === "STRIPE" ? "border-blue-300 bg-blue-50 shadow-sm" : editing ? "border-gray-100 hover:border-blue-100" : "border-gray-100 opacity-60"}`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-slate-700"><CreditCard size={22} /></div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Stripe PromptPay</h3>
-              <p className="mt-1 text-sm text-gray-500">สร้าง QR ตามยอดบิลและตรวจสอบการชำระเงินอัตโนมัติ</p>
-            </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            <p className={`rounded-xl px-3 py-2 text-xs font-medium ${canUseStripe ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-              {canUseStripe
-                ? "บัญชี Stripe พร้อมรับชำระเงิน"
-                : !settings.stripeGatewayReady
-                  ? "ยังไม่ได้ตั้งค่า STRIPE_SECRET_KEY บน server"
-                  : !settings.stripeConnected
-                    ? "ยังไม่ได้เชื่อมต่อบัญชี Stripe ของร้าน"
-                    : "บัญชี Stripe ยังรอยืนยันข้อมูล"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={(event) => { event.stopPropagation(); connectStripe(); }} disabled={connectingStripe || !settings.stripeGatewayReady} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                <span className="inline-flex items-center gap-1.5"><ExternalLink size={13} />{settings.stripeConnected ? "เปิดหน้า Stripe อีกครั้ง" : "เชื่อมต่อ Stripe"}</span>
-              </button>
-              {settings.stripeConnected && (
-                <button type="button" onClick={(event) => { event.stopPropagation(); refreshStripeStatus(); }} disabled={connectingStripe} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50">
-                  <span className="inline-flex items-center gap-1.5"><RefreshCw size={13} />ตรวจสอบสถานะ</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

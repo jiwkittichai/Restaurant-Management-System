@@ -10,7 +10,6 @@
 - ระบบจัดการเมนูและหมวดหมู่
 - ระบบวัตถุดิบ สูตรอาหาร และการตัดสต็อก
 - ระบบบันทึกสถานะและช่องทางการชำระเงิน
-- ระบบชำระเงิน PromptPay มี 2 รูปแบบ 1.บันทึกยอดปกติ และ 2.รองรับบริการ Stripe Payment เมื่อกำหนดค่า gateway 
 - ระบบรายงานยอดขายและเมนูขายดี
 - ระบบบันทึกประวัติกิจกรรมของพนักงาน
 
@@ -48,22 +47,6 @@ cp .env.example .env
 username: admin
 password: admin1234
 ```
-
-ระบบ PromptPay ใช้งานได้ 2 แบบ:
-
-- ถ้าไม่ได้กำหนด `STRIPE_SECRET_KEY` ระบบจะบันทึกรับชำระเงินเป็น `พร้อมเพย์` ทันที เหมือนการรับเงินสด แต่แยกช่องทางการชำระเงินในรายงาน
-- ถ้ากำหนด `STRIPE_SECRET_KEY` ระบบจะเปิดโหมด PromptPay QR ผ่าน Stripe gateway ให้ลูกค้าสแกนและตรวจสอบสถานะการชำระเงินได้
-
-หากต้องการใช้บริการ PromptPay ผ่าน Stripe Payment Gateway ให้สมัครใช้งานได้ที่ Strip - https://stripe.com/th ให้เพิ่มค่าเหล่านี้ใน `.env`
-
-```env
-STRIPE_SECRET_KEY=sk_test_xxx
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-STRIPE_PROMPTPAY_BILLING_EMAIL=customer@example.com
-```
-
-เปิดใช้งาน PromptPay ใน Stripe Dashboard โดยระบบจะสร้าง QR ผ่าน Stripe เมื่อเลือก `พร้อมเพย์` ในหน้าเช็กบิล
 
 ### 3. สร้าง Prisma Client
 

@@ -4,7 +4,7 @@ import { ChevronRight, CreditCard } from "lucide-react";
 const settingsItems = [
   {
     title: "การชำระเงิน",
-    description: "ตั้งค่าเงินสด, QR พร้อมเพย์ของร้าน และ Stripe PromptPay",
+    description: "ตั้งค่าเงินสดและ QR พร้อมเพย์ของร้านสำหรับหน้าเช็คบิล",
     href: "/dashboard/settings/payments",
     icon: CreditCard,
   },
