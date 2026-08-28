@@ -2,7 +2,7 @@ require("dotenv").config({ quiet: true });
 
 const Minio = require("minio");
 
-const bucketName = "products";
+const bucketName = process.env.MINIO_BUCKET || "products";
 
 const client = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT || "127.0.0.1",
