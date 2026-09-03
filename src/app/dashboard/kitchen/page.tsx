@@ -1,9 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChefHat, Clock3, RefreshCw, Search } from "lucide-react";
+import { BookOpenText, ChefHat, Clock3, RefreshCw, Search, X } from "lucide-react";
 
-type Item = { id: number; name: string; qty: number; note?: string; status: string; modifiers?: Array<{ id: number; name: string; price: number }> };
+type Ingredient = { id: number; name: string; unit: string };
+type Recipe = { id: number; ingredientId: number; quantity: number; ingredient: Ingredient };
+type Modifier = { id: number; name: string; price: number; modifier?: { recipes: Recipe[] } | null };
+type Item = {
+  id: number;
+  name: string;
+  qty: number;
+  note?: string;
+  status: string;
+  menuItem?: { recipes: Recipe[] };
+  modifiers?: Modifier[];
+};
 type Order = {
   id: number;
   orderNumber: string;
@@ -17,6 +28,8 @@ type Order = {
   items: Item[];
 };
 type MonitorTab = "ALL" | "NEW" | "PREPARING" | "READY";
+type SelectedRecipe = { order: Order; item: Item };
+type RecipeLine = { key: string; ingredientName: string; unit: string; source: string; perUnitQuantity: number; totalQuantity: number };
 
 const itemText: Record<string, string> = { NEW: "รอทำ", PREPARING: "กำลังทำ", READY: "พร้อม", SERVED: "เสิร์ฟแล้ว" };
 const itemBadgeClass: Record<string, string> = {
@@ -31,6 +44,7 @@ export default function KitchenPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<MonitorTab>("ALL");
+  const [selectedRecipe, setSelectedRecipe] = useState<SelectedRecipe | null>(null);
 
   const load = useCallback(
     () => fetch("/api/orders").then((response) => response.json()).then(setOrders).catch(() => setError("โหลดออเดอร์ไม่สำเร็จ")),
@@ -113,6 +127,35 @@ export default function KitchenPage() {
     if (item.status === "PREPARING") return "READY";
     if (item.status === "READY") return "SERVED";
     return "";
+  }
+
+  function recipeLines(item: Item): RecipeLine[] {
+    const rows: RecipeLine[] = [];
+    for (const recipe of item.menuItem?.recipes || []) {
+      rows.push({
+        key: `menu:${recipe.id}`,
+        ingredientName: recipe.ingredient.name,
+        unit: recipe.ingredient.unit,
+        source: "สูตรเมนูหลัก",
+        perUnitQuantity: recipe.quantity,
+        totalQuantity: recipe.quantity * item.qty,
+      });
+    }
+    for (const modifier of item.modifiers || []) for (const recipe of modifier.modifier?.recipes || []) {
+      rows.push({
+        key: `modifier:${modifier.id}:${recipe.id}`,
+        ingredientName: recipe.ingredient.name,
+        unit: recipe.ingredient.unit,
+        source: modifier.name,
+        perUnitQuantity: recipe.quantity,
+        totalQuantity: recipe.quantity * item.qty,
+      });
+    }
+    return rows;
+  }
+
+  function formatQuantity(value: number) {
+    return value.toLocaleString("th-TH", { maximumFractionDigits: 2 });
   }
 
   return (
@@ -198,6 +241,16 @@ export default function KitchenPage() {
                         <span className={`rounded-full px-2 py-1 text-[11px] ${itemBadgeClass[item.status] || "bg-gray-100 text-gray-500"}`}>
                           {itemText[item.status]}
                         </span>
+                        <button
+                          type="button"
+                          title="ดูสูตรอาหาร"
+                          aria-label={`ดูสูตรอาหาร ${item.name}`}
+                          onClick={() => setSelectedRecipe({ order, item })}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-100 px-2.5 text-xs font-medium text-gray-600 transition hover:border-blue-100 hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          <BookOpenText size={14} />
+                          สูตร
+                        </button>
                         {label && (
                           <button
                             onClick={() => update(item.id, status)}
@@ -224,6 +277,106 @@ export default function KitchenPage() {
           <p>{orders.length ? "ยังไม่มีรายการในสถานะนี้" : "ยังไม่มีออเดอร์เข้าครัว"}</p>
         </div>
       )}
+
+      {selectedRecipe && (
+        <RecipeModal
+          order={selectedRecipe.order}
+          item={selectedRecipe.item}
+          lines={recipeLines(selectedRecipe.item)}
+          formatQuantity={formatQuantity}
+          onClose={() => setSelectedRecipe(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RecipeModal({
+  order,
+  item,
+  lines,
+  formatQuantity,
+  onClose,
+}: {
+  order: Order;
+  item: Item;
+  lines: RecipeLine[];
+  formatQuantity: (value: number) => string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/25">
+      <button type="button" aria-label="ปิดสูตรอาหาร" className="hidden flex-1 cursor-default sm:block" onClick={onClose} />
+      <aside className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-lg">
+        <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <BookOpenText size={22} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate font-semibold text-gray-900">สูตรอาหาร</h2>
+              <p className="truncate text-sm text-gray-400">{item.qty}x {item.name}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2 rounded-xl bg-gray-50 p-3 text-sm text-gray-500">
+          <div className="flex justify-between gap-3">
+            <span>ออเดอร์</span>
+            <span className="truncate font-medium text-gray-900">{order.type === "TAKEAWAY" ? `คิว ${order.queueNumber}` : order.table?.name}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span>เลขที่</span>
+            <span className="truncate font-medium text-gray-900">{order.orderNumber}</span>
+          </div>
+          {!!item.modifiers?.length && (
+            <div className="flex justify-between gap-3">
+              <span>ตัวเลือก</span>
+              <span className="min-w-0 truncate font-medium text-blue-600">{item.modifiers.map((modifier) => modifier.name).join(", ")}</span>
+            </div>
+          )}
+          {item.note && (
+            <div className="flex justify-between gap-3">
+              <span>หมายเหตุ</span>
+              <span className="min-w-0 truncate font-medium text-red-500">{item.note}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-gray-900">วัตถุดิบที่ต้องใช้</h3>
+              <p className="mt-0.5 text-sm text-gray-400">ปริมาณรวมคำนวณตามจำนวน {item.qty} รายการ</p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">{lines.length} รายการ</span>
+          </div>
+
+          {lines.length ? (
+            <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100">
+              {lines.map((line) => (
+                <div key={line.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">{line.ingredientName}</p>
+                    <p className="mt-1 truncate text-xs text-gray-400">{line.source} · {formatQuantity(line.perUnitQuantity)} {line.unit} ต่อรายการ</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-blue-600">{formatQuantity(line.totalQuantity)}</p>
+                    <p className="text-xs text-gray-400">{line.unit}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+              เมนูนี้ยังไม่ได้ตั้งค่าสูตรอาหาร
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

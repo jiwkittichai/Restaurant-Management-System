@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  BookOpenText,
   DollarSign,
   House,
   Info,
@@ -35,6 +36,7 @@ const ICONS: Record<string, React.ElementType> = {
   Mail,
   User,
   Bell,
+  BookOpenText,
   Info,
   CircleAlert,
   ChefHat,
@@ -62,6 +64,7 @@ const initialSidebarItems: SidebarItem[] = [
   { name: "โต๊ะอาหาร", path: "/dashboard/tables", icon: "LayoutGrid", roles: ["OWNER", "CASHIER"] },
   { name: "หน้าจอครัว", path: "/dashboard/kitchen", icon: "ChefHat", roles: ["OWNER", "KITCHEN"] },
   { name: "สต็อกวัตถุดิบ", path: "/dashboard/inventory", icon: "PackageOpen", roles: ["OWNER", "STOCK"] },
+  { name: "สูตรอาหาร", path: "/dashboard/recipes", icon: "BookOpenText", roles: ["OWNER", "STOCK"] },
   { name: "เมนูอาหาร", path: "/dashboard/products", icon: "UtensilsCrossed", roles: ["OWNER"] },
   { name: "หมวดหมู่", path: "/dashboard/categories", icon: "Tags", roles: ["OWNER"] },
   { name: "รายงานยอดขาย", path: "/dashboard/reports", icon: "ChartNoAxesCombined", roles: ["OWNER"] },

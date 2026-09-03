@@ -19,7 +19,20 @@ export async function GET(req: NextRequest) {
     : { createdAt: "asc" };
   const orders = await prisma.order.findMany({
     where,
-    include: { table: true, items: { include: { modifiers: true } }, payment: true },
+    include: {
+      table: true,
+      items: {
+        include: {
+          menuItem: { include: { recipes: { include: { ingredient: true } } } },
+          modifiers: {
+            include: {
+              modifier: { include: { recipes: { include: { ingredient: true } } } },
+            },
+          },
+        },
+      },
+      payment: true,
+    },
     orderBy,
   });
   return NextResponse.json(orders);
