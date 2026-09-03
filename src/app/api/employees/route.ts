@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { StaffRole } from "@prisma/client";
+import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const allowedRoles = Object.values(StaffRole);
 const internalAuditActions = ["UPDATE_KITCHEN_STATUS"];
+const billActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PAY_ORDER_STRIPE", "PICKUP_ORDER"];
+
+
+function isJsonObject(value: unknown): value is Prisma.JsonObject {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
 
 function normalizeRoles(value: unknown): StaffRole[] {
   if (!Array.isArray(value)) return [];
@@ -27,7 +33,64 @@ export async function GET() {
       include: { employee: { select: { displayName:true } } },
     }),
   ]);
-  return NextResponse.json({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})), recentAudits });
+  const paymentOrderIds = [
+    ...new Set(
+      recentAudits
+        .filter((audit) => billActions.includes(audit.action))
+        .map((audit) => Number(audit.entityId))
+        .filter((id) => Number.isInteger(id)),
+    ),
+  ];
+  const billOrders = paymentOrderIds.length
+    ? await prisma.order.findMany({
+        where: { restaurantId: auth.user.restaurantId, id: { in: paymentOrderIds } },
+        select: {
+          id: true,
+          orderNumber: true,
+          subtotal: true,
+          discount: true,
+          total: true,
+          table: { select: { name: true } },
+          queueNumber: true,
+          items: {
+            orderBy: { id: "asc" },
+            select: {
+              id: true,
+              name: true,
+              qty: true,
+              price: true,
+              note: true,
+              modifiers: {
+                orderBy: { id: "asc" },
+                select: { id: true, name: true, price: true },
+              },
+            },
+          },
+        },
+      })
+    : [];
+  const billOrderById = new Map(billOrders.map((order) => [order.id, order]));
+  const enrichedRecentAudits = recentAudits.map((audit) => {
+    if (!billActions.includes(audit.action)) return audit;
+    const order = billOrderById.get(Number(audit.entityId));
+    if (!order) return audit;
+    const details = isJsonObject(audit.details) ? audit.details : {};
+    return {
+      ...audit,
+      details: {
+        ...details,
+        orderNumber: details.orderNumber ?? order.orderNumber,
+        subtotal: details.subtotal ?? order.subtotal,
+        discount: details.discount ?? order.discount,
+        total: details.total ?? order.total,
+        tableName: details.tableName ?? order.table?.name,
+        queueNumber: details.queueNumber ?? order.queueNumber,
+        items: details.items ?? order.items,
+        itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0),
+      },
+    };
+  });
+  return NextResponse.json({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})), recentAudits: enrichedRecentAudits });
 }
 
 export async function POST(req: NextRequest) {

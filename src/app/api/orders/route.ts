@@ -237,7 +237,10 @@ export async function PATCH(req: NextRequest) {
     }
     if (body.action === "pay") {
       const order = await prisma.$transaction(async (tx) => {
-        const current = await tx.order.findFirstOrThrow({ where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId }, include: { payment: true } });
+        const current = await tx.order.findFirstOrThrow({
+          where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId },
+          include: { payment: true, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
+        });
         if (current.payment) throw new Error("ALREADY_PAID");
         const method = body.method as PaymentMethod;
         if (method !== PaymentMethod.CASH && method !== PaymentMethod.PROMPTPAY) throw new Error("INVALID_PAYMENT_METHOD");
@@ -255,20 +258,52 @@ export async function PATCH(req: NextRequest) {
           },
         });
         if (current.tableId) await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
-        return { ...paid, payment };
+        return { ...paid, payment, items: current.items };
       });
-      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{orderNumber:order.orderNumber,method:order.payment.method,total:order.total,receivedAmount:order.payment.receivedAmount,changeAmount:order.payment.changeAmount});
+      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{
+        orderNumber:order.orderNumber,
+        method:order.payment.method,
+        total:order.total,
+        receivedAmount:order.payment.receivedAmount,
+        changeAmount:order.payment.changeAmount,
+        itemCount:order.items.reduce((sum,item)=>sum+item.qty,0),
+        items:order.items.map(item=>({
+          id:item.id,
+          name:item.name,
+          qty:item.qty,
+          price:item.price,
+          note:item.note,
+          modifiers:item.modifiers.map(modifier=>({id:modifier.id,name:modifier.name,price:modifier.price})),
+        })),
+      });
       return NextResponse.json(order);
     }
     if (body.action === "pickup") {
-      const current = await prisma.order.findFirstOrThrow({ where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId } });
+      const current = await prisma.order.findFirstOrThrow({
+        where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId },
+        include: { items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
+      });
       if (current.type !== OrderType.TAKEAWAY) throw new Error("NOT_TAKEAWAY");
       if (current.paymentStatus !== PaymentStatus.PAID) throw new Error("PAYMENT_REQUIRED");
       if (current.status !== OrderStatus.READY) throw new Error("NOT_READY");
       const order = await prisma.order.update({
         where: { id: current.id }, data: { status: OrderStatus.SERVED, pickedUpAt: new Date() },
       });
-      await writeAudit(auth.user.id,"PICKUP_ORDER","Order",order.id,{orderNumber:order.orderNumber});
+      await writeAudit(auth.user.id,"PICKUP_ORDER","Order",order.id,{
+        orderNumber:order.orderNumber,
+        type:order.type,
+        total:order.total,
+        queueNumber:order.queueNumber,
+        itemCount:current.items.reduce((sum,item)=>sum+item.qty,0),
+        items:current.items.map(item=>({
+          id:item.id,
+          name:item.name,
+          qty:item.qty,
+          price:item.price,
+          note:item.note,
+          modifiers:item.modifiers.map(modifier=>({id:modifier.id,name:modifier.name,price:modifier.price})),
+        })),
+      });
       return NextResponse.json(order);
     }
     if (body.action === "cancel") {

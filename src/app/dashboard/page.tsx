@@ -11,10 +11,9 @@ import {
   SquareMenu,
   UtensilsCrossed,
   WalletCards,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Audit, auditChangeRows, auditDetailRows, auditSummary, formatDate, roleText } from "./audit-utils";
+import { roleText } from "./audit-utils";
 
 type MenuItem = {
   id: number;
@@ -92,10 +91,6 @@ export default function DashboardPage() {
   const [tables, setTables] = useState<TableItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
-  const [employeeHistory, setEmployeeHistory] = useState<Audit[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null);
 
   const loadDashboard = useCallback(() => {
     Promise.allSettled([
@@ -127,15 +122,8 @@ export default function DashboardPage() {
     loadDashboard();
   }, [loadDashboard]);
 
-  async function openEmployeeHistory(employee: Employee) {
-    setHistoryEmployee(employee);
-    setEmployeeHistory([]);
-    setHistoryLoading(true);
-    const response = await fetch(`/api/audits?employeeId=${employee.id}&take=100`);
-    const data = await response.json();
-    setHistoryLoading(false);
-    if (!response.ok) return;
-    setEmployeeHistory(data.audits || []);
+  function openEmployeeHistory(employee: Employee) {
+    router.push(`/dashboard/employees/${employee.id}/history`);
   }
 
   const paidOrders = useMemo(
@@ -364,152 +352,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {historyEmployee && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/20">
-          <button
-            type="button"
-            aria-label="ปิดประวัติพนักงาน"
-            className="hidden flex-1 cursor-default sm:block"
-            onClick={() => setHistoryEmployee(null)}
-          />
-          <div className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="font-semibold text-gray-900">ประวัติบัญชีรายบุคคล</h2>
-                <p className="mt-1 text-sm text-gray-400">
-                  {historyEmployee.displayName} @{historyEmployee.username}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHistoryEmployee(null)}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="min-w-0 rounded-xl border border-gray-100 px-4 py-3">
-                <p className="text-xs text-gray-400">พนักงาน</p>
-                <p className="mt-1 break-words font-semibold leading-snug text-gray-900">{historyEmployee.displayName}</p>
-                <p className="break-words text-xs text-gray-400">@{historyEmployee.username}</p>
-              </div>
-              <div className="min-w-0 rounded-xl border border-gray-100 px-4 py-3">
-                <p className="text-xs text-gray-400">สถานะ</p>
-                <p className={`mt-1 font-semibold ${historyEmployee.active ? "text-emerald-600" : "text-gray-500"}`}>
-                  {historyEmployee.active ? "ใช้งาน" : "ปิดใช้งาน"}
-                </p>
-              </div>
-              <div className="min-w-0 rounded-xl border border-gray-100 px-4 py-3">
-                <p className="text-xs text-gray-400">บทบาท</p>
-                <p className="mt-1 break-words font-semibold leading-snug text-gray-900">
-                  {historyEmployee.roles.map((role) => roleText[role]).join(", ")}
-                </p>
-              </div>
-              <div className="min-w-0 rounded-xl border border-gray-100 px-4 py-3">
-                <p className="text-xs text-gray-400">เข้าสู่ระบบล่าสุด</p>
-                <p className="mt-1 font-semibold text-gray-900">{formatDate(historyEmployee.lastLoginAt || undefined)}</p>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-medium text-gray-900">ประวัติกิจกรรมที่เกี่ยวข้อง</h3>
-                <span className="text-sm text-gray-400">
-                  {historyLoading ? "กำลังโหลด..." : `${employeeHistory.length} รายการ`}
-                </span>
-              </div>
-              <div className="mt-3 divide-y divide-gray-100 rounded-2xl border border-gray-100">
-                {employeeHistory.map((audit) => {
-                  const changes = auditChangeRows(audit);
-                  return (
-                    <button
-                      key={audit.id}
-                      type="button"
-                      onClick={() => setSelectedAudit(audit)}
-                      className="block w-full px-4 py-3 text-left text-sm hover:bg-gray-50"
-                    >
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{auditSummary(audit)}</p>
-                          <p className="mt-1 text-xs text-gray-400">{audit.employee?.displayName || "บัญชีที่ถูกลบ"}</p>
-                        </div>
-                        <span className="whitespace-nowrap text-gray-400">{formatDate(audit.createdAt)}</span>
-                      </div>
-                      {changes.length > 0 && (
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                          {changes.slice(0, 2).map((row) => (
-                            <div key={`${audit.id}-${row.label}`} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
-                              <p className="font-medium text-gray-600">{row.label}</p>
-                              <p className="mt-1 text-gray-400">{row.before ? `${row.before} -> ${row.after || "-"}` : row.after}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-                {!historyLoading && !employeeHistory.length && (
-                  <p className="px-4 py-8 text-center text-sm text-gray-400">ยังไม่มีประวัติของพนักงานคนนี้</p>
-                )}
-                {historyLoading && <p className="px-4 py-8 text-center text-sm text-gray-400">กำลังโหลดประวัติ...</p>}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedAudit && (
-        <div className="fixed inset-0 z-[60] flex justify-end bg-black/20">
-          <button
-            type="button"
-            aria-label="ปิดรายละเอียดประวัติ"
-            className="hidden flex-1 cursor-default sm:block"
-            onClick={() => setSelectedAudit(null)}
-          />
-          <div className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-xl">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="font-semibold text-gray-900">รายละเอียดประวัติ</h2>
-                <p className="mt-1 text-sm text-gray-400">{auditSummary(selectedAudit)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedAudit(null)}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="mt-5 space-y-5">
-              <div className="grid gap-2">
-                {auditDetailRows(selectedAudit).map((row) => (
-                  <div key={row.label} className="rounded-xl border border-gray-100 px-4 py-3">
-                    <p className="text-xs text-gray-400">{row.label}</p>
-                    <p className="mt-1 text-sm font-medium text-gray-800">{row.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {auditChangeRows(selectedAudit).length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-900">ค่าที่เปลี่ยนแปลง</h3>
-                  <div className="mt-2 grid gap-2">
-                    {auditChangeRows(selectedAudit).map((row) => (
-                      <div key={row.label} className="rounded-xl border border-gray-100 px-4 py-3 text-sm">
-                        <p className="font-medium text-gray-800">{row.label}</p>
-                        <p className="mt-1 text-gray-500">{row.before ? `${row.before} -> ${row.after || "-"}` : row.after}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

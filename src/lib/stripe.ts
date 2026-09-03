@@ -210,7 +210,7 @@ async function markPromptPayOrderPaid(args: {
   const result = await prisma.$transaction(async (tx) => {
     const current = await tx.order.findUniqueOrThrow({
       where: { id: args.orderId },
-      include: { payment: true },
+      include: { payment: true, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
     });
     if (args.restaurantId && current.restaurantId !== args.restaurantId) throw new Error("ORDER_NOT_FOUND");
     if (current.payment) return { order: current, payment: current.payment, alreadyPaid: true };
@@ -235,7 +235,7 @@ async function markPromptPayOrderPaid(args: {
     if (current.tableId) {
       await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
     }
-    return { order, payment, alreadyPaid: false };
+    return { order: { ...order, items: current.items }, payment, alreadyPaid: false };
   });
 
   if (!result.alreadyPaid) {
@@ -244,6 +244,15 @@ async function markPromptPayOrderPaid(args: {
       method: PaymentMethod.PROMPTPAY,
       provider: "stripe",
       total: result.order.total,
+      itemCount: result.order.items.reduce((sum, item) => sum + item.qty, 0),
+      items: result.order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        qty: item.qty,
+        price: item.price,
+        note: item.note,
+        modifiers: item.modifiers.map((modifier) => ({ id: modifier.id, name: modifier.name, price: modifier.price })),
+      })),
       ...args.providerDetails,
     } as Prisma.InputJsonObject);
   }

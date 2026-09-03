@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { Prisma, StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Audit } from "../audit-utils";
-import AuditsClient from "./AuditsClient";
+import { Audit, roleText } from "../../../audit-utils";
+import AuditsClient from "../../../audits/AuditsClient";
 
 const INITIAL_LIMIT = 100;
 const defaultHiddenActions = ["UPDATE_KITCHEN_STATUS"];
@@ -14,21 +14,60 @@ function isJsonObject(value: unknown): value is Prisma.JsonObject {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-export default async function AuditsPage() {
+function formatLogin(value?: Date | null) {
+  if (!value) return "ยังไม่เคยเข้าสู่ระบบ";
+  return value.toLocaleString("th-TH-u-ca-buddhist", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+export default async function EmployeeHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!user.roles.includes(StaffRole.OWNER)) redirect("/dashboard");
 
+  const { id } = await params;
+  const employeeId = Number(id);
+  if (!Number.isInteger(employeeId)) redirect("/dashboard/employees");
+
+  const employee = await prisma.employee.findFirst({
+    where: { id: employeeId, restaurantId: user.restaurantId },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      active: true,
+      lastLoginAt: true,
+      roles: { select: { role: true } },
+    },
+  });
+  if (!employee) redirect("/dashboard/employees");
+
+  const where: Prisma.AuditLogWhereInput = {
+    restaurantId: user.restaurantId,
+    action: { notIn: defaultHiddenActions },
+    OR: [
+      { employeeId },
+      { entityType: "Employee", entityId: String(employeeId) },
+    ],
+  };
+
   const [audits, totalCount, oldestAudit, latestAudit] = await Promise.all([
     prisma.auditLog.findMany({
-      where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } },
+      where,
       take: INITIAL_LIMIT,
       orderBy: { createdAt: "desc" },
       include: { employee: { select: { displayName: true } } },
     }),
-    prisma.auditLog.count({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } } }),
-    prisma.auditLog.findFirst({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
-    prisma.auditLog.findFirst({ where: { restaurantId: user.restaurantId, action: { notIn: defaultHiddenActions } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    prisma.auditLog.count({ where }),
+    prisma.auditLog.findFirst({ where, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
+    prisma.auditLog.findFirst({ where, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
 
   const paymentOrderIds = [
@@ -36,7 +75,7 @@ export default async function AuditsPage() {
       audits
         .filter((audit) => billActions.includes(audit.action))
         .map((audit) => Number(audit.entityId))
-        .filter((id) => Number.isInteger(id)),
+        .filter((orderId) => Number.isInteger(orderId)),
     ),
   ];
   const billOrders = paymentOrderIds.length
@@ -101,6 +140,23 @@ export default async function AuditsPage() {
     audits: Audit[];
     meta: { totalCount: number; oldestAt?: string; latestAt?: string; limit: number };
   };
+  const roles = employee.roles.map((item) => roleText[item.role]).join(", ");
 
-  return <AuditsClient initialAudits={initial.audits} initialMeta={initial.meta} />;
+  return (
+    <AuditsClient
+      initialAudits={initial.audits}
+      initialMeta={initial.meta}
+      employeeId={employee.id}
+      title={`ประวัติกิจกรรมของ ${employee.displayName}`}
+      description="ค้นหาและกรองประวัติรายบุคคลด้วยเงื่อนไขเดียวกับหน้าประวัติทั้งหมด"
+      backHref="/dashboard/employees"
+      backLabel="กลับหน้าจัดการพนักงาน"
+      employeeSummary={[
+        { label: "พนักงาน", value: `${employee.displayName} @${employee.username}` },
+        { label: "สถานะ", value: employee.active ? "ใช้งาน" : "ปิดใช้งาน", accent: employee.active ? "text-emerald-600" : "text-gray-500" },
+        { label: "บทบาท", value: roles || "พนักงาน" },
+        { label: "เข้าสู่ระบบล่าสุด", value: formatLogin(employee.lastLoginAt) },
+      ]}
+    />
+  );
 }

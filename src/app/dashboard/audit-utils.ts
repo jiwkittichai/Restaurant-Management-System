@@ -75,7 +75,7 @@ function asText(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function money(value: unknown): string {
+export function money(value: unknown): string {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return "";
   return `${amount.toLocaleString("th-TH", { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })} บาท`;
@@ -85,29 +85,72 @@ function detailValue(details: AuditDetails | null | undefined, key: string): unk
   return details && Object.prototype.hasOwnProperty.call(details, key) ? details[key] : undefined;
 }
 
-function formatItems(value: unknown): string {
-  if (!Array.isArray(value)) return "";
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return "";
+function asNumber(value: unknown, fallback = 0): number {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : fallback;
+}
+
+export type AuditBillItem = {
+  key: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  note: string;
+  modifiers: Array<{ name: string; price: number }>;
+  lineTotal: number;
+};
+
+export function auditBillItems(audit: Audit): AuditBillItem[] {
+  const details = audit.details || {};
+  const items = detailValue(details, "items");
+  const flatModifiers = detailValue(details, "modifiers");
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
       const data = item as AuditDetails;
       const name = asText(data.name);
-      const qty = asText(data.qty);
-      const price = money(data.price);
-      return [name, qty ? `x${qty}` : "", price].filter(Boolean).join(" ");
+      const qty = Math.max(1, asNumber(data.qty, 1));
+      const unitPrice = asNumber(data.price);
+      const nestedModifiers = Array.isArray(data.modifiers)
+        ? data.modifiers
+        : Array.isArray(flatModifiers)
+          ? flatModifiers.filter((modifier) => modifier && typeof modifier === "object" && asText((modifier as AuditDetails).itemName) === name)
+          : [];
+      const modifiers = nestedModifiers
+        .map((modifier) => {
+          if (!modifier || typeof modifier !== "object") return null;
+          const modifierData = modifier as AuditDetails;
+          return { name: asText(modifierData.name), price: asNumber(modifierData.price) };
+        })
+        .filter((modifier): modifier is { name: string; price: number } => Boolean(modifier?.name));
+      return {
+        key: asText(data.id) || `${name}-${index}`,
+        name,
+        qty,
+        unitPrice,
+        note: asText(data.note),
+        modifiers,
+        lineTotal: unitPrice * qty,
+      };
     })
-    .filter(Boolean)
-    .join(", ");
+    .filter((item): item is AuditBillItem => Boolean(item?.name));
+}
+
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
 export function formatDate(value?: string) {
   if (!value) return "ยังไม่เคยเข้าสู่ระบบ";
   const date = new Date(value);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (dateKey(date) === dateKey(now)) return `วันนี้ ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
+  if (dateKey(date) === dateKey(yesterday)) return `เมื่อวาน ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
+  const diffMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const diffDays = Math.floor(diffMs / 86400000);
-  if (diffDays === 0) return `วันนี้ ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
-  if (diffDays === 1) return `เมื่อวาน ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
   if (diffDays < 30) return `${diffDays} วันที่แล้ว`;
   return date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
 }
@@ -131,6 +174,7 @@ export function auditSummary(audit: Audit) {
   if (audit.action === "CREATE_ORDER") return `สร้างออเดอร์ ${orderNumber}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "ADD_ORDER_ITEMS") return `เพิ่มรายการในบิล ${orderNumber}${money(detailValue(details, "total")) ? ` ยอดรวม ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "PAY_ORDER" || audit.action === "PAY_ORDER_STRIPE") return `รับชำระเงิน ${orderNumber || `ออเดอร์ #${audit.entityId || "-"}`} ${asText(detailValue(details, "method"))} ${money(detailValue(details, "total"))}`;
+  if (audit.action === "PICKUP_ORDER") return `ส่งมอบออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "CANCEL_ORDER") return `ยกเลิกออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}`;
   if (audit.action === "UPDATE_KITCHEN_STATUS") return `อัปเดต ${asText(detailValue(details, "itemName")) || "รายการครัว"} เป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
   if (audit.action === "CREATE_INGREDIENT") return `เพิ่มวัตถุดิบ ${name}${detailValue(details, "stock") !== undefined ? ` ตั้งต้น ${asText(detailValue(details, "stock"))}` : ""}`;
@@ -186,7 +230,6 @@ export function auditDetailRows(audit: Audit) {
     { label: "ประเภท", value: actionText[audit.action] || audit.action },
   ];
 
-  if (detailValue(details, "items")) rows.push({ label: "รายการอาหาร", value: formatItems(detailValue(details, "items")) });
   for (const [key, label] of [
     ["orderNumber", "เลขออเดอร์"],
     ["type", "ประเภทออเดอร์"],

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Filter, Search, X } from "lucide-react";
-import { Audit, actionText, auditChangeRows, auditDetailRows, auditSummary, formatDate } from "../audit-utils";
+import { ArrowLeft, CalendarDays, Filter, Search, X } from "lucide-react";
+import Link from "next/link";
+import { Audit, actionText, auditChangeRows, auditSummary, formatDate } from "../audit-utils";
+import AuditDetailDrawer from "../components/AuditDetailDrawer";
 
 type AuditMeta = {
   totalCount: number;
@@ -29,7 +31,27 @@ function daysAgo(days: number) {
   return localDate(date);
 }
 
-export default function AuditsClient({ initialAudits, initialMeta }: { initialAudits: Audit[]; initialMeta: AuditMeta }) {
+type AuditsClientProps = {
+  initialAudits: Audit[];
+  initialMeta: AuditMeta;
+  employeeId?: number;
+  title?: string;
+  description?: string;
+  backHref?: string;
+  backLabel?: string;
+  employeeSummary?: Array<{ label: string; value: string; accent?: string }>;
+};
+
+export default function AuditsClient({
+  initialAudits,
+  initialMeta,
+  employeeId,
+  title = "ประวัติกิจกรรม",
+  description = "ค้นหาและกรองประวัติย้อนหลังของร้าน",
+  backHref,
+  backLabel = "กลับ",
+  employeeSummary = [],
+}: AuditsClientProps) {
   const didRenderInitialData = useRef(false);
   const [audits, setAudits] = useState<Audit[]>(initialAudits);
   const [meta, setMeta] = useState<AuditMeta | null>(initialMeta);
@@ -52,6 +74,7 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
     } else if (action) {
       params.set("action", action);
     }
+    if (employeeId) params.set("employeeId", String(employeeId));
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     const response = await fetch(`/api/audits?${params.toString()}`);
@@ -60,7 +83,7 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
     if (!response.ok) return setMessage(data.error || "โหลดประวัติไม่สำเร็จ");
     setAudits(data.audits);
     setMeta(data.meta);
-  }, [action, from, query, to]);
+  }, [action, employeeId, from, query, to]);
 
   useEffect(() => {
     if (!didRenderInitialData.current) {
@@ -124,10 +147,28 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
 
   return (
     <div className="p-4 sm:p-6 space-y-6 overflow-y-auto">
+      {backHref && (
+        <Link href={backHref} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600">
+          <ArrowLeft size={17} />
+          {backLabel}
+        </Link>
+      )}
+
+      {employeeSummary.length > 0 && (
+        <section className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+          {employeeSummary.map((item) => (
+            <div key={item.label} className="min-w-0 rounded-xl border border-gray-100 px-4 py-3">
+              <p className="text-xs text-gray-400">{item.label}</p>
+              <p className={`mt-1 break-words font-semibold leading-snug ${item.accent || "text-gray-900"}`}>{item.value}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section className="bg-white rounded-2xl border border-gray-100 p-5">
         <div>
-          <h2 className="font-semibold text-gray-900">ประวัติกิจกรรม</h2>
-          <p className="mt-1 text-sm text-gray-400">ค้นหาและกรองประวัติย้อนหลังของร้าน</p>
+          <h2 className="font-semibold text-gray-900">{title}</h2>
+          <p className="mt-1 text-sm text-gray-400">{description}</p>
         </div>
 
         <div className="mt-5 flex flex-col gap-3 lg:flex-row">
@@ -255,47 +296,7 @@ export default function AuditsClient({ initialAudits, initialMeta }: { initialAu
         </div>
       </section>
 
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/20">
-          <button type="button" aria-label="ปิดรายละเอียดประวัติ" className="hidden flex-1 cursor-default sm:block" onClick={() => setSelected(null)} />
-          <div className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-xl">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="font-semibold text-gray-900">รายละเอียดประวัติ</h2>
-                <p className="mt-1 text-sm text-gray-400">{auditSummary(selected)}</p>
-              </div>
-              <button type="button" onClick={() => setSelected(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="mt-5 space-y-5">
-              <div className="grid gap-2">
-                {auditDetailRows(selected).map((row) => (
-                  <div key={row.label} className="rounded-xl border border-gray-100 px-4 py-3">
-                    <p className="text-xs text-gray-400">{row.label}</p>
-                    <p className="mt-1 text-sm font-medium text-gray-800">{row.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {auditChangeRows(selected).length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-900">ค่าที่เปลี่ยนแปลง</h3>
-                  <div className="mt-2 grid gap-2">
-                    {auditChangeRows(selected).map((row) => (
-                      <div key={row.label} className="rounded-xl border border-gray-100 px-4 py-3 text-sm">
-                        <p className="font-medium text-gray-800">{row.label}</p>
-                        <p className="mt-1 text-gray-500">{row.before ? `${row.before} -> ${row.after || "-"}` : row.after}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {selected && <AuditDetailDrawer audit={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
