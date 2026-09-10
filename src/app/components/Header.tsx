@@ -11,6 +11,18 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{ id: string; text: string; href: string }>>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const canNotify = user.roles.some(role => ["OWNER", "CASHIER", "KITCHEN"].includes(role));
+  useEffect(() => {
+    if (!canNotify) return;
+    let stopped = false;
+    async function load() {
+      try { const res = await fetch("/api/qr-notifications"); if (res.ok) { const items = await res.json(); if (!stopped) setNotifications(items); } } catch {}
+    }
+    load(); const timer = setInterval(load, 5000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [canNotify]);
   const roleLabels = user.roles.map(role=>roleText[role]||role);
   const roleTitle = roleLabels.join(" · ");
   const titles: Record<string, string> = {
@@ -56,11 +68,13 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
       <div className="flex min-w-0 items-center gap-4">
 
         {/* NOTIFICATION */}
-        <button type="button" title="การแจ้งเตือน" className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full text-gray-500 transition hover:bg-white hover:text-gray-700">
+        <button type="button" onClick={() => setNotificationsOpen(value => !value)} aria-expanded={notificationsOpen} title="การแจ้งเตือน" className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full text-gray-500 transition hover:bg-white hover:text-gray-700">
           <Bell className="w-5 h-5 text-gray-500" />
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+          {!!notifications.length && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 text-white text-xs rounded-full">{notifications.length}</span>}
         </button>
 
+        {notificationsOpen && <div className="fixed right-4 top-20 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-lg"><div className="flex justify-between mb-3"><b>การแจ้งเตือน QR</b><button onClick={() => setNotificationsOpen(false)} className="text-sm text-gray-500">ปิด</button></div>{notifications.length ? notifications.map(item => <button key={item.id} onClick={() => { setNotificationsOpen(false); router.push(item.href); }} className="block w-full text-left rounded-xl bg-blue-50 p-3 mb-2 text-sm text-blue-800">{item.text}</button>) : <p className="text-sm text-gray-400">ไม่มีรายการที่รอดำเนินการ</p>}</div>}
+        <span role="status" className="sr-only">แจ้งเตือน QR {notifications.length} รายการ</span>
         {/* PROFILE */}
         <div ref={profileRef} className="relative flex min-w-0 items-center border-l border-gray-200 pl-4">
 

@@ -179,3 +179,15 @@ body {
     font-size: 9px;
   }
 }
+
+
+@media print {
+  body:has(#qr-order-ticket) > *:not(#qr-order-ticket) { display: none !important; }
+  body:has(#qr-order-ticket) { background: white !important; margin: 0 !important; }
+  #qr-order-ticket, #qr-order-ticket * { visibility: visible !important; }
+  #qr-order-ticket { display: block !important; width: 70mm; max-width: 100%; margin: 0 auto; text-align: center; color: black; font-family: sans-serif; }
+  #qr-order-ticket h1 { font-size: 24pt; margin: 4mm 0; }
+  #qr-order-ticket h2 { font-size: 14pt; margin: 3mm 0; }
+  #qr-order-ticket p { font-size: 10pt; margin: 2mm 0; }
+  #qr-order-ticket img { width: 62mm; height: 62mm; margin: 0 auto; }
+}

@@ -1,3 +1,4 @@
+import { lockTable } from "@/lib/table-session";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StaffRole } from "@prisma/client";
@@ -9,6 +10,7 @@ export async function GET() {
     where: { restaurantId: auth.user.restaurantId },
     orderBy: { id: "asc" },
     include: {
+      sessions: { where: { closedAt: null }, select: { id: true, paused: true, billRequestedAt: true, createdAt: true } },
       orders: {
         where: { paymentStatus: "UNPAID", status: { not: "CANCELLED" } },
         select: {
@@ -17,6 +19,7 @@ export async function GET() {
           items: {
             select: {
               id: true,
+              source: true,
               name: true,
               qty: true,
               price: true,
@@ -55,9 +58,10 @@ export async function PATCH(req: NextRequest) {
     const { id, status } = await req.json();
     const current = await prisma.restaurantTable.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
     if (!current) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
-    const table = await prisma.restaurantTable.update({
-      where: { id: current.id },
-      data: { status },
+    const table = await prisma.$transaction(async tx => {
+      await lockTable(tx, current.id);
+      if (status !== "OCCUPIED" && (await tx.tableSession.count({ where: { tableId: current.id, closedAt: null } }) || await tx.order.count({ where: { tableId: current.id, paymentStatus: "UNPAID", status: { not: "CANCELLED" } } }))) throw new Error("ACTIVE_TABLE");
+      return tx.restaurantTable.update({ where: { id: current.id }, data: { status } });
     });
     await writeAudit(auth.user.id,"UPDATE_TABLE_STATUS","RestaurantTable",table.id,{status:table.status});
     return NextResponse.json(table);

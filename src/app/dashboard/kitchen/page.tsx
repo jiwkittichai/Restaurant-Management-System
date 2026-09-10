@@ -7,6 +7,7 @@ type Ingredient = { id: number; name: string; unit: string };
 type Recipe = { id: number; ingredientId: number; quantity: number; ingredient: Ingredient };
 type Modifier = { id: number; name: string; price: number; modifier?: { recipes: Recipe[] } | null };
 type Item = {
+  source?: string;
   id: number;
   name: string;
   qty: number;
@@ -232,7 +233,7 @@ export default function KitchenPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="shrink-0 text-sm font-semibold text-blue-600">{item.qty}x</span>
-                          <p className="truncate text-sm font-medium text-gray-900">{item.name}</p>
+                          <p className="truncate text-sm font-medium text-gray-900">{item.name}{item.source === "QR" && <span className="ml-2 text-[10px] text-blue-600">QR</span>}</p>
                         </div>
                         {!!item.modifiers?.length && <p className="mt-1 truncate text-xs text-blue-600">{item.modifiers.map((modifier) => `+ ${modifier.name}`).join(", ")}</p>}
                         {item.note && <p className="mt-1 truncate text-xs text-red-500">หมายเหตุ: {item.note}</p>}
@@ -315,7 +316,7 @@ function RecipeModal({
             </div>
             <div className="min-w-0">
               <h2 className="truncate font-semibold text-gray-900">สูตรอาหาร</h2>
-              <p className="truncate text-sm text-gray-400">{item.qty}x {item.name}</p>
+              <p className="truncate text-sm text-gray-400">{item.qty}x {item.name}{item.source === "QR" && <span className="ml-2 text-[10px] text-blue-600">QR</span>}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700">

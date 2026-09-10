@@ -141,6 +141,7 @@ model RestaurantTable {
   seats        Int         @default(2)
   status       TableStatus @default(AVAILABLE)
   orders       Order[]
+  sessions     TableSession[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -188,6 +189,8 @@ model OrderItem {
   note       String?
   status     KitchenStatus       @default(NEW)
   modifiers  OrderItemModifier[]
+  guestId    String?
+  source     String              @default("STAFF")
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 }
@@ -389,4 +392,31 @@ enum StaffRole {
   CASHIER
   KITCHEN
   STOCK
+}
+
+model TableSession {
+  id              Int      @id @default(autoincrement())
+  tableId         Int
+  table           RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  token           String   @unique @db.VarChar(64)
+  orderId         Int?     @unique
+  paused          Boolean  @default(false)
+  billRequestedAt DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime @default(now())
+  submissions     QrSubmission[]
+
+  @@index([tableId, closedAt])
+}
+
+model QrSubmission {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  session   TableSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requestId String   @db.VarChar(64)
+  guestId   String   @db.VarChar(64)
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, requestId])
+  @@index([sessionId, guestId, createdAt])
 }

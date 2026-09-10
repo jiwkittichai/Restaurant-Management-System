@@ -2,10 +2,11 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Armchair, Eye, Plus, ReceiptText, Search, Utensils, X } from "lucide-react";
+import TableQr from "../components/TableQr";
 import BillModal, { BillOrder, PromptPaySettings } from "../components/BillModal";
 
 type ActiveOrder = BillOrder & { status: string; paymentStatus: string; createdAt?: string };
-type Table = { id: number; name: string; seats: number; status: string; orders: ActiveOrder[] };
+type Table = { id: number; name: string; seats: number; status: string; orders: ActiveOrder[]; sessions: Array<{ id: number; paused: boolean; billRequestedAt: string | null }> };
 type TableTab = "ALL" | "AVAILABLE" | "ACTIVE" | "READY";
 
 const statusText: Record<string, string> = { AVAILABLE: "ว่าง", OCCUPIED: "กำลังใช้งาน", RESERVED: "จอง", CLEANING: "รอทำความสะอาด" };
@@ -173,8 +174,19 @@ export default function TablesPage() {
     load();
   }
 
-  function openBill(table: Table, order: ActiveOrder) {
+  async function openBill(table: Table, order: ActiveOrder) {
     setMessage("");
+    if (table.sessions?.length) {
+      const res = await fetch("/api/table-sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tableId: table.id, action: "pause" }) });
+      if (!res.ok) { setMessage("พักรับรายการก่อนเช็คบิลไม่สำเร็จ กรุณาลองใหม่"); return; }
+      const response = await fetch("/api/tables");
+      if (!response.ok) { setMessage("โหลดยอดล่าสุดไม่สำเร็จ กรุณาลองใหม่"); return; }
+      const latest = await response.json() as Table[];
+      setTables(latest);
+      const latestOrder = latest.find(t => t.id === table.id)?.orders[0];
+      if (!latestOrder) { setMessage("บิลนี้ปิดไปแล้ว"); return; }
+      order = latestOrder;
+    }
     setBillOrder({ ...order, tableName: table.name });
   }
 
@@ -296,10 +308,11 @@ export default function TablesPage() {
                       <p className="mt-2 text-sm text-gray-400">ยังไม่มีออเดอร์</p>
                     </div>
                     <div className="pt-4">
-                      <button onClick={() => status(table.id, table.status === "RESERVED" ? "AVAILABLE" : "RESERVED")} className="w-full bg-amber-50 text-amber-700 rounded-xl py-2.5 text-sm">{table.status === "RESERVED" ? "ยกเลิกจอง" : "จองโต๊ะ"}</button>
+                      <button disabled={!!table.sessions?.length} onClick={() => status(table.id, table.status === "RESERVED" ? "AVAILABLE" : "RESERVED")} className="w-full bg-amber-50 text-amber-700 rounded-xl py-2.5 text-sm">{table.status === "RESERVED" ? "ยกเลิกจอง" : "จองโต๊ะ"}</button>
                     </div>
                   </div>
                 )}
+                <TableQr tableId={table.id} session={table.sessions?.[0]} hasOrder={!!order} reload={load} />
               </div>
             </article>
           );

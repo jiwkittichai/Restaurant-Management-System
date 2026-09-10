@@ -1,3 +1,4 @@
+import { lockOrderTable, closeTableSession } from "@/lib/table-session";
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -208,11 +209,13 @@ async function markPromptPayOrderPaid(args: {
   providerDetails: Prisma.InputJsonObject;
 }) {
   const result = await prisma.$transaction(async (tx) => {
+    await lockOrderTable(tx, args.orderId);
     const current = await tx.order.findUniqueOrThrow({
       where: { id: args.orderId },
       include: { payment: true, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
     });
     if (args.restaurantId && current.restaurantId !== args.restaurantId) throw new Error("ORDER_NOT_FOUND");
+    if (current.status === OrderStatus.CANCELLED) throw new Error("CANCELLED_ORDER");
     if (current.payment) return { order: current, payment: current.payment, alreadyPaid: true };
 
     const payment = await tx.payment.create({
@@ -233,10 +236,11 @@ async function markPromptPayOrderPaid(args: {
       },
     });
     if (current.tableId) {
+      await closeTableSession(tx, current.tableId);
       await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
     }
     return { order: { ...order, items: current.items }, payment, alreadyPaid: false };
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
 
   if (!result.alreadyPaid) {
     await writeAudit(args.employeeId ?? null, "PAY_ORDER", "Order", result.order.id, {
