@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { Audit, actionText, auditChangeRows, auditSummary, formatDate, roleText } from "../audit-utils";
+import { Audit, actionText, auditActorName, auditChangeRows, auditSummary, formatDate, roleText } from "../audit-utils";
 import AuditDetailDrawer from "../components/AuditDetailDrawer";
 
 type Role = "OWNER" | "CASHIER" | "KITCHEN" | "STOCK";
@@ -312,7 +312,7 @@ export default function EmployeesPage() {
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-900">{item.employee?.displayName || "บัญชีที่ถูกลบ"}</span>
+                      <span className="font-medium text-gray-900">{auditActorName(item)}</span>
                       <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-600">{actionText[item.action] || item.action}</span>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">{auditSummary(item)}</p>

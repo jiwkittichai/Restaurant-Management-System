@@ -78,9 +78,17 @@ export async function PATCH(req: NextRequest) {
   });
 
   await writeAudit(auth.user.id, "UPDATE_PAYMENT_SETTINGS", "PaymentSettings", settings.id, {
-    promptPayEnabled: settings.promptPayEnabled,
-    promptPayMode: settings.promptPayMode,
-    stripeEnabled: settings.stripeEnabled,
+    qrChanged: (current?.promptPayQrImageUrl || null) !== settings.promptPayQrImageUrl,
+    before: {
+      promptPayEnabled: current?.promptPayEnabled ?? false,
+      promptPayMode: current?.promptPayMode ?? "MANUAL_QR",
+      stripeEnabled: current?.stripeEnabled ?? false,
+    },
+    after: {
+      promptPayEnabled: settings.promptPayEnabled,
+      promptPayMode: settings.promptPayMode,
+      stripeEnabled: settings.stripeEnabled,
+    },
   });
 
   return NextResponse.json(serialize({

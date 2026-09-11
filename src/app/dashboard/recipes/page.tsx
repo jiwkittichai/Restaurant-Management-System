@@ -121,7 +121,7 @@ export default function RecipesPage() {
         <div className="mt-4 min-h-0 space-y-2 overflow-y-auto pr-1">
           {filteredMenu.map((item) => {
             const active = selectedMenu === String(item.id);
-            const recipeCount = item.recipes.length + item.modifierGroups.reduce((sum, group) => sum + group.options.filter((option) => option.recipes.length > 0).length, 0);
+            const ingredientCount = item.recipes.filter((recipe) => recipe.quantity > 0).length;
             return (
               <button
                 key={item.id}
@@ -134,8 +134,8 @@ export default function RecipesPage() {
                     <p className="truncate font-medium text-gray-900">{item.name}</p>
                     <p className="mt-1 truncate text-xs text-gray-400">{item.category.name} · {item.saleUnit || "รายการ"}</p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${recipeCount ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-                    {recipeCount ? `${recipeCount} สูตร` : "ยังไม่มีสูตร"}
+                  <span title="จำนวนวัตถุดิบในเมนูหลัก ไม่รวมตัวเลือกเสริม" className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${ingredientCount ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                    {ingredientCount ? `วัตถุดิบ ${ingredientCount} รายการ` : "ยังไม่กำหนดวัตถุดิบ"}
                   </span>
                 </div>
               </button>

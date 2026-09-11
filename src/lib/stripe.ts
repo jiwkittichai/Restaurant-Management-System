@@ -239,27 +239,22 @@ async function markPromptPayOrderPaid(args: {
       await closeTableSession(tx, current.tableId);
       await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
     }
+    await writeAudit(args.employeeId ?? null, "PAY_ORDER", "Order", order.id, {
+      ...args.providerDetails,
+      snapshotVersion: 1, paymentId: payment.id,
+      orderNumber: order.orderNumber, type: order.type,
+      subtotal: order.subtotal, discount: order.discount, total: order.total,
+      method: payment.method, provider: "stripe",
+      receivedAmount: payment.receivedAmount, changeAmount: payment.changeAmount,
+      itemCount: current.items.reduce((sum, item) => sum + item.qty, 0),
+      items: current.items.map(item => ({
+        id: item.id, name: item.name, qty: item.qty, price: item.price, note: item.note,
+        modifiers: item.modifiers.map(m => ({ name: m.name, price: m.price })),
+      })),
+    }, { tx, restaurantId: order.restaurantId });
     return { order: { ...order, items: current.items }, payment, alreadyPaid: false };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
 
-  if (!result.alreadyPaid) {
-    await writeAudit(args.employeeId ?? null, "PAY_ORDER", "Order", result.order.id, {
-      orderNumber: result.order.orderNumber,
-      method: PaymentMethod.PROMPTPAY,
-      provider: "stripe",
-      total: result.order.total,
-      itemCount: result.order.items.reduce((sum, item) => sum + item.qty, 0),
-      items: result.order.items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        qty: item.qty,
-        price: item.price,
-        note: item.note,
-        modifiers: item.modifiers.map((modifier) => ({ id: modifier.id, name: modifier.name, price: modifier.price })),
-      })),
-      ...args.providerDetails,
-    } as Prisma.InputJsonObject);
-  }
 
   return result;
 }

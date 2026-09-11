@@ -1,4 +1,5 @@
 "use client";
+import { useNotificationTarget } from "../hooks/useNotificationTarget";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Armchair, Eye, Plus, ReceiptText, Search, Utensils, X } from "lucide-react";
@@ -29,6 +30,7 @@ export default function TablesPage() {
   const [name, setName] = useState("");
   const [seats, setSeats] = useState("2");
   const [search, setSearch] = useState("");
+  useNotificationTarget(() => { setSearch(""); setActiveTab("ALL"); });
   const [activeTab, setActiveTab] = useState<TableTab>("ALL");
   const [message, setMessage] = useState("");
   const [addingTable, setAddingTable] = useState(false);
@@ -174,6 +176,18 @@ export default function TablesPage() {
     load();
   }
 
+  async function closeBill() {
+    const table = tables.find(t => t.orders.some(o => o.id === billOrder?.id));
+    if (table?.sessions?.length) {
+      try {
+        const res = await fetch("/api/table-sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tableId: table.id, action: "clear-bill" }) });
+        if (!res.ok) { setMessage("ยกเลิกเช็คบิลไม่สำเร็จ กรุณาลองใหม่"); return; }
+      } catch { setMessage("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่"); return; }
+    }
+    setBillOrder(null);
+    load();
+  }
+
   async function openBill(table: Table, order: ActiveOrder) {
     setMessage("");
     if (table.sessions?.length) {
@@ -247,7 +261,7 @@ export default function TablesPage() {
           const itemCount = order?.items.reduce((sum, item) => sum + item.qty, 0) || 0;
           const previewItems = order?.items.slice(0, 3) || [];
           return (
-            <article key={table.id} className={`bg-white rounded-2xl border overflow-hidden ${order ? "border-blue-100 shadow-sm" : "border-gray-100"}`}>
+            <article id={`table-${table.id}`} key={table.id} className={`bg-white rounded-2xl border overflow-hidden ${order ? "border-blue-100 shadow-sm" : "border-gray-100"}`}>
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -295,7 +309,7 @@ export default function TablesPage() {
                     </div>
 
                     <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <button onClick={() => openBill(table, order)} className="bg-emerald-600 text-white rounded-xl py-2.5 text-sm flex items-center justify-center gap-2">
+                      <button data-notification-bill onClick={() => openBill(table, order)} className="bg-emerald-600 text-white rounded-xl py-2.5 text-sm flex items-center justify-center gap-2">
                         <ReceiptText size={16} /> เช็คบิล
                       </button>
                       <button onClick={() => setConfirmingCancel(order)} className="rounded-xl bg-red-50 px-3 text-red-500"><X size={18} /></button>
@@ -349,7 +363,7 @@ export default function TablesPage() {
       <BillModal
         order={billOrder}
         loading={paying}
-        onClose={() => setBillOrder(null)}
+        onClose={closeBill}
         onConfirm={pay}
         promptPaySettings={promptPaySettings}
         onStripePromptPay={promptPaySettings?.promptPayMode === "STRIPE" && promptPaySettings.stripeEnabled && promptPaySettings.stripeGatewayReady ? createStripePromptPay : undefined}

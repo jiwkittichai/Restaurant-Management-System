@@ -66,13 +66,6 @@ export async function PATCH(req: NextRequest) {
           ? OrderStatus.PREPARING
           : OrderStatus.SENT;
       await prisma.order.update({ where: { id: item.orderId }, data: { status } });
-      await writeAudit(auth.user.id,"UPDATE_KITCHEN_STATUS","OrderItem",item.id,{
-        orderId:item.orderId,
-        orderNumber:current.order.orderNumber,
-        itemName:current.name,
-        before:{status:current.status},
-        after:{status:item.status},
-      });
       return NextResponse.json(item);
     }
     if (body.action === "pay") {
@@ -101,24 +94,25 @@ export async function PATCH(req: NextRequest) {
         });
         if (current.tableId) await closeTableSession(tx, current.tableId);
         if (current.tableId) await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
+        await writeAudit(auth.user.id, "PAY_ORDER", "Order", paid.id, {
+          snapshotVersion: 1,
+          paymentId: payment.id,
+          orderNumber: paid.orderNumber,
+          type: paid.type,
+          subtotal: paid.subtotal,
+          discount: paid.discount,
+          total: paid.total,
+          method: payment.method,
+          receivedAmount: payment.receivedAmount,
+          changeAmount: payment.changeAmount,
+          itemCount: current.items.reduce((sum, item) => sum + item.qty, 0),
+          items: current.items.map(item => ({
+            id: item.id, name: item.name, qty: item.qty, price: item.price, note: item.note,
+            modifiers: item.modifiers.map(m => ({ name: m.name, price: m.price })),
+          })),
+        }, { tx, restaurantId: auth.user.restaurantId });
         return { ...paid, payment, items: current.items };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
-      await writeAudit(auth.user.id,"PAY_ORDER","Order",order.id,{
-        orderNumber:order.orderNumber,
-        method:order.payment.method,
-        total:order.total,
-        receivedAmount:order.payment.receivedAmount,
-        changeAmount:order.payment.changeAmount,
-        itemCount:order.items.reduce((sum,item)=>sum+item.qty,0),
-        items:order.items.map(item=>({
-          id:item.id,
-          name:item.name,
-          qty:item.qty,
-          price:item.price,
-          note:item.note,
-          modifiers:item.modifiers.map(modifier=>({id:modifier.id,name:modifier.name,price:modifier.price})),
-        })),
-      });
       return NextResponse.json(order);
     }
     if (body.action === "pickup") {
@@ -138,14 +132,6 @@ export async function PATCH(req: NextRequest) {
         total:order.total,
         queueNumber:order.queueNumber,
         itemCount:current.items.reduce((sum,item)=>sum+item.qty,0),
-        items:current.items.map(item=>({
-          id:item.id,
-          name:item.name,
-          qty:item.qty,
-          price:item.price,
-          note:item.note,
-          modifiers:item.modifiers.map(modifier=>({id:modifier.id,name:modifier.name,price:modifier.price})),
-        })),
       });
       return NextResponse.json(order);
     }

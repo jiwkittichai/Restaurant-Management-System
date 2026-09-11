@@ -1,27 +1,64 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, UserRound } from "lucide-react";
+import { Bell, ChevronDown, LogOut, UserRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+
+type Notification = { id: string; text: string; href: string; kind: string; revision: string };
+const notificationSymbol: Record<string, string> = { bill: "🔔", ready: "🍽️", pickup: "🛍️", new: "🧑‍🍳", stock: "📦" };
 
 const roleText:Record<string,string>={OWNER:"เจ้าของร้าน",CASHIER:"แคชเชียร์",KITCHEN:"พนักงานครัว",STOCK:"พนักงานสต็อก"};
 
-const Header = ({ user }: { user: { displayName:string; username:string; roles:string[] } }) => {
+const Header = ({ user, restaurantName }: { restaurantName?: string; user: { displayName:string; username:string; roles:string[] } }) => {
   const pathname = usePathname();
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Array<{ id: string; text: string; href: string }>>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const canNotify = user.roles.some(role => ["OWNER", "CASHIER", "KITCHEN"].includes(role));
+  const [toast, setToast] = useState<Notification | null>(null);
+  function openNotification(item: Notification) {
+    setNotificationsOpen(false); setToast(null);
+    const [path, anchor] = item.href.split("#");
+    if (pathname === path) {
+      if (window.location.hash === `#${anchor}`) window.dispatchEvent(new Event("notification-target"));
+      else window.location.hash = anchor;
+    } else router.push(item.href);
+  }
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(null), 7000); return () => clearTimeout(timer); }, [toast]);
+  const canNotify = user.roles.some(role => ["OWNER", "CASHIER", "KITCHEN", "STOCK"].includes(role));
   useEffect(() => {
     if (!canNotify) return;
     let stopped = false;
+    let previous: Map<string, string> | null = null;
+    let timer: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
     async function load() {
-      try { const res = await fetch("/api/qr-notifications"); if (res.ok) { const items = await res.json(); if (!stopped) setNotifications(items); } } catch {}
+      try {
+        const res = await fetch("/api/qr-notifications", { cache: "no-store", signal: controller.signal });
+        if (res.ok) {
+          const items: Notification[] = await res.json();
+          if (!stopped) {
+            setNotifications(items);
+            const fresh = previous ? items.find(item => {
+              const before = previous!.get(item.id);
+              if (before === undefined) return true;
+              if (item.kind === "new" || item.kind === "ready") {
+                const oldItems = new Set(before.split(","));
+                return item.revision.split(",").some(id => !oldItems.has(id));
+              }
+              return before !== item.revision;
+            }) : items.find(item => item.kind === "bill");
+            if (fresh) setToast(fresh);
+            else setToast(current => current && items.some(item => item.id === current.id) ? current : null);
+            previous = new Map(items.map(item => [item.id, item.revision]));
+          }
+        }
+      } catch {}
+      finally { if (!stopped) timer = setTimeout(load, 2000); }
     }
-    load(); const timer = setInterval(load, 5000);
-    return () => { stopped = true; clearInterval(timer); };
+    load();
+    return () => { stopped = true; clearTimeout(timer); controller.abort(); };
   }, [canNotify]);
   const roleLabels = user.roles.map(role=>roleText[role]||role);
   const roleTitle = roleLabels.join(" · ");
@@ -37,6 +74,7 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
     "/dashboard/categories": "หมวดหมู่เมนู",
     "/dashboard/reports": "รายงานยอดขาย",
     "/dashboard/settings": "ตั้งค่า",
+    "/dashboard/settings/restaurant": "ข้อมูลร้าน",
     "/dashboard/settings/payments": "ตั้งค่า",
     "/dashboard/employees": "จัดการพนักงาน",
     "/dashboard/employees/create": "เพิ่มพนักงาน",
@@ -57,7 +95,7 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
       {/* LEFT */}
       <div className="flex flex-col gap-1">
         <p className="text-sm text-gray-400">
-          Restaurant Management System
+          {restaurantName || "Restaurant Management System"}
         </p>
         <h1 className="text-xl font-semibold text-[#1e1e1e] leading-tight">
           {pathname.includes("/dashboard/products/") && pathname.endsWith("/edit") ? "แก้ไขเมนูอาหาร" : titles[pathname] || "จัดการร้านอาหาร"}
@@ -73,8 +111,9 @@ const Header = ({ user }: { user: { displayName:string; username:string; roles:s
           {!!notifications.length && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 text-white text-xs rounded-full">{notifications.length}</span>}
         </button>
 
-        {notificationsOpen && <div className="fixed right-4 top-20 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-lg"><div className="flex justify-between mb-3"><b>การแจ้งเตือน QR</b><button onClick={() => setNotificationsOpen(false)} className="text-sm text-gray-500">ปิด</button></div>{notifications.length ? notifications.map(item => <button key={item.id} onClick={() => { setNotificationsOpen(false); router.push(item.href); }} className="block w-full text-left rounded-xl bg-blue-50 p-3 mb-2 text-sm text-blue-800">{item.text}</button>) : <p className="text-sm text-gray-400">ไม่มีรายการที่รอดำเนินการ</p>}</div>}
-        <span role="status" className="sr-only">แจ้งเตือน QR {notifications.length} รายการ</span>
+        {notificationsOpen && <div className="fixed right-4 top-20 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-lg max-h-[70dvh] overflow-y-auto"><div className="flex justify-between mb-3"><b>การแจ้งเตือน</b><button onClick={() => setNotificationsOpen(false)} className="text-sm text-gray-500">ปิด</button></div>{notifications.length ? notifications.map(item => <button key={item.id} onClick={() => { setNotificationsOpen(false); openNotification(item); }} className={`block w-full text-left rounded-xl p-3 mb-2 text-sm ${item.kind === "bill" ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-blue-800"}`}><span className="mr-2" aria-hidden="true">{notificationSymbol[item.kind]}</span>{item.text}</button>) : <p className="text-sm text-gray-400">ไม่มีรายการที่รอดำเนินการ</p>}</div>}
+        <span role="status" className="sr-only">แจ้งเตือน {notifications.length} รายการ</span>
+        {toast && !notificationsOpen && <div role="status" className="fixed right-4 top-20 z-50 flex w-[min(24rem,calc(100vw-2rem))] items-start gap-2 rounded-2xl border border-blue-100 bg-white p-4 shadow-lg"><button onClick={() => openNotification(toast)} className="flex-1 text-left text-sm font-medium text-slate-800"><span className="mr-2" aria-hidden="true">{notificationSymbol[toast.kind]}</span>{toast.text}</button><button onClick={() => setToast(null)} aria-label="ปิดข้อความแจ้งเตือน" className="p-1 text-slate-400"><X size={16}/></button></div>}
         {/* PROFILE */}
         <div ref={profileRef} className="relative flex min-w-0 items-center border-l border-gray-200 pl-4">
 

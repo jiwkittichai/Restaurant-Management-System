@@ -7,7 +7,8 @@ type Group = { id: number; name: string; minSelect: number; maxSelect: number; o
 type Menu = { id: number; name: string; description: string | null; price: number; image: string | null; available: boolean; category: { id: number; name: string }; modifierGroups: Group[] };
 type Line = { key: string; menu: Menu; qty: number; note: string; modifierIds: number[] };
 type Item = { id: number; name: string; qty: number; price: number; status: string; mine: boolean; note: string | null; modifiers: { name: string }[] };
-type Data = { restaurantName: string; tableName: string; paused: boolean; billRequestedAt: string | null; menu: Menu[]; order: { total: number; subtotal: number; discount: number; items: Item[] } | null };
+import type { RestaurantBrand } from "@/lib/restaurant-brand";
+type Data = { brand: RestaurantBrand; restaurantName: string; tableName: string; paused: boolean; billRequestedAt: string | null; menu: Menu[]; order: { total: number; subtotal: number; discount: number; items: Item[] } | null };
 const money = (n: number) => `฿${n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const statuses: Record<string, string> = { NEW: "ส่งเข้าครัวแล้ว", PREPARING: "กำลังทำ", READY: "พร้อมเสิร์ฟ", SERVED: "เสิร์ฟแล้ว" };
 // Works over LAN HTTP as well as HTTPS (crypto.randomUUID requires a secure context).
@@ -47,6 +48,7 @@ export default function GuestOrder({ token }: { token: string }) {
       if (res.status === 410) { setClosed(true); setData(null); return; }
       if (!res.ok) throw new Error(result.error);
       setData(result);
+      document.title = `${result.restaurantName} · สั่งอาหาร`;
     } catch { setMessage("เชื่อมต่อร้านไม่สำเร็จ กำลังลองเชื่อมต่อใหม่"); }
   }, [guest, token]);
   useEffect(() => { load(); const timer = setInterval(load, 5000); return () => clearInterval(timer); }, [load]);
@@ -96,11 +98,11 @@ export default function GuestOrder({ token }: { token: string }) {
       setMessage("แจ้งพนักงานแล้ว กรุณารอชำระเงินที่โต๊ะ"); await load();
     } catch (e) { setMessage(e instanceof Error ? e.message : "เชื่อมต่อไม่สำเร็จ"); } finally { setBusy(false); }
   }
-  if (closed) return <main className="min-h-dvh bg-slate-50 grid place-items-center p-6"><div className="max-w-sm rounded-3xl bg-white p-8 text-center shadow-sm"><CheckCircle2 className="mx-auto mb-4 text-emerald-600" size={48}/><h1 className="text-2xl font-semibold">รอบโต๊ะนี้สิ้นสุดแล้ว</h1><p className="mt-3 text-slate-500">หากต้องการสั่งอาหาร กรุณาขอ QR รอบปัจจุบันจากพนักงาน</p></div></main>;
+  if (closed) return <main className="min-h-dvh bg-slate-50 grid place-items-center p-6"><div className="max-w-sm rounded-3xl bg-white p-8 text-center shadow-sm"><CheckCircle2 className="mx-auto mb-4 text-emerald-600" size={48}/><h1 className="text-2xl font-semibold">ขอบคุณที่มาใช้บริการ</h1><p className="mt-3 text-slate-500">หวังว่าจะได้ต้อนรับคุณอีกครั้ง</p></div></main>;
   if (!data) return <main className="min-h-dvh grid place-items-center bg-slate-50 p-6"><p role="status">{message || "กำลังเปิดเมนูของโต๊ะ…"}</p></main>;
   const categories = [...new Map(data.menu.map(m => [m.category.id, m.category])).values()];
   return <main className="min-h-dvh bg-[#f6f7fb] text-slate-800 pb-32">
-    <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur"><div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center gap-3"><div><p className="text-xs text-slate-500">ยินดีต้อนรับ · สั่งอาหารร่วมโต๊ะ</p><h1 className="text-xl font-semibold">{data.restaurantName}</h1></div><span className="rounded-2xl bg-blue-50 px-4 py-2 text-blue-700 font-semibold">{data.tableName}</span></div><nav className="max-w-3xl mx-auto flex px-4 gap-4">{([["menu", "เมนูอาหาร"], ["mine", "รายการที่ฉันสั่ง"], ["table", "รายการทั้งโต๊ะ"]] as const).map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`py-3 text-sm border-b-2 ${tab === key ? "border-blue-600 text-blue-600 font-semibold" : "border-transparent text-slate-500"}`}>{label}</button>)}</nav></header>
+    <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur"><div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center gap-3"><div className="min-w-0">{data.brand.logoUrl && <img src={data.brand.logoUrl} alt={`โลโก้ ${data.restaurantName}`} className="w-14 h-14 object-contain mb-2"/>}<p className="text-xs text-slate-500 whitespace-pre-wrap">{data.brand.welcomeMessage || "ยินดีต้อนรับ · สั่งอาหารร่วมโต๊ะ"}</p><h1 className="text-xl font-semibold break-words">{data.restaurantName}</h1></div><span className="rounded-2xl bg-blue-50 px-4 py-2 text-blue-700 font-semibold">{data.tableName}</span></div><nav className="max-w-3xl mx-auto flex px-4 gap-4">{([["menu", "เมนูอาหาร"], ["mine", "รายการที่ฉันสั่ง"], ["table", "รายการทั้งโต๊ะ"]] as const).map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`py-3 text-sm border-b-2 ${tab === key ? "border-blue-600 text-blue-600 font-semibold" : "border-transparent text-slate-500"}`}>{label}</button>)}</nav></header>
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       {message && <div role="status" className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-800 flex justify-between gap-3">{message}<button aria-label="ปิดข้อความ" onClick={() => setMessage("")}><X size={18}/></button></div>}
       {blocked && <p className="rounded-2xl bg-amber-50 p-4 text-amber-800 text-sm">{data.billRequestedAt ? "เรียกเก็บเงินแล้ว พักรับรายการเพิ่มระหว่างรอชำระเงิน" : "ร้านพักรับรายการของโต๊ะนี้ชั่วคราว กรุณาติดต่อพนักงาน"}</p>}

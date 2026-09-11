@@ -1,3 +1,4 @@
+import { brandSelect, publicBrand } from "@/lib/restaurant-brand";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { networkInterfaces } from "node:os";
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const { tableId, action } = await req.json();
     if (!["open", "show", "rotate", "pause", "resume", "close", "clear-bill"].includes(action)) throw new Error("คำสั่งไม่ถูกต้อง");
-    const table = await prisma.restaurantTable.findFirst({ where: { id: Number(tableId), restaurantId: auth.user.restaurantId }, include: { restaurant: { select: { name: true } } } });
+    const table = await prisma.restaurantTable.findFirst({ where: { id: Number(tableId), restaurantId: auth.user.restaurantId }, include: { restaurant: { select: brandSelect } } });
     if (!table) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
     const session = await prisma.$transaction(async tx => {
       await lockTable(tx, table.id);
@@ -31,10 +32,10 @@ export async function POST(req: NextRequest) {
         await tx.restaurantTable.update({ where: { id: table.id }, data: { status: "AVAILABLE" } });
       }
       if (action === "rotate") current = await tx.tableSession.update({ where: { id: current.id }, data: { token: randomBytes(32).toString("hex") } });
-      if (["pause", "resume", "clear-bill"].includes(action)) current = await tx.tableSession.update({ where: { id: current.id }, data: action === "clear-bill" ? { billRequestedAt: null } : { paused: action === "pause" } });
+      if (["pause", "resume", "clear-bill"].includes(action)) current = await tx.tableSession.update({ where: { id: current.id }, data: action === "clear-bill" ? { billRequestedAt: null, paused: false } : { paused: action === "pause" } });
       return current;
     });
-    if (action !== "show") await writeAudit(auth.user.id, "QR_TABLE_" + action.toUpperCase(), "RestaurantTable", table.id, { sessionId: session.id, tableName: table.name });
+    if (action === "rotate") await writeAudit(auth.user.id, "QR_TABLE_ROTATE", "RestaurantTable", table.id, { tableName: table.name });
     let origin = process.env.QR_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
     const address = new URL(origin);
     if (process.env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "0.0.0.0"].includes(address.hostname)) {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       if (lan) { address.hostname = lan.address; origin = address.origin; }
     }
     const url = `${origin.replace(/\/$/, "")}/order/${session.token}`;
-    return NextResponse.json({ id: session.id, url, qr: await QRCode.toDataURL(url, { width: 360, margin: 3 }), tableName: table.name, restaurantName: table.restaurant.name, createdAt: session.createdAt, paused: session.paused }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ brand: publicBrand(table.restaurant), id: session.id, url, qr: await QRCode.toDataURL(url, { width: 360, margin: 3 }), tableName: table.name, restaurantName: table.restaurant.name, createdAt: session.createdAt, paused: session.paused }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "ทำรายการไม่สำเร็จ" }, { status: 400 });
   }

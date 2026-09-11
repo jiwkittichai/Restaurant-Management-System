@@ -68,6 +68,18 @@ try {
   assert.equal(order.items.filter(i => i.source === 'QR').length, 4);
   const pay = await call('/api/orders', { action: 'pay', orderId: order.id, method: 'CASH', receivedAmount: 400 }, true, 'PATCH');
   assert.equal(pay.status, 200, JSON.stringify(pay));
+  const paidAudit = await db.auditLog.findFirstOrThrow({ where: { restaurantId: rid, action: 'PAY_ORDER', entityId: String(order.id) } });
+  assert.equal(paidAudit.employeeId, employee.id);
+  assert.equal(paidAudit.details.actorName, 'QR Test');
+  assert.equal(paidAudit.details.total, 325);
+  assert.equal(paidAudit.details.receivedAmount, 400);
+  assert.equal(paidAudit.details.changeAmount, 75);
+  assert.equal(paidAudit.details.items.reduce((sum, item) => sum + item.qty * item.price, 0), 325);
+  const createdAudit = await db.auditLog.findFirstOrThrow({ where: { restaurantId: rid, action: 'CREATE_ORDER', entityId: String(order.id) } });
+  assert.equal(createdAudit.details.items.reduce((sum, item) => sum + item.qty, 0), 1);
+  assert.equal(createdAudit.details.actorName, 'ลูกค้าผ่าน QR');
+  assert.equal((await call('/api/orders', { action: 'pay', orderId: order.id, method: 'CASH', receivedAmount: 400 }, true, 'PATCH')).status, 500);
+  assert.equal(await db.auditLog.count({ where: { restaurantId: rid, action: 'PAY_ORDER', entityId: String(order.id) } }), 1);
   assert.equal((await call(`/api/guest/${qr}`)).status, 410);
   assert.equal((await submit(id())).status, 410);
   qr = (await session('open')).data.url.split('/').at(-1);

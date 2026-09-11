@@ -22,6 +22,11 @@ model Product {
 }
 
 model Restaurant {
+  logoUrl         String?
+  address         String? @db.Text
+  phone           String?
+  welcomeMessage  String?
+  receiptFooter   String?
   id              Int                     @id @default(autoincrement())
   name            String
   slug            String                  @unique
@@ -333,11 +338,13 @@ model AuditLog {
   action       String
   entityType   String
   entityId     String?
+  requestId    String?    @db.VarChar(36)
   details      Json?
   createdAt    DateTime   @default(now())
 
   @@index([employeeId])
   @@index([restaurantId])
+  @@index([restaurantId, createdAt])
   @@index([createdAt])
 }
 

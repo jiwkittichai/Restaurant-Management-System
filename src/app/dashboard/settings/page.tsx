@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ChevronRight, CreditCard } from "lucide-react";
+import { ChevronRight, CreditCard, Store } from "lucide-react";
 
 const settingsItems = [
+  { title: "ข้อมูลร้าน", description: "ชื่อ โลโก้ ข้อมูลติดต่อ และข้อความบนหน้าเมนู/ใบพิมพ์", href: "/dashboard/settings/restaurant", icon: Store },
   {
     title: "การชำระเงิน",
     description: "ตั้งค่าเงินสดและ QR พร้อมเพย์ของร้านสำหรับหน้าเช็คบิล",

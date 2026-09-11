@@ -39,7 +39,8 @@ export default function AuditDetailDrawer({ audit, onClose }: AuditDetailDrawerP
           {billItems.length > 0 && (
             <div className="rounded-2xl border border-gray-100">
               <div className="border-b border-gray-100 px-4 py-3">
-                <h3 className="font-medium text-gray-900">บิลรายการอาหาร</h3>
+                <h3 className="font-medium text-gray-900">{audit.action === "ADD_ORDER_ITEMS" ? "รายการที่สั่งเพิ่มครั้งนี้" : "บิลรายการอาหาร"}</h3>
+                <p className="mt-1 text-xs text-gray-500">{audit.details?.itemsSource === "current" ? "ข้อมูลจากออเดอร์ปัจจุบัน — ประวัตินี้ไม่มีสำเนารายการ ณ เวลาทำรายการ" : "รายการที่บันทึกไว้ ณ เวลาทำรายการ"}</p>
               </div>
               <div className="divide-y divide-gray-100">
                 {billItems.map((item) => (
@@ -69,7 +70,7 @@ export default function AuditDetailDrawer({ audit, onClose }: AuditDetailDrawerP
                   <span>{billItems.reduce((sum, item) => sum + item.qty, 0).toLocaleString("th-TH")} รายการ</span>
                 </div>
                 <div className="flex items-center justify-between font-semibold text-gray-900">
-                  <span>ยอดสุทธิ</span>
+                  <span>{audit.action === "ADD_ORDER_ITEMS" ? "ยอดรวมทั้งบิลหลังสั่งเพิ่ม" : "ยอดสุทธิ"}</span>
                   <span>{money(audit.details?.total ?? billItems.reduce((sum, item) => sum + item.lineTotal, 0))}</span>
                 </div>
               </div>

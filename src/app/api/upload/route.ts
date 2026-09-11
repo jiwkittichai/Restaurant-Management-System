@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Client } from "minio";
 import { StaffRole } from "@prisma/client";
-import { authorizeApi, writeAudit } from "@/lib/auth";
+import { authorizeApi } from "@/lib/auth";
 
 const bucketName = process.env.MINIO_BUCKET || "products";
 
@@ -32,14 +32,13 @@ export async function POST(req: Request) {
 
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
+    if (purpose === "restaurant_logo" && (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024)) return NextResponse.json({ error: "โลโก้ต้องเป็น PNG, JPG หรือ WebP ขนาดไม่เกิน 5 MB" }, { status: 400 });
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = `restaurants/${auth.user.restaurantId}/${Date.now()}-${file.name}`;
 
     await minioClient.putObject(bucketName, filename, buffer, buffer.length, {
       "Content-Type": file.type || "application/octet-stream",
     });
-    await writeAudit(auth.user.id,purpose==="promptpay_qr"?"UPLOAD_PROMPTPAY_QR":"UPLOAD_MENU_IMAGE","MinioObject",filename);
-
     return NextResponse.json({ url: publicObjectUrl(filename) });
   } catch (error) {
     console.error("Upload error:", error);

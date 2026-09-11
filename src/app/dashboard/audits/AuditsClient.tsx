@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, CalendarDays, Filter, Search, X } from "lucide-react";
 import Link from "next/link";
-import { Audit, actionText, auditChangeRows, auditSummary, formatDate } from "../audit-utils";
+import { Audit, actionText, auditActionGroups, auditActorName, auditChangeRows, auditSummary, formatDate } from "../audit-utils";
 import AuditDetailDrawer from "../components/AuditDetailDrawer";
 
 type AuditMeta = {
@@ -94,7 +94,6 @@ export default function AuditsClient({
     return () => window.clearTimeout(timeout);
   }, [load]);
 
-  const actionOptions = useMemo(() => Object.entries(actionText).sort((a, b) => a[1].localeCompare(b[1], "th")), []);
   const hasFilters = Boolean(query.trim() || action || from || to);
   const todayValue = localDate(new Date());
   const oldestValue = meta?.oldestAt ? localDate(new Date(meta.oldestAt)) : "";
@@ -192,8 +191,12 @@ export default function AuditsClient({
             >
               <option value="">กิจกรรมสำคัญ</option>
               <option value={allActionsValue}>ทั้งหมด</option>
-              {actionOptions.map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {auditActionGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -272,7 +275,7 @@ export default function AuditsClient({
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-900">{audit.employee?.displayName || "บัญชีที่ถูกลบ"}</span>
+                      <span className="font-medium text-gray-900">{auditActorName(audit)}</span>
                       <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-600">{actionText[audit.action] || audit.action}</span>
                     </div>
                     <p className="mt-2 text-sm text-gray-600">{auditSummary(audit)}</p>

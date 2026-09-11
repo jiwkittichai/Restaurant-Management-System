@@ -3,6 +3,8 @@
 import { CheckCircle2, Printer, RefreshCw, ReceiptText, WalletCards, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import type { RestaurantBrand } from "@/lib/restaurant-brand";
+
 type PaymentMethod = "CASH" | "PROMPTPAY";
 
 export type BillOrder = {
@@ -81,6 +83,7 @@ function escapeHtml(value: string) {
 }
 
 function buildReceiptHtml(args: {
+  brand: RestaurantBrand;
   order: BillOrder;
   method: PaymentMethod;
   subtotal: number;
@@ -137,10 +140,11 @@ function buildReceiptHtml(args: {
 <body>
   <main class="receipt">
     <div class="center">
-      <div class="logo">RMS</div>
-      <h1>RESTAURANT MANAGEMENT SYSTEM</h1>
+      ${args.brand.logoUrl ? `<img src="${escapeHtml(new URL(args.brand.logoUrl, window.location.origin).href)}" alt="โลโก้ร้าน" style="width:18mm;height:18mm;object-fit:contain"/>` : ""}
+      <h1>${escapeHtml(args.brand.name)}</h1>
+      ${args.brand.address ? `<p style="white-space:pre-wrap">${escapeHtml(args.brand.address)}</p>` : ""}
       <p>ใบเสร็จรับเงิน / RECEIPT</p>
-      <p>โทร. 089-000-0000</p>
+${args.brand.phone ? `<p>โทร. ${escapeHtml(args.brand.phone)}</p>` : ""}
     </div>
     <div class="rule"></div>
     <div class="meta">
@@ -163,7 +167,7 @@ function buildReceiptHtml(args: {
     </div>
     <div class="rule"></div>
     <div class="footer">
-      <p>*** ขอบคุณที่ใช้บริการ ***</p>
+<p style="white-space:pre-wrap">${escapeHtml(args.brand.receiptFooter || "ขอบคุณที่ใช้บริการ")}</p>
       <p>กรุณาตรวจสอบรายการก่อนออกจากร้าน</p>
     </div>
   </main>
@@ -178,6 +182,16 @@ function buildReceiptHtml(args: {
 }
 
 export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm, promptPaySettings, onStripePromptPay, onStripePromptPayStatus }: BillModalProps) {
+  const [brand, setBrand] = useState<RestaurantBrand | null>(null);
+  const [brandError, setBrandError] = useState("");
+  useEffect(() => {
+    if (!order) return;
+    let stopped = false;
+    setBrand(null); setBrandError("");
+    fetch("/api/restaurant-profile").then(async res => { if (!res.ok) throw new Error(); const data = await res.json(); if (!stopped) setBrand(data); }).catch(() => { if (!stopped) setBrandError("โหลดข้อมูลร้านไม่สำเร็จ กรุณาปิดแล้วเปิดบิลใหม่ก่อนพิมพ์"); });
+    return () => { stopped = true; };
+  }, [order?.id]);
+
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [received, setReceived] = useState("");
   const [error, setError] = useState("");
@@ -288,6 +302,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
   }
 
   function printReceipt() {
+    if (!brand) return;
     if (!order) return;
     const printWindow = window.open("", "_blank", "width=360,height=640");
     if (!printWindow) {
@@ -296,6 +311,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
     }
     printWindow.document.open();
     printWindow.document.write(buildReceiptHtml({
+      brand,
       order,
       method,
       subtotal,
@@ -477,7 +493,8 @@ export default function BillModal({ order, title = "เช็คบิล", load
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-gray-100 p-4 sm:flex-row sm:justify-end">
-          <button onClick={printReceipt} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 flex items-center justify-center gap-2">
+          {brandError && <p role="alert" className="text-sm text-red-600">{brandError}</p>}
+          <button disabled={!brand} onClick={printReceipt} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 flex items-center justify-center gap-2">
             <Printer size={16} /> พิมพ์บิล
           </button>
           <button onClick={submit} disabled={loading || stripeLoading} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50">
@@ -489,10 +506,11 @@ export default function BillModal({ order, title = "เช็คบิล", load
 
       <section className="receipt-print hidden">
         <div className="receipt-center">
-          <div className="receipt-logo">RMS</div>
-          <h1>RESTAURANT MANAGEMENT SYSTEM</h1>
+          {brand?.logoUrl && <img src={brand.logoUrl} alt="โลโก้ร้าน" style={{width:"18mm",height:"18mm",objectFit:"contain",margin:"0 auto"}}/>}
+          <h1>{brand?.name}</h1>
+          {brand?.address && <p style={{whiteSpace:"pre-wrap"}}>{brand.address}</p>}
           <p>ใบเสร็จรับเงิน / RECEIPT</p>
-          <p>โทร. 089-000-0000</p>
+          {brand?.phone && <p>โทร. {brand.phone}</p>}
         </div>
 
         <div className="receipt-rule" />
@@ -547,7 +565,7 @@ export default function BillModal({ order, title = "เช็คบิล", load
         <div className="receipt-rule" />
 
         <div className="receipt-center receipt-footer">
-          <p>*** ขอบคุณที่ใช้บริการ ***</p>
+          <p style={{whiteSpace:"pre-wrap"}}>{brand?.receiptFooter || "ขอบคุณที่ใช้บริการ"}</p>
           <p>กรุณาตรวจสอบรายการก่อนออกจากร้าน</p>
         </div>
       </section>

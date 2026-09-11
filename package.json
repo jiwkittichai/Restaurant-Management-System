@@ -9,6 +9,8 @@
     "db:seed": "node prisma/seed.js",
     "db:seed:reports": "node prisma/seed-report-orders.js",
     "db:seed:all": "npm run db:seed && npm run db:seed:reports",
+    "audit:cleanup": "node scripts/cleanup-audits.js",
+    "audit:cleanup:apply": "node scripts/cleanup-audits.js --apply",
     "minio:init": "node scripts/init-minio.js",
     "test:qr": "node scripts/test-qr.mjs"
   },

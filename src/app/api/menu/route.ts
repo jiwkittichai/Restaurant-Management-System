@@ -141,7 +141,11 @@ export async function PATCH(req: NextRequest) {
         where: { id: current.id },
         data: { available: Boolean(body.available) },
       });
-      await writeAudit(auth.user.id,"TOGGLE_MENU","MenuItem",item.id,{available:item.available});
+      await writeAudit(auth.user.id,"TOGGLE_MENU","MenuItem",item.id,{
+        name:item.name,
+        before:{available:current.available},
+        after:{available:item.available},
+      });
       return NextResponse.json(item);
     }
 
@@ -167,7 +171,13 @@ export async function PATCH(req: NextRequest) {
       include: { category: true },
     });
     if (Array.isArray(body.modifierGroups)) await replaceModifierGroups(auth.user.restaurantId, item.id, body.modifierGroups);
-    await writeAudit(auth.user.id,"UPDATE_MENU","MenuItem",item.id,{name:item.name});
+    await writeAudit(auth.user.id,"UPDATE_MENU","MenuItem",item.id,{
+      name:item.name,
+      imageChanged:current.image !== item.image,
+      modifierGroupsChanged:Array.isArray(body.modifierGroups),
+      before:{name:current.name,sku:current.sku,description:current.description,price:current.price,saleUnit:current.saleUnit,categoryId:current.categoryId,available:current.available},
+      after:{name:item.name,sku:item.sku,description:item.description,price:item.price,saleUnit:item.saleUnit,categoryId:item.categoryId,available:item.available},
+    });
     return NextResponse.json(item);
   } catch {
     return NextResponse.json({ error: "อัปเดตไม่สำเร็จ กรุณาตรวจสอบว่ารหัสเมนูไม่ซ้ำ" }, { status: 409 });

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
@@ -8,6 +8,16 @@ import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "restaurant_session";
 const SESSION_HOURS = 12;
+const RETAINED_AUDIT_ACTIONS = new Set([
+  "LOGIN", "LOGIN_FAILED", "LOGIN_INACTIVE", "REGISTER_RESTAURANT",
+  "CREATE_EMPLOYEE", "UPDATE_EMPLOYEE",
+  "CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PAY_ORDER_STRIPE", "PICKUP_ORDER", "CANCEL_ORDER",
+  "CREATE_TABLE", "UPDATE_TABLE_STATUS", "QR_TABLE_ROTATE",
+  "CREATE_CATEGORY", "UPDATE_CATEGORY", "DELETE_CATEGORY",
+  "CREATE_MENU", "UPDATE_MENU", "TOGGLE_MENU", "DELETE_MENU",
+  "CREATE_INGREDIENT", "UPDATE_INGREDIENT", "DELETE_INGREDIENT", "STOCK_IN", "ADJUST_STOCK", "UPDATE_RECIPE",
+  "UPDATE_RESTAURANT_PROFILE", "UPDATE_PAYMENT_SETTINGS", "CONNECT_STRIPE_ACCOUNT",
+]);
 
 export type CurrentUser = {
   id: number;
@@ -77,20 +87,60 @@ export async function writeAudit(
   entityType: string,
   entityId?: string | number | null,
   details?: Prisma.InputJsonObject,
+  context?: { tx?: Prisma.TransactionClient; restaurantId: number },
 ) {
+  // Keep only events that are useful for financial, stock, security, or
+  // administrative investigations. High-frequency workflow state belongs in
+  // its source table, not in the audit trail.
+  if (!RETAINED_AUDIT_ACTIONS.has(action)) return;
+
+  const compactDetails = details ? compactAuditDetails(details) : undefined;
+  const db = context?.tx ?? prisma;
   const employee = employeeId
-    ? await prisma.employee.findUnique({ where: { id: employeeId }, select: { restaurantId: true } })
+    ? await db.employee.findUnique({ where: { id: employeeId }, select: { restaurantId: true, displayName: true } })
     : null;
-  const restaurantId = employee?.restaurantId;
+  const restaurantId = context?.restaurantId ?? employee?.restaurantId;
   if (!restaurantId) return;
-  await prisma.auditLog.create({
+  if (employee && employee.restaurantId !== restaurantId) throw new Error("AUDIT_TENANT_MISMATCH");
+  await db.auditLog.create({
     data: {
       restaurantId,
       employeeId,
       action,
       entityType,
       entityId: entityId == null ? null : String(entityId),
-      details: details || undefined,
+      requestId: randomUUID(),
+      details: { ...compactDetails, actorName: employee?.displayName ?? (details?.provider === "stripe" ? "ระบบ Stripe" : "ลูกค้าผ่าน QR") },
     },
   });
+}
+
+function compactAuditDetails(details: Prisma.InputJsonObject): Prisma.InputJsonObject | undefined {
+  const blockedKeys = new Set(["password", "passwordHash", "token", "tokenHash", "accessToken", "sessionSecret", "cardNumber"]);
+  const result: Record<string, Prisma.InputJsonValue> = {};
+  const before = isJsonObject(details.before) ? details.before : null;
+  const after = isJsonObject(details.after) ? details.after : null;
+
+  for (const [key, value] of Object.entries(details)) {
+    if (blockedKeys.has(key) || key === "before" || key === "after" || value === undefined) continue;
+    result[key] = value as Prisma.InputJsonValue;
+  }
+
+  if (before && after) {
+    const changedBefore: Record<string, Prisma.InputJsonValue> = {};
+    const changedAfter: Record<string, Prisma.InputJsonValue> = {};
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (blockedKeys.has(key) || JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
+      if (before[key] !== undefined) changedBefore[key] = before[key] as Prisma.InputJsonValue;
+      if (after[key] !== undefined) changedAfter[key] = after[key] as Prisma.InputJsonValue;
+    }
+    if (Object.keys(changedBefore).length) result.before = changedBefore;
+    if (Object.keys(changedAfter).length) result.after = changedAfter;
+  }
+
+  return Object.keys(result).length ? result : undefined;
+}
+
+function isJsonObject(value: Prisma.InputJsonValue | null | undefined): value is Prisma.InputJsonObject {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

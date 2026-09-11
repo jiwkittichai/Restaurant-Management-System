@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const where: Prisma.AuditLogWhereInput = { restaurantId: auth.user.restaurantId };
   if (action) {
-    where.action = action;
+    where.action = { in: action.split(",").filter(Boolean) };
   } else if (scope !== "all") {
     where.action = { notIn: defaultHiddenActions };
   }
@@ -113,6 +113,7 @@ export async function GET(req: NextRequest) {
         tableName: details.tableName ?? order.table?.name,
         queueNumber: details.queueNumber ?? order.queueNumber,
         items: details.items ?? order.items,
+        itemsSource: Array.isArray(details.items) ? "snapshot" : "current",
         itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0),
       },
     };

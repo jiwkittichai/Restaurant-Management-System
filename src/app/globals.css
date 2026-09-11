@@ -191,3 +191,5 @@ body {
   #qr-order-ticket p { font-size: 10pt; margin: 2mm 0; }
   #qr-order-ticket img { width: 62mm; height: 62mm; margin: 0 auto; }
 }
+
+[data-notification-highlight="true"] { outline: 2px solid #356ddb; outline-offset: 3px; scroll-margin: 24px; }

@@ -1,3 +1,4 @@
+import { brandSelect, publicBrand } from "@/lib/restaurant-brand";
 import { menuImageObjectKey } from "@/lib/menu-image";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,7 @@ type Context = { params: Promise<{ token: string }> };
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
 async function findSession(token: string) {
   if (!/^[a-f0-9]{64}$/.test(token)) return null;
-  return prisma.tableSession.findUnique({ where: { token }, include: { table: { include: { restaurant: { select: { name: true } } } } } });
+  return prisma.tableSession.findUnique({ where: { token }, include: { table: { include: { restaurant: { select: brandSelect } } } } });
 }
 const closed = () => NextResponse.json({ error: "QR นี้สิ้นสุดการใช้งานแล้ว กรุณาติดต่อพนักงาน" }, { status: 410, headers });
 export async function GET(req: NextRequest, context: Context) {
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest, context: Context) {
     }, orderBy: { id: "asc" },
   });
   const order = session.orderId ? await prisma.order.findUnique({ where: { id: session.orderId }, select: { total: true, subtotal: true, discount: true, items: { orderBy: { id: "desc" }, select: { id: true, name: true, qty: true, price: true, note: true, status: true, guestId: true, createdAt: true, modifiers: { select: { name: true } } } } } }) : null;
-  return NextResponse.json({ restaurantName: session.table.restaurant.name, tableName: session.table.name, paused: session.paused, billRequestedAt: session.billRequestedAt,
+  return NextResponse.json({ brand: publicBrand(session.table.restaurant), restaurantName: session.table.restaurant.name, tableName: session.table.name, paused: session.paused, billRequestedAt: session.billRequestedAt,
     menu: menu.map(({ recipes, modifiers, ...item }) => ({ ...item, image: menuImageObjectKey(item.image) ? `/api/guest/${token}/images/${item.id}` : item.image, available: item.available && recipes.every(r => r.quantity <= r.ingredient.stock), modifierGroups: [...item.modifierGroups, ...(modifiers.length ? [{ id: 0, name: "ตัวเลือกเพิ่มเติม", minSelect: 0, maxSelect: modifiers.length, options: modifiers }] : [])] })),
     order: order ? { ...order, items: order.items.map(({ guestId: owner, ...item }) => ({ ...item, mine: Boolean(guestId && owner === guestId) })) } : null,
   }, { headers });

@@ -1,4 +1,5 @@
 "use client";
+import { useNotificationTarget } from "../hooks/useNotificationTarget";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageOpen, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
@@ -13,6 +14,7 @@ export default function InventoryPage() {
   const [form, setForm] = useState({ name: "", unit: "กรัม", stock: "", minStock: "" });
   const [addingIngredient, setAddingIngredient] = useState(false);
   const [search, setSearch] = useState("");
+  useNotificationTarget(() => { setSearch(""); setStockFilter("ALL"); });
   const [stockFilter, setStockFilter] = useState<StockFilter>("ALL");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -171,7 +173,7 @@ export default function InventoryPage() {
             const low = item.stock <= item.minStock;
             const isEditing = editingId === item.id;
             return (
-              <div key={item.id} className={`rounded-2xl border bg-white p-5 ${low ? "border-amber-300" : "border-gray-100"}`}>
+              <div id={`ingredient-${item.id}`} key={item.id} className={`rounded-2xl border bg-white p-5 ${low ? "border-amber-300" : "border-gray-100"}`}>
                 <div className="flex items-start justify-between">
                   <div className={`grid h-11 w-11 place-items-center rounded-xl ${low ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"}`}>
                     {low ? <AlertTriangle size={21} /> : <PackageOpen size={21} />}

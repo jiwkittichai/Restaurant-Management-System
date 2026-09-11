@@ -10,6 +10,12 @@ export type Audit = {
   employee?: { displayName: string } | null;
 };
 
+export function auditActorName(audit: Audit): string {
+  const recordedName = audit.details?.actorName;
+  if (typeof recordedName === "string" && recordedName.trim()) return recordedName;
+  return audit.employee?.displayName || "ไม่ระบุผู้ทำรายการ";
+}
+
 export const roleText: Record<string, string> = {
   OWNER: "เจ้าของร้าน/ผู้จัดการ",
   CASHIER: "แคชเชียร์",
@@ -21,13 +27,11 @@ export const actionText: Record<string, string> = {
   LOGIN: "เข้าสู่ระบบ",
   LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
   LOGIN_INACTIVE: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน",
-  LOGOUT: "ออกจากระบบ",
   REGISTER_RESTAURANT: "สมัครร้านใหม่",
   CREATE_EMPLOYEE: "สร้างบัญชีพนักงาน",
   UPDATE_EMPLOYEE: "แก้ไขบัญชีพนักงาน",
   CREATE_ORDER: "สร้างออเดอร์",
   ADD_ORDER_ITEMS: "เพิ่มรายการในบิล",
-  UPDATE_KITCHEN_STATUS: "อัปเดตสถานะครัว",
   PAY_ORDER: "รับชำระเงิน",
   PAY_ORDER_STRIPE: "รับชำระเงิน",
   PICKUP_ORDER: "ส่งมอบออเดอร์",
@@ -43,14 +47,62 @@ export const actionText: Record<string, string> = {
   DELETE_CATEGORY: "ลบหมวดหมู่",
   CREATE_TABLE: "เพิ่มโต๊ะ",
   UPDATE_TABLE_STATUS: "เปลี่ยนสถานะโต๊ะ",
+  QR_TABLE_ROTATE: "สร้าง QR โต๊ะใหม่",
   CREATE_MENU: "เพิ่มเมนู",
   UPDATE_MENU: "แก้ไขเมนู",
   TOGGLE_MENU: "เปลี่ยนสถานะเมนู",
   DELETE_MENU: "ลบเมนู",
-  UPLOAD_MENU_IMAGE: "อัปโหลดรูปเมนู",
-  UPLOAD_PROMPTPAY_QR: "อัปโหลด QR พร้อมเพย์",
+  UPDATE_RESTAURANT_PROFILE: "แก้ไขข้อมูลร้าน",
+  CONNECT_STRIPE_ACCOUNT: "เชื่อมต่อบัญชี Stripe",
   UPDATE_PAYMENT_SETTINGS: "แก้ไขการตั้งค่าชำระเงิน",
 };
+
+export const auditActionGroups = [
+  { label: "ออเดอร์", options: [
+    { value: "CREATE_ORDER", label: "สร้างออเดอร์" },
+    { value: "ADD_ORDER_ITEMS", label: "เพิ่มรายการในบิล" },
+    { value: "PICKUP_ORDER", label: "ส่งมอบออเดอร์" },
+    { value: "CANCEL_ORDER", label: "ยกเลิกออเดอร์" },
+  ] },
+  { label: "การชำระเงิน", options: [
+    { value: "PAY_ORDER,PAY_ORDER_STRIPE", label: "รับชำระเงิน" },
+    { value: "UPDATE_PAYMENT_SETTINGS", label: "แก้ไขการตั้งค่าชำระเงิน" },
+    { value: "CONNECT_STRIPE_ACCOUNT", label: "เชื่อมต่อบัญชี Stripe" },
+  ] },
+  { label: "โต๊ะ", options: [
+    { value: "CREATE_TABLE", label: "เพิ่มโต๊ะ" },
+    { value: "UPDATE_TABLE_STATUS", label: "เปลี่ยนสถานะโต๊ะ" },
+    { value: "QR_TABLE_ROTATE", label: "สร้าง QR โต๊ะใหม่" },
+  ] },
+  { label: "หมวดหมู่และเมนู", options: [
+    { value: "CREATE_CATEGORY", label: "เพิ่มหมวดหมู่" },
+    { value: "UPDATE_CATEGORY", label: "แก้ไขหมวดหมู่" },
+    { value: "DELETE_CATEGORY", label: "ลบหมวดหมู่" },
+    { value: "CREATE_MENU", label: "เพิ่มเมนู" },
+    { value: "UPDATE_MENU", label: "แก้ไขเมนู" },
+    { value: "TOGGLE_MENU", label: "เปลี่ยนสถานะเมนู" },
+    { value: "DELETE_MENU", label: "ลบเมนู" },
+  ] },
+  { label: "วัตถุดิบและสต็อก", options: [
+    { value: "CREATE_INGREDIENT", label: "เพิ่มวัตถุดิบ" },
+    { value: "UPDATE_INGREDIENT", label: "แก้ไขวัตถุดิบ" },
+    { value: "DELETE_INGREDIENT", label: "ลบวัตถุดิบ" },
+    { value: "STOCK_IN", label: "รับวัตถุดิบเข้า" },
+    { value: "ADJUST_STOCK", label: "ปรับยอดสต็อก" },
+    { value: "UPDATE_RECIPE", label: "แก้ไขสูตรอาหาร" },
+  ] },
+  { label: "ร้านและพนักงาน", options: [
+    { value: "REGISTER_RESTAURANT", label: "สมัครร้านใหม่" },
+    { value: "UPDATE_RESTAURANT_PROFILE", label: "แก้ไขข้อมูลร้าน" },
+    { value: "CREATE_EMPLOYEE", label: "สร้างบัญชีพนักงาน" },
+    { value: "UPDATE_EMPLOYEE", label: "แก้ไขบัญชีพนักงาน" },
+  ] },
+  { label: "ความปลอดภัย", options: [
+    { value: "LOGIN", label: "เข้าสู่ระบบ" },
+    { value: "LOGIN_FAILED", label: "เข้าสู่ระบบไม่สำเร็จ" },
+    { value: "LOGIN_INACTIVE", label: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน" },
+  ] },
+] as const;
 
 const statusText: Record<string, string> = {
   SENT: "ส่งเข้าครัว",
@@ -185,9 +237,9 @@ export function auditSummary(audit: Audit) {
   if (audit.action === "UPDATE_CATEGORY") return `แก้ไขหมวดหมู่ ${name}`;
   if (audit.action === "DELETE_CATEGORY") return `ลบหมวดหมู่ ${name || `#${audit.entityId || "-"}`}`;
   if (audit.action === "CREATE_TABLE") return `เพิ่มโต๊ะ ${name}${detailValue(details, "seats") ? ` ${asText(detailValue(details, "seats"))} ที่นั่ง` : ""}`;
-  if (audit.action === "UPDATE_TABLE_STATUS") return `เปลี่ยนสถานะโต๊ะเป็น ${asText(detailValue(details, "status"))}`;
+  if (audit.action === "UPDATE_TABLE_STATUS") return `เปลี่ยนสถานะโต๊ะเป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
   if (audit.action === "CREATE_MENU" || audit.action === "UPDATE_MENU") return `${actionText[audit.action]} ${name}`;
-  if (audit.action === "TOGGLE_MENU") return `เปลี่ยนสถานะเมนูเป็น ${asText(detailValue(details, "available"))}`;
+  if (audit.action === "TOGGLE_MENU") return `เปลี่ยนสถานะเมนูเป็น ${asText(detailValue(details, "available")) || asText(afterDetails?.available)}`;
   if (audit.action === "DELETE_MENU") return `ลบเมนู ${name || `#${audit.entityId || "-"}`}`;
   return actionText[audit.action] || audit.action;
 }
@@ -204,10 +256,22 @@ export function auditChangeRows(audit: Audit) {
       ["active", "สถานะบัญชี"],
       ["roles", "บทบาท"],
       ["name", "ชื่อรายการ"],
+      ["description", "รายละเอียด"],
+      ["price", "ราคา"],
+      ["saleUnit", "หน่วยขาย"],
+      ["categoryId", "หมวดหมู่"],
       ["unit", "หน่วย"],
       ["status", "สถานะ"],
+      ["available", "สถานะการขาย"],
       ["stock", "ยอดคงเหลือ"],
       ["minStock", "สต็อกขั้นต่ำ"],
+      ["address", "ที่อยู่ร้าน"],
+      ["phone", "เบอร์โทรร้าน"],
+      ["welcomeMessage", "ข้อความต้อนรับ"],
+      ["receiptFooter", "ท้ายใบเสร็จ"],
+      ["promptPayEnabled", "พร้อมเพย์"],
+      ["promptPayMode", "รูปแบบพร้อมเพย์"],
+      ["stripeEnabled", "Stripe"],
     ];
     for (const [key, label] of fields) {
       const beforeValue = before ? asText(before[key]) : "";
@@ -217,6 +281,10 @@ export function auditChangeRows(audit: Audit) {
   }
 
   if (details.passwordReset) rows.push({ label: "รีเซ็ตรหัสผ่าน", after: "มีการตั้งรหัสผ่านใหม่" });
+  if (details.imageChanged) rows.push({ label: "รูปเมนู", after: "มีการเปลี่ยนรูป" });
+  if (details.logoChanged) rows.push({ label: "โลโก้ร้าน", after: "มีการเปลี่ยนโลโก้" });
+  if (details.qrChanged) rows.push({ label: "QR พร้อมเพย์", after: "มีการเปลี่ยน QR" });
+  if (details.modifierGroupsChanged) rows.push({ label: "ตัวเลือกเมนู", after: "มีการแก้ไขตัวเลือก" });
   if (!rows.length && details.roles) rows.push({ label: "บทบาท", after: asText(details.roles) });
   if (!rows.length && details.active !== undefined) rows.push({ label: "สถานะบัญชี", after: asText(details.active) });
   return rows;
@@ -225,7 +293,7 @@ export function auditChangeRows(audit: Audit) {
 export function auditDetailRows(audit: Audit) {
   const details = audit.details || {};
   const rows: Array<{ label: string; value: string }> = [
-    { label: "ผู้ทำรายการ", value: audit.employee?.displayName || "บัญชีที่ถูกลบ" },
+    { label: "ผู้ทำรายการ", value: auditActorName(audit) },
     { label: "เวลา", value: new Date(audit.createdAt).toLocaleString("th-TH") },
     { label: "ประเภท", value: actionText[audit.action] || audit.action },
   ];
@@ -235,6 +303,11 @@ export function auditDetailRows(audit: Audit) {
     ["type", "ประเภทออเดอร์"],
     ["method", "วิธีชำระเงิน"],
     ["total", "ยอดเงิน"],
+    ["subtotal", "ยอดก่อนส่วนลด"],
+    ["discount", "ส่วนลด"],
+    ["receivedAmount", "เงินรับ"],
+    ["changeAmount", "เงินทอน"],
+    ["paymentId", "รหัสการชำระเงิน"],
     ["quantity", "จำนวน"],
     ["stock", "ยอดคงเหลือ"],
     ["status", "สถานะ"],

@@ -162,17 +162,18 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
       if (orderType === OrderType.DINE_IN && tableId) await tx.restaurantTable.update({ where: { id: Number(tableId) }, data: { status: "OCCUPIED" } });
       if (tableId) await tx.tableSession.updateMany({ where: { tableId: Number(tableId), closedAt: null }, data: { orderId: saved.id } });
       if (qr && session) await tx.qrSubmission.create({ data: { sessionId: session.id, requestId: qr.requestId, guestId: qr.guestId } });
+      await writeAudit(employeeId ?? null, active ? "ADD_ORDER_ITEMS" : "CREATE_ORDER", "Order", saved.id, {
+        snapshotVersion: 1,
+        orderNumber: saved.orderNumber, type: saved.type,
+        subtotal: saved.subtotal, discount: saved.discount, total: saved.total,
+        itemCount: normalized.reduce((sum, item) => sum + item.qty, 0),
+        items: normalized.map(item => ({
+          name: item.source.name, qty: item.qty, price: item.unitPrice, note: item.note ?? null,
+          modifiers: item.modifiers.map(m => ({ name: m.name, price: m.price })),
+        })),
+        tableName: saved.table?.name ?? null, queueNumber: saved.queueNumber,
+      }, { tx, restaurantId });
       return { order: saved, isAdditional: Boolean(active) };
-    });
-    if (employeeId) await writeAudit(employeeId!,result.isAdditional?"ADD_ORDER_ITEMS":"CREATE_ORDER","Order",result.order.id,{
-      orderNumber:result.order.orderNumber,
-      type:result.order.type,
-      total:result.order.total,
-      itemCount:normalized.reduce((sum,item)=>sum+item.qty,0),
-      items:normalized.map(item=>({name:item.source.name,qty:item.qty,price:item.source.price})),
-      modifiers:normalized.flatMap(item=>item.modifiers.map(modifier=>({itemName:item.source.name,name:modifier.name,price:modifier.price}))),
-      tableName:result.order.table?.name,
-      queueNumber:result.order.queueNumber,
     });
     return NextResponse.json({ ...result.order, isAdditional: result.isAdditional }, { status: 201 });
   } catch (error) {

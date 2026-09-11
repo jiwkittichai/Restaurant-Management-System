@@ -1,4 +1,5 @@
 "use client";
+import { useNotificationTarget } from "../hooks/useNotificationTarget";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpenText, ChefHat, Clock3, RefreshCw, Search, X } from "lucide-react";
@@ -44,6 +45,7 @@ export default function KitchenPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  useNotificationTarget(() => { setSearch(""); setActiveTab("ALL"); });
   const [activeTab, setActiveTab] = useState<MonitorTab>("ALL");
   const [selectedRecipe, setSelectedRecipe] = useState<SelectedRecipe | null>(null);
 
@@ -209,7 +211,7 @@ export default function KitchenPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredOrders.map((order) => (
-          <article key={order.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+          <article id={`order-${order.id}`} key={order.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
             <header className={`px-4 py-3 text-white ${order.type === "TAKEAWAY" ? "bg-[#356DDB]" : "bg-[#212A3A]"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const { randomUUID } = require("node:crypto");
 
 const prisma = new PrismaClient();
 const REPORT_SEED_NOTE = "REPORT_SEED";
@@ -1017,6 +1018,7 @@ async function main() {
 
               action:
                 "CREATE_ORDER",
+              requestId: randomUUID(),
 
               entityType:
                 "Order",
@@ -1025,6 +1027,10 @@ async function main() {
                 String(order.id),
 
               details: {
+                snapshotVersion: 1,
+                actorName: owner?.displayName ?? "ข้อมูลจำลอง",
+                subtotal: order.subtotal,
+                discount: order.discount,
                 orderNumber:
                   order.orderNumber,
 
@@ -1098,6 +1104,7 @@ async function main() {
 
               action:
                 "PAY_ORDER",
+              requestId: randomUUID(),
 
               entityType:
                 "Order",
@@ -1109,6 +1116,16 @@ async function main() {
                 orderNumber:
                   order.orderNumber,
 
+                snapshotVersion: 1,
+                actorName: owner?.displayName ?? "ข้อมูลจำลอง",
+                paymentId: order.payment?.id,
+                subtotal: order.subtotal,
+                discount: order.discount,
+                itemCount: order.items.reduce((sum, item) => sum + item.qty, 0),
+                items: order.items.map(item => ({
+                  id: item.id, name: item.name, qty: item.qty, price: item.price, note: item.note,
+                  modifiers: item.modifiers.map(m => ({ name: m.name, price: m.price })),
+                })),
                 method:
                   order.payment?.method,
 

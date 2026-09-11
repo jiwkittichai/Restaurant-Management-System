@@ -123,6 +123,7 @@ export default async function EmployeeHistoryPage({ params }: { params: Promise<
         tableName: details.tableName ?? order.table?.name,
         queueNumber: details.queueNumber ?? order.queueNumber,
         items: details.items ?? order.items,
+        itemsSource: Array.isArray(details.items) ? "snapshot" : "current",
         itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0),
       },
     };

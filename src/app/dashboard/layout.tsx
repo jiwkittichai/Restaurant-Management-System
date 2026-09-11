@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -7,11 +8,12 @@ import { getCurrentUser } from "@/lib/auth";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: user.restaurantId }, select: { name: true } });
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <Sidebar roles={user.roles} />
       <div className="flex flex-col flex-1 overflow-auto">
-        <Header user={user} />
+        <Header user={user} restaurantName={restaurant?.name} />
         <main className="flex-1 w-full"><RoleBoundary roles={user.roles}>{children}</RoleBoundary></main>
       </div>
     </div>

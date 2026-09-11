@@ -1,4 +1,5 @@
 "use client";
+import { useNotificationTarget } from "../hooks/useNotificationTarget";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -70,6 +71,7 @@ export default function TakeawayPage() {
   const [message, setMessage] = useState("");
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  useNotificationTarget(() => { setSearch(""); setActiveTab("ALL"); });
   const [activeTab, setActiveTab] = useState<QueueTab>("ALL");
   const [billOrder, setBillOrder] = useState<BillOrder | null>(null);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
@@ -252,7 +254,7 @@ export default function TakeawayPage() {
           const readyToPickup = order.status === "READY" && order.paymentStatus === "PAID";
 
           return (
-            <article key={order.id} className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+            <article id={`order-${order.id}`} key={order.id} className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">

@@ -63,7 +63,11 @@ export async function PATCH(req: NextRequest) {
       if (status !== "OCCUPIED" && (await tx.tableSession.count({ where: { tableId: current.id, closedAt: null } }) || await tx.order.count({ where: { tableId: current.id, paymentStatus: "UNPAID", status: { not: "CANCELLED" } } }))) throw new Error("ACTIVE_TABLE");
       return tx.restaurantTable.update({ where: { id: current.id }, data: { status } });
     });
-    await writeAudit(auth.user.id,"UPDATE_TABLE_STATUS","RestaurantTable",table.id,{status:table.status});
+    await writeAudit(auth.user.id,"UPDATE_TABLE_STATUS","RestaurantTable",table.id,{
+      name:table.name,
+      before:{status:current.status},
+      after:{status:table.status},
+    });
     return NextResponse.json(table);
   } catch {
     return NextResponse.json({ error: "อัปเดตโต๊ะไม่สำเร็จ" }, { status: 500 });
