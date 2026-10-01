@@ -1,6 +1,6 @@
 require("dotenv").config({ quiet: true });
 
-const Minio = require("minio");
+const Minio = require("../src/lib/storage-client.js");
 
 const bucketName = process.env.MINIO_BUCKET || "products";
 

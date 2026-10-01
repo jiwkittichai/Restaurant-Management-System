@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Minus, Plus, Search, ShoppingBag, Trash2, Utensils, Package } from "lucide-react";
 
 type Modifier = { id:number; name:string; price:number };

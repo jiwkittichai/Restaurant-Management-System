@@ -1,9 +1,12 @@
-import { OrderStatus, OrderType, PaymentStatus } from "@prisma/client";
-import { NextRequest, NextResponse } from "next/server";
+import { moneyJson } from "@/lib/money";
+import { OrderStatus, OrderType, PaymentStatus, Prisma } from "@prisma/client";
+import { money } from "@/lib/money";
+import { NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/auth";
 import { lockTable } from "@/lib/table-session";
+import { lockRestaurantAccess } from "@/lib/restaurant-access";
 type CartItem = { menuItemId: number; qty: number; note?: string; modifierIds?: number[] };
 
 export async function submitOrder(req: NextRequest, restaurantId: number, employeeId?: number, qr?: { token: string; guestId: string; requestId: string }) {
@@ -12,13 +15,13 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
       tableId?: number; type?: OrderType; customerName?: string; customerPhone?: string;
       items: CartItem[]; note?: string; discount?: number;
     };
-    if (!Array.isArray(items) || items.length > 50 || items.some(i => !Number.isInteger(i.menuItemId) || !Number.isInteger(i.qty) || i.qty < 1 || i.qty > 50 || (i.note && (typeof i.note !== "string" || i.note.length > 500)) || (i.modifierIds && (!Array.isArray(i.modifierIds) || i.modifierIds.length > 50 || i.modifierIds.some(id => !Number.isInteger(id))))) || items.reduce((n, i) => n + i.qty, 0) > 100) return NextResponse.json({ error: "จำนวนอาหารหรือตัวเลือกไม่ถูกต้อง (ไม่เกิน 100 จานต่อครั้ง)" }, { status: 400 });
-    if (!items?.length) return NextResponse.json({ error: "ยังไม่มีรายการอาหาร" }, { status: 400 });
+    if (!Array.isArray(items) || items.length > 50 || items.some(i => !Number.isInteger(i.menuItemId) || !Number.isInteger(i.qty) || i.qty < 1 || i.qty > 50 || (i.note && (typeof i.note !== "string" || i.note.length > 500)) || (i.modifierIds && (!Array.isArray(i.modifierIds) || i.modifierIds.length > 50 || i.modifierIds.some(id => !Number.isInteger(id))))) || items.reduce((n, i) => n + i.qty, 0) > 100) return moneyJson({ error: "จำนวนอาหารหรือตัวเลือกไม่ถูกต้อง (ไม่เกิน 100 จานต่อครั้ง)" }, { status: 400 });
+    if (!items?.length) return moneyJson({ error: "ยังไม่มีรายการอาหาร" }, { status: 400 });
 
     const ids = [...new Set(items.map((item) => Number(item.menuItemId)))];
     if (tableId) {
       const table = await prisma.restaurantTable.findFirst({ where: { id: Number(tableId), restaurantId: restaurantId } });
-      if (!table) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
+      if (!table) return moneyJson({ error: "ไม่พบโต๊ะ" }, { status: 404 });
     }
     const menu = await prisma.menuItem.findMany({
       where: { restaurantId, id: { in: ids }, available: true, category: { active: true } },
@@ -38,7 +41,7 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
         },
       },
     });
-    if (menu.length !== ids.length) return NextResponse.json({ error: "มีเมนูที่ไม่พร้อมขาย" }, { status: 400 });
+    if (menu.length !== ids.length) return moneyJson({ error: "มีเมนูที่ไม่พร้อมขาย" }, { status: 400 });
 
     const menuMap = new Map(menu.map((item) => [item.id, item]));
     const normalized = items.map((item) => {
@@ -55,19 +58,19 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
         if (!modifier) throw new Error("INVALID_MODIFIER");
         return modifier;
       });
-      const modifierTotal = modifiers.reduce((sum, modifier) => sum + modifier.price, 0);
+      const modifierTotal = modifiers.reduce((sum, modifier) => sum.plus(modifier.price), new Prisma.Decimal(0));
       return {
         source,
         modifiers,
         qty: Math.max(1, Number(item.qty)),
         note: item.note?.trim() || null,
-        unitPrice: source.price + modifierTotal,
+        unitPrice: source.price.plus(modifierTotal),
       };
     });
-    const subtotal = normalized.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
-    const safeDiscount = Math.min(Math.max(0, Number(discount)), subtotal);
+    const subtotal = money(normalized.reduce((sum, item) => sum.plus(item.unitPrice.times(item.qty)), new Prisma.Decimal(0)));
+    const safeDiscount = Prisma.Decimal.min(money(discount), subtotal);
     const orderType = tableId ? OrderType.DINE_IN : (type || OrderType.TAKEAWAY);
-    const queueNumber = orderType === OrderType.TAKEAWAY ? `Q${Date.now().toString().slice(-6)}` : null;
+    const queueNumber = orderType === OrderType.TAKEAWAY ? `Q${Date.now()}-${randomBytes(4).toString("hex")}` : null;
     const required = new Map<number, { name: string; quantity: number }>();
     for (const item of normalized) for (const recipe of item.source.recipes) {
       const current = required.get(recipe.ingredientId) || { name: recipe.ingredient.name, quantity: 0 };
@@ -81,6 +84,7 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      await lockRestaurantAccess(tx, restaurantId);
       if (tableId) await lockTable(tx, Number(tableId));
       const session = qr ? await tx.tableSession.findUnique({ where: { token: qr.token } }) : null;
       if (qr) {
@@ -122,8 +126,8 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
         ? await tx.order.update({
           where: { id: active.id },
           data: {
-            subtotal: { increment: subtotal },
-            total: { increment: subtotal },
+            subtotal: money(active.subtotal.plus(subtotal)),
+            total: money(active.total.plus(subtotal)),
             status: OrderStatus.SENT,
             stockDeducted: active.stockDeducted || required.size > 0,
             note: note?.trim() ? [active.note, note.trim()].filter(Boolean).join("\n") : active.note,
@@ -142,7 +146,7 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
             customerPhone: customerPhone?.trim() || null,
             subtotal,
             discount: safeDiscount,
-            total: subtotal - safeDiscount,
+            total: subtotal.minus(safeDiscount),
             note: note?.trim() || null,
             stockDeducted: required.size > 0,
             items: { create: itemData },
@@ -175,10 +179,10 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
       }, { tx, restaurantId });
       return { order: saved, isAdditional: Boolean(active) };
     });
-    return NextResponse.json({ ...result.order, isAdditional: result.isAdditional }, { status: 201 });
+    return moneyJson({ ...result.order, isAdditional: result.isAdditional }, { status: 201 });
   } catch (error) {
     const qrErrors: Record<string, string> = { QR_CLOSED: "รอบโต๊ะนี้สิ้นสุดแล้ว กรุณาติดต่อพนักงาน", QR_PAUSED: "โต๊ะนี้พักรับออเดอร์ กรุณาติดต่อพนักงาน", QR_RATE: "กรุณารอสักครู่ก่อนส่งรายการถัดไป" };
-    if (error instanceof Error && qrErrors[error.message]) return NextResponse.json({ error: qrErrors[error.message] }, { status: error.message === "QR_CLOSED" ? 410 : 429 });
+    if (error instanceof Error && qrErrors[error.message]) return moneyJson({ error: qrErrors[error.message] }, { status: error.message === "QR_CLOSED" ? 410 : 429 });
     const message = error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")
         ? `วัตถุดิบไม่เพียงพอ: ${error.message.split(":")[1]}`
         : error instanceof Error && error.message.startsWith("REQUIRED_MODIFIER:")
@@ -188,6 +192,6 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
             : error instanceof Error && error.message === "INVALID_MODIFIER"
               ? "ตัวเลือกเสริมไม่ถูกต้อง"
         : "เปิดออเดอร์ไม่สำเร็จ";
-    return NextResponse.json({ error: message }, { status: 409 });
+    return moneyJson({ error: message }, { status: 409 });
   }
 }

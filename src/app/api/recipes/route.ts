@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { moneyJson } from "@/lib/money";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
@@ -22,7 +23,7 @@ export async function GET() {
     },
     orderBy: { name: "asc" },
   });
-  return NextResponse.json(menu);
+  return moneyJson(menu);
 }
 
 export async function PUT(req: NextRequest) {
@@ -57,8 +58,8 @@ export async function PUT(req: NextRequest) {
       }
     });
     await writeAudit(auth.user.id,"UPDATE_RECIPE",targetType === "modifier" ? "MenuItemModifier" : "MenuItem",targetType === "modifier" ? modifierId : menuItemId,{ingredientCount:valid.length});
-    return NextResponse.json({ success: true });
+    return moneyJson({ success: true });
   } catch {
-    return NextResponse.json({ error: "บันทึกสูตรอาหารไม่สำเร็จ" }, { status: 500 });
+    return moneyJson({ error: "บันทึกสูตรอาหารไม่สำเร็จ" }, { status: 500 });
   }
 }

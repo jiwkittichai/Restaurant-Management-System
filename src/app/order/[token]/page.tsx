@@ -1,4 +1,4 @@
-import GuestOrder from "./GuestOrder";
+import GuestOrder from "./_components/GuestOrder";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {

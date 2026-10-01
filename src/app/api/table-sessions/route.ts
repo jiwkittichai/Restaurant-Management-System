@@ -7,6 +7,7 @@ import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { lockTable, closeTableSession } from "@/lib/table-session";
+import { lockRestaurantAccess } from "@/lib/restaurant-access";
 
 export async function POST(req: NextRequest) {
   const auth = await authorizeApi([StaffRole.OWNER, StaffRole.CASHIER]);
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     const table = await prisma.restaurantTable.findFirst({ where: { id: Number(tableId), restaurantId: auth.user.restaurantId }, include: { restaurant: { select: brandSelect } } });
     if (!table) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
     const session = await prisma.$transaction(async tx => {
+      await lockRestaurantAccess(tx, auth.user.restaurantId);
       await lockTable(tx, table.id);
       let current = await tx.tableSession.findFirst({ where: { tableId: table.id, closedAt: null } });
       if (action === "open" && !current) {

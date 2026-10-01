@@ -1,2 +1,0 @@
-ALTER TABLE `MenuItem`
-ADD COLUMN `saleUnit` VARCHAR(191) NOT NULL DEFAULT 'จาน';

@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { ChevronRight, CreditCard, Store } from "lucide-react";
+import { ChevronRight, CreditCard, Store, UserRound } from "lucide-react";
 
 const settingsItems = [
+  { title: "เริ่มต้นใช้งาน", description: "ตรวจรายการตั้งค่าร้าน เมนู โต๊ะ และพนักงาน", href: "/dashboard/onboarding", icon: Store },
+  { title: "บัญชีผู้ใช้", description: "ชื่อผู้ใช้ อีเมล และรหัสผ่านของเจ้าของบัญชีร้าน", href: "/dashboard/settings/account", icon: UserRound },
   { title: "ข้อมูลร้าน", description: "ชื่อ โลโก้ ข้อมูลติดต่อ และข้อความบนหน้าเมนู/ใบพิมพ์", href: "/dashboard/settings/restaurant", icon: Store },
   {
     title: "การชำระเงิน",

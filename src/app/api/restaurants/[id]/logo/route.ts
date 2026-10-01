@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
-import { Client } from "minio";
+import { Client } from "@/lib/storage-client";
 import { prisma } from "@/lib/prisma";
 import { menuImageObjectKey } from "@/lib/menu-image";
 
@@ -15,7 +15,8 @@ const types: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", p
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id))) return new NextResponse(null, { status: 404 });
-  const restaurant = await prisma.restaurant.findUnique({ where: { id: Number(id) }, select: { logoUrl: true } });
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: Number(id) }, select: { logoUrl: true, active: true, approvalStatus: true } });
+  if (!restaurant?.active || restaurant.approvalStatus !== "APPROVED") return new NextResponse(null, { status: 404 });
   const key = menuImageObjectKey(restaurant?.logoUrl || null);
   if (!key) return new NextResponse(null, { status: 404 });
   try {

@@ -1,17 +1,20 @@
+import { moneyJson } from "@/lib/money";
 import { brandSelect, publicBrand } from "@/lib/restaurant-brand";
 import { menuImageObjectKey } from "@/lib/menu-image";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { submitOrder } from "@/lib/submit-order";
 import { lockTable } from "@/lib/table-session";
+import { lockRestaurantAccess } from "@/lib/restaurant-access";
 
 type Context = { params: Promise<{ token: string }> };
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
 async function findSession(token: string) {
   if (!/^[a-f0-9]{64}$/.test(token)) return null;
-  return prisma.tableSession.findUnique({ where: { token }, include: { table: { include: { restaurant: { select: brandSelect } } } } });
+  const session = await prisma.tableSession.findUnique({ where: { token }, include: { table: { include: { restaurant: { select: { ...brandSelect, active: true, approvalStatus: true } } } } } });
+  return session?.table.restaurant.active && session.table.restaurant.approvalStatus === "APPROVED" ? session : null;
 }
-const closed = () => NextResponse.json({ error: "QR นี้สิ้นสุดการใช้งานแล้ว กรุณาติดต่อพนักงาน" }, { status: 410, headers });
+const closed = () => moneyJson({ error: "QR นี้สิ้นสุดการใช้งานแล้ว กรุณาติดต่อพนักงาน" }, { status: 410, headers });
 export async function GET(req: NextRequest, context: Context) {
   const { token } = await context.params;
   const session = await findSession(token);
@@ -26,7 +29,7 @@ export async function GET(req: NextRequest, context: Context) {
     }, orderBy: { id: "asc" },
   });
   const order = session.orderId ? await prisma.order.findUnique({ where: { id: session.orderId }, select: { total: true, subtotal: true, discount: true, items: { orderBy: { id: "desc" }, select: { id: true, name: true, qty: true, price: true, note: true, status: true, guestId: true, createdAt: true, modifiers: { select: { name: true } } } } } }) : null;
-  return NextResponse.json({ brand: publicBrand(session.table.restaurant), restaurantName: session.table.restaurant.name, tableName: session.table.name, paused: session.paused, billRequestedAt: session.billRequestedAt,
+  return moneyJson({ brand: publicBrand(session.table.restaurant), restaurantName: session.table.restaurant.name, tableName: session.table.name, paused: session.paused, billRequestedAt: session.billRequestedAt,
     menu: menu.map(({ recipes, modifiers, ...item }) => ({ ...item, image: menuImageObjectKey(item.image) ? `/api/guest/${token}/images/${item.id}` : item.image, available: item.available && recipes.every(r => r.quantity <= r.ingredient.stock), modifierGroups: [...item.modifierGroups, ...(modifiers.length ? [{ id: 0, name: "ตัวเลือกเพิ่มเติม", minSelect: 0, maxSelect: modifiers.length, options: modifiers }] : [])] })),
     order: order ? { ...order, items: order.items.map(({ guestId: owner, ...item }) => ({ ...item, mine: Boolean(guestId && owner === guestId) })) } : null,
   }, { headers });
@@ -39,21 +42,22 @@ export async function POST(req: NextRequest, context: Context) {
     const body = await req.json();
     if (body.action === "bill") {
       await prisma.$transaction(async tx => {
+        await lockRestaurantAccess(tx, session.table.restaurantId);
         await lockTable(tx, session.tableId);
         const current = await tx.tableSession.findUnique({ where: { token } });
         if (!current || current.closedAt) throw new Error("CLOSED");
         if (!current.orderId) throw new Error("ยังไม่มีรายการอาหาร");
         await tx.tableSession.update({ where: { id: current.id }, data: { billRequestedAt: current.billRequestedAt || new Date() } });
       });
-      return NextResponse.json({ ok: true }, { headers });
+      return moneyJson({ ok: true }, { headers });
     }
-    if (typeof body.guestId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(body.guestId) || typeof body.requestId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(body.requestId)) return NextResponse.json({ error: "ข้อมูลการส่งไม่ถูกต้อง" }, { status: 400 });
+    if (typeof body.guestId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(body.guestId) || typeof body.requestId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(body.requestId)) return moneyJson({ error: "ข้อมูลการส่งไม่ถูกต้อง" }, { status: 400 });
     const safeRequest = new NextRequest(req.url, { method: "POST", body: JSON.stringify({ tableId: session.tableId, items: body.items }) });
     const result = await submitOrder(safeRequest, session.table.restaurantId, undefined, { token, guestId: body.guestId, requestId: body.requestId });
     if (!result.ok) return result;
-    return NextResponse.json({ ok: true }, { status: 201, headers });
+    return moneyJson({ ok: true }, { status: 201, headers });
   } catch (error) {
     if (error instanceof Error && error.message === "CLOSED") return closed();
-    return NextResponse.json({ error: "ทำรายการไม่สำเร็จ กรุณาลองใหม่" }, { status: 400, headers });
+    return moneyJson({ error: "ทำรายการไม่สำเร็จ กรุณาลองใหม่" }, { status: 400, headers });
   }
 }

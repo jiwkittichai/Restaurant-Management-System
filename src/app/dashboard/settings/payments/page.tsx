@@ -4,38 +4,18 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { CheckCircle2, Pencil, QrCode, Save, UploadCloud, X } from "lucide-react";
 import Link from "next/link";
 
-type PromptPayMode = "MANUAL_QR" | "STRIPE";
-
 type PaymentSettings = {
   promptPayEnabled: boolean;
-  promptPayMode: PromptPayMode;
   promptPayAccountName: string;
   promptPayIdentifier: string;
   promptPayQrImageUrl: string;
-  stripeEnabled: boolean;
-  stripeGatewayReady: boolean;
-  stripeConnected: boolean;
-  stripeReady: boolean;
-  stripeAccountId: string;
-  stripeChargesEnabled: boolean;
-  stripePayoutsEnabled: boolean;
-  stripeDetailsSubmitted: boolean;
 };
 
 const emptySettings: PaymentSettings = {
   promptPayEnabled: false,
-  promptPayMode: "MANUAL_QR",
   promptPayAccountName: "",
   promptPayIdentifier: "",
   promptPayQrImageUrl: "",
-  stripeEnabled: false,
-  stripeGatewayReady: false,
-  stripeConnected: false,
-  stripeReady: false,
-  stripeAccountId: "",
-  stripeChargesEnabled: false,
-  stripePayoutsEnabled: false,
-  stripeDetailsSubmitted: false,
 };
 
 export default function PaymentSettingsPage() {
@@ -52,7 +32,7 @@ export default function PaymentSettingsPage() {
     fetch("/api/payment-settings")
       .then((response) => response.json())
       .then((data) => {
-        const next = { ...emptySettings, ...data, promptPayMode: "MANUAL_QR" as PromptPayMode, stripeEnabled: false };
+        const next = { ...emptySettings, ...data };
         setSettings(next);
         setSavedSettings(next);
       })
@@ -89,7 +69,7 @@ export default function PaymentSettingsPage() {
       const response = await fetch("/api/payment-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...settings, promptPayMode: "MANUAL_QR", stripeEnabled: false }),
+        body: JSON.stringify(settings),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "บันทึกการตั้งค่าไม่สำเร็จ");
@@ -145,13 +125,8 @@ export default function PaymentSettingsPage() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div
-          role="button"
-          tabIndex={editing ? 0 : -1}
-          onClick={() => editing && setSettings({ ...settings, promptPayMode: "MANUAL_QR" })}
-          className={`rounded-2xl border bg-white p-5 text-left transition ${editing ? "cursor-pointer" : "cursor-default"} ${settings.promptPayMode === "MANUAL_QR" ? "border-blue-300 bg-blue-50 shadow-sm" : editing ? "border-gray-100 hover:border-blue-100" : "border-gray-100 opacity-60"}`}
-        >
+      <section>
+        <div className="rounded-2xl border border-blue-300 bg-blue-50 p-5 text-left shadow-sm">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-100 text-blue-600"><QrCode size={22} /></div>
             <div>

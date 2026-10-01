@@ -7,6 +7,7 @@ export async function lockTable(tx: Prisma.TransactionClient, tableId: number) {
 export async function lockOrderTable(tx: Prisma.TransactionClient, orderId: number) {
   const order = await tx.order.findUnique({ where: { id: orderId }, select: { tableId: true } });
   if (order?.tableId) await lockTable(tx, order.tableId);
+  await tx.$queryRaw`SELECT id FROM \`Order\` WHERE id = ${orderId} FOR UPDATE`;
 }
 export async function closeTableSession(tx: Prisma.TransactionClient, tableId: number) {
   await tx.tableSession.updateMany({ where: { tableId, closedAt: null }, data: { closedAt: new Date(), paused: true } });

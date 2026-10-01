@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { moneyJson } from "@/lib/money";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { StaffRole } from "@prisma/client";
+import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
 
 const monthText = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -51,17 +52,18 @@ export async function GET(req: NextRequest) {
       : mode === "YEAR" || (mode === "CUSTOM" && daysBetween(from, to) > 62)
       ? "month"
       : "day";
-  const topMap = new Map<string, { name: string; qty: number; sales: number }>();
-  const paymentMap = new Map<string, number>();
-  const dailyMap = new Map<string, { amount: number; orders: number }>();
-  const chartMap = new Map<string, { label: string; amount: number; orders: number; sort: string }>();
+  const zero = new Prisma.Decimal(0);
+  const topMap = new Map<string, { name: string; qty: number; sales: Prisma.Decimal }>();
+  const paymentMap = new Map<string, Prisma.Decimal>();
+  const dailyMap = new Map<string, { amount: Prisma.Decimal; orders: number }>();
+  const chartMap = new Map<string, { label: string; amount: Prisma.Decimal; orders: number; sort: string }>();
   for (const order of orders) {
     if (order.payment) {
-      paymentMap.set(order.payment.method, (paymentMap.get(order.payment.method) || 0) + order.payment.amount);
+      paymentMap.set(order.payment.method, (paymentMap.get(order.payment.method) || zero).plus(order.payment.amount));
       const paidAt = order.payment.paidAt;
       const day = dateKey(paidAt);
-      const current = dailyMap.get(day) || { amount: 0, orders: 0 };
-      current.amount += order.total;
+      const current = dailyMap.get(day) || { amount: zero, orders: 0 };
+      current.amount = current.amount.plus(order.total);
       current.orders += 1;
       dailyMap.set(day, current);
       const chartKey = bucketMode === "hour"
@@ -78,34 +80,34 @@ export async function GET(req: NextRequest) {
         : bucketMode === "month"
           ? monthText[paidAt.getMonth()]
           : `${paidAt.getDate()} ${monthText[paidAt.getMonth()]}`;
-      const chartCurrent = chartMap.get(chartKey) || { label: chartLabel, amount: 0, orders: 0, sort: chartKey };
-      chartCurrent.amount += order.total;
+      const chartCurrent = chartMap.get(chartKey) || { label: chartLabel, amount: zero, orders: 0, sort: chartKey };
+      chartCurrent.amount = chartCurrent.amount.plus(order.total);
       chartCurrent.orders += 1;
       chartMap.set(chartKey, chartCurrent);
     }
     for (const item of order.items) {
-      const current = topMap.get(item.name) || { name: item.name, qty: 0, sales: 0 };
-      current.qty += item.qty; current.sales += item.price * item.qty; topMap.set(item.name, current);
+      const current = topMap.get(item.name) || { name: item.name, qty: 0, sales: zero };
+      current.qty += item.qty; current.sales = current.sales.plus(item.price.times(item.qty)); topMap.set(item.name, current);
     }
   }
-  const sales = orders.reduce((sum, order) => sum + order.total, 0);
-  const discounts = orders.reduce((sum, order) => sum + order.discount, 0);
+  const sales = orders.reduce((sum, order) => sum.plus(order.total), zero);
+  const discounts = orders.reduce((sum, order) => sum.plus(order.discount), zero);
   const paidDates = orders.flatMap((order) => order.payment?.paidAt ? [order.payment.paidAt] : []);
   const oldestPaidAt = paidDates.length ? new Date(Math.min(...paidDates.map((date) => date.getTime()))) : null;
   const latestPaidAt = paidDates.length ? new Date(Math.max(...paidDates.map((date) => date.getTime()))) : null;
   const chartRows = [...chartMap.values()].sort((a, b) => a.sort.localeCompare(b.sort));
-  const filledChartRows: Array<{ label: string; amount: number; orders: number; sort: string }> = [];
+  const filledChartRows: Array<{ label: string; amount: Prisma.Decimal; orders: number; sort: string }> = [];
   if (bucketMode === "hour" && from) {
     const rowsByKey = new Map(chartRows.map((row) => [row.sort, row]));
     for (let hour = 10; hour <= 22; hour += 1) {
       const key = `${dateKey(from)}-${String(hour).padStart(2, "0")}`;
-      filledChartRows.push(rowsByKey.get(key) || { label: `${String(hour).padStart(2, "0")}:00`, amount: 0, orders: 0, sort: key });
+      filledChartRows.push(rowsByKey.get(key) || { label: `${String(hour).padStart(2, "0")}:00`, amount: zero, orders: 0, sort: key });
     }
   } else if (bucketMode === "day" && from && to) {
     const rowsByKey = new Map(chartRows.map((row) => [row.sort, row]));
     for (let date = new Date(from.getFullYear(), from.getMonth(), from.getDate()); date <= to; date = addDays(date, 1)) {
       const key = dateKey(date);
-      filledChartRows.push(rowsByKey.get(key) || { label: `${date.getDate()} ${monthText[date.getMonth()]}`, amount: 0, orders: 0, sort: key });
+      filledChartRows.push(rowsByKey.get(key) || { label: `${date.getDate()} ${monthText[date.getMonth()]}`, amount: zero, orders: 0, sort: key });
     }
   } else if (bucketMode === "month") {
     const rowsByKey = new Map(chartRows.map((row) => [row.sort, row]));
@@ -113,7 +115,7 @@ export async function GET(req: NextRequest) {
     const end = to || now;
     for (let date = new Date(start.getFullYear(), start.getMonth(), 1); date <= end; date = new Date(date.getFullYear(), date.getMonth() + 1, 1)) {
       const key = monthKey(date);
-      filledChartRows.push(rowsByKey.get(key) || { label: monthText[date.getMonth()], amount: 0, orders: 0, sort: key });
+      filledChartRows.push(rowsByKey.get(key) || { label: monthText[date.getMonth()], amount: zero, orders: 0, sort: key });
     }
   } else if (bucketMode === "year") {
     const rowsByKey = new Map(chartRows.map((row) => [row.sort, row]));
@@ -121,12 +123,12 @@ export async function GET(req: NextRequest) {
     const end = to || latestPaidAt || now;
     for (let year = start.getFullYear(); year <= end.getFullYear(); year += 1) {
       const key = String(year);
-      filledChartRows.push(rowsByKey.get(key) || { label: key, amount: 0, orders: 0, sort: key });
+      filledChartRows.push(rowsByKey.get(key) || { label: key, amount: zero, orders: 0, sort: key });
     }
   }
   const chart = filledChartRows.length ? filledChartRows : chartRows;
-  return NextResponse.json({
-    summary: { sales, discounts, orders: orders.length, average: orders.length ? sales / orders.length : 0 },
+  return moneyJson({
+    summary: { sales, discounts, orders: orders.length, average: orders.length ? sales.div(orders.length).toDecimalPlaces(2) : 0 },
     meta: { oldestPaidAt, latestPaidAt },
     topItems: [...topMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 10),
     payments: [...paymentMap.entries()].map(([method, amount]) => ({ method, amount })),
@@ -135,7 +137,7 @@ export async function GET(req: NextRequest) {
         date,
         amount: value.amount,
         orders: value.orders,
-        average: value.orders ? value.amount / value.orders : 0,
+        average: value.orders ? value.amount.div(value.orders).toDecimalPlaces(2) : 0,
       }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     chart: chart
@@ -144,7 +146,7 @@ export async function GET(req: NextRequest) {
         label,
         amount,
         orders,
-        average: orders ? amount / orders : 0,
+        average: orders ? amount.div(orders).toDecimalPlaces(2) : 0,
       })),
     chartMode: bucketMode,
     recent: orders.slice(0, 20).map((order) => ({

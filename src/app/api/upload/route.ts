@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { Client } from "minio";
+import { Client } from "@/lib/storage-client";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
+import { randomUUID } from "node:crypto";
+import sharp from "sharp";
+import { boundedBody, rateLimit, RequestError, requestError } from "@/lib/request-security";
 
 const bucketName = process.env.MINIO_BUCKET || "products";
 
@@ -26,21 +29,40 @@ function publicObjectUrl(objectName: string) {
 export async function POST(req: Request) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
-    const data = await req.formData();
-    const file = data.get("file") as File;
+    const limited = await rateLimit("upload", String(auth.user.restaurantId), 60, 900);
+    if (limited) return limited;
+    const bytes = await boundedBody(req, 6 * 1024 * 1024);
+    let data: FormData;
+    try {
+      data = await new Response(new Uint8Array(bytes), { headers: { "Content-Type": req.headers.get("content-type") || "" } }).formData();
+    } catch { throw new RequestError("รูปแบบข้อมูลไฟล์ไม่ถูกต้อง"); }
+    const file = data.get("file");
     const purpose = String(data.get("purpose") || "");
 
-    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
-
-    if (purpose === "restaurant_logo" && (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024)) return NextResponse.json({ error: "โลโก้ต้องเป็น PNG, JPG หรือ WebP ขนาดไม่เกิน 5 MB" }, { status: 400 });
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `restaurants/${auth.user.restaurantId}/${Date.now()}-${file.name}`;
+    if (!(file instanceof File) || !["", "menu_image", "restaurant_logo", "promptpay_qr"].includes(purpose)) throw new RequestError("ข้อมูลไฟล์ไม่ถูกต้อง");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || !file.size || file.size > 5 * 1024 * 1024) throw new RequestError("รูปต้องเป็น PNG, JPG หรือ WebP ขนาดไม่เกิน 5 MB");
+    let buffer: Buffer;
+    let extension: string;
+    let contentType: string;
+    try {
+      const input = Buffer.from(await file.arrayBuffer());
+      const decoder = sharp(input, { limitInputPixels: 16000000, failOn: "warning" });
+      const metadata = await decoder.metadata();
+      const types: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
+      if (!metadata.format || types[metadata.format] !== file.type || (metadata.pages || 1) > 1 || !metadata.width || !metadata.height || metadata.width > 8000 || metadata.height > 8000) throw new Error();
+      extension = metadata.format;
+      contentType = types[extension];
+      buffer = await decoder.rotate().toFormat(metadata.format as "png" | "jpeg" | "webp").toBuffer();
+      if (buffer.length > 5 * 1024 * 1024) throw new Error();
+    } catch { throw new RequestError("รูปภาพไม่ถูกต้อง ใหญ่เกินกำหนด หรือเป็นภาพเคลื่อนไหว"); }
+    const filename = `restaurants/${auth.user.restaurantId}/${randomUUID()}.${extension}`;
 
     await minioClient.putObject(bucketName, filename, buffer, buffer.length, {
-      "Content-Type": file.type || "application/octet-stream",
+      "Content-Type": contentType,
     });
     return NextResponse.json({ url: publicObjectUrl(filename) });
   } catch (error) {
+    if (error instanceof RequestError) return requestError(error);
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }

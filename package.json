@@ -6,41 +6,39 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:seed": "node prisma/seed.js",
-    "db:seed:reports": "node prisma/seed-report-orders.js",
-    "db:seed:all": "npm run db:seed && npm run db:seed:reports",
-    "audit:cleanup": "node scripts/cleanup-audits.js",
-    "audit:cleanup:apply": "node scripts/cleanup-audits.js --apply",
-    "minio:init": "node scripts/init-minio.js",
-    "test:qr": "node scripts/test-qr.mjs"
+    "db:seed": "node scripts/seed-realistic.mjs --apply --confirm-database=restaurant_system",
+    "db:seed:preview": "node scripts/seed-realistic.mjs",
+    "minio:init": "node scripts/init-minio.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1025.0",
-    "@prisma/adapter-pg": "^7.6.0",
+    "@aws-sdk/client-s3": "^3.1132.0",
     "@prisma/client": "^6.19.3",
     "dotenv": "^17.4.1",
-    "express": "^5.2.1",
-    "formidable": "^3.5.4",
     "lucide-react": "^1.7.0",
-    "minio": "^8.0.7",
-    "mysql2": "^3.20.0",
-    "next": "16.2.2",
-    "pg": "^8.20.0",
+    "next": "^16.3.4",
+    "nodemailer": "^10.0.10",
     "prisma": "^6.19.3",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "uuid": "^13.0.0"
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.4"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    }
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/formidable": "^3.5.0",
     "@types/node": "^20.19.39",
-    "@types/pg": "^8.20.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "smtp-server": "^3.19.13",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

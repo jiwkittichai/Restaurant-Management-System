@@ -2,6 +2,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model RateLimitBucket {
+  id        String   @id @db.VarChar(64)
+  hits      Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -15,15 +23,26 @@ model Product {
   sku          String
   category     String
   qty          Int
-  price        Float
+  price        Decimal    @db.Decimal(14, 2)
   image        String?
 
   @@unique([restaurantId, sku])
 }
 
+enum RestaurantApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Restaurant {
+  approvalStatus  RestaurantApproval      @default(APPROVED)
+  reviewedAt      DateTime?
+  reviewReason    String?                 @db.Text
+  active          Boolean                 @default(true)
+  suspendedAt     DateTime?
   logoUrl         String?
-  address         String? @db.Text
+  address         String?                 @db.Text
   phone           String?
   welcomeMessage  String?
   receiptFooter   String?
@@ -49,6 +68,7 @@ model Restaurant {
   updatedAt       DateTime                @updatedAt
 
   @@index([ownerId])
+  @@index([approvalStatus, createdAt])
 }
 
 model Category {
@@ -72,7 +92,7 @@ model MenuItem {
   name           String
   sku            String
   description    String?
-  price          Float
+  price          Decimal                 @db.Decimal(14, 2)
   saleUnit       String                  @default("จาน")
   image          String?
   available      Boolean                 @default(true)
@@ -116,7 +136,7 @@ model MenuItemModifier {
   groupId      Int?
   group        MenuItemModifierGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   name         String
-  price        Float                    @default(0)
+  price        Decimal                  @default(0) @db.Decimal(14, 2)
   active       Boolean                  @default(true)
   recipes      MenuItemModifierRecipe[]
   orderItems   OrderItemModifier[]
@@ -139,16 +159,16 @@ model MenuItemModifierRecipe {
 }
 
 model RestaurantTable {
-  id           Int         @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   restaurantId Int
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   name         String
-  seats        Int         @default(2)
-  status       TableStatus @default(AVAILABLE)
+  seats        Int            @default(2)
+  status       TableStatus    @default(AVAILABLE)
   orders       Order[]
   sessions     TableSession[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@unique([restaurantId, name])
 }
@@ -168,9 +188,9 @@ model Order {
   pickedUpAt       DateTime?
   status           OrderStatus      @default(SENT)
   paymentStatus    PaymentStatus    @default(UNPAID)
-  subtotal         Float
-  discount         Float            @default(0)
-  total            Float
+  subtotal         Decimal          @db.Decimal(14, 2)
+  discount         Decimal          @default(0) @db.Decimal(14, 2)
+  total            Decimal          @db.Decimal(14, 2)
   note             String?
   stockDeducted    Boolean          @default(false)
   items            OrderItem[]
@@ -189,7 +209,7 @@ model OrderItem {
   menuItemId Int
   menuItem   MenuItem            @relation(fields: [menuItemId], references: [id])
   name       String
-  price      Float
+  price      Decimal             @db.Decimal(14, 2)
   qty        Int
   note       String?
   status     KitchenStatus       @default(NEW)
@@ -207,7 +227,7 @@ model OrderItemModifier {
   modifierId  Int?
   modifier    MenuItemModifier? @relation(fields: [modifierId], references: [id], onDelete: SetNull)
   name        String
-  price       Float             @default(0)
+  price       Decimal           @default(0) @db.Decimal(14, 2)
   createdAt   DateTime          @default(now())
 }
 
@@ -218,32 +238,24 @@ model Payment {
   orderId        Int           @unique
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   method         PaymentMethod
-  amount         Float
-  receivedAmount Float?
-  changeAmount   Float?
+  amount         Decimal       @db.Decimal(14, 2)
+  receivedAmount Decimal?      @db.Decimal(14, 2)
+  changeAmount   Decimal?      @db.Decimal(14, 2)
   paidAt         DateTime      @default(now())
 
   @@index([restaurantId])
 }
 
 model PaymentSettings {
-  id                     Int        @id @default(autoincrement())
-  restaurantId           Int        @unique
-  restaurant             Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  promptPayEnabled       Boolean    @default(false)
-  promptPayMode          String     @default("MANUAL_QR")
-  promptPayAccountName   String?
-  promptPayIdentifier    String?
-  promptPayQrImageUrl    String?
-  stripeEnabled          Boolean    @default(false)
-  stripeAccountId        String?
-  stripeChargesEnabled   Boolean    @default(false)
-  stripePayoutsEnabled   Boolean    @default(false)
-  stripeDetailsSubmitted Boolean    @default(false)
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
-
-  @@index([stripeAccountId])
+  id                   Int        @id @default(autoincrement())
+  restaurantId         Int        @unique
+  restaurant           Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  promptPayEnabled     Boolean    @default(false)
+  promptPayAccountName String?
+  promptPayIdentifier  String?
+  promptPayQrImageUrl  String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 }
 
 model Ingredient {
@@ -254,7 +266,7 @@ model Ingredient {
   unit            String
   stock           Float                    @default(0)
   minStock        Float                    @default(0)
-  costPerUnit     Float                    @default(0)
+  costPerUnit     Decimal                  @default(0) @db.Decimal(18, 6)
   active          Boolean                  @default(true)
   recipes         Recipe[]
   modifierRecipes MenuItemModifierRecipe[]
@@ -289,25 +301,31 @@ model StockMovement {
   createdAt    DateTime          @default(now())
 
   @@index([restaurantId])
+  @@index([restaurantId, reference, type])
 }
 
 model Employee {
-  id               Int            @id @default(autoincrement())
-  restaurantId     Int
-  restaurant       Restaurant     @relation("RestaurantEmployees", fields: [restaurantId], references: [id], onDelete: Cascade)
-  ownedRestaurants Restaurant[]   @relation("RestaurantOwner")
-  username         String         @unique
-  displayName      String
-  passwordHash     String
-  active           Boolean        @default(true)
-  lastLoginAt      DateTime?
-  roles            EmployeeRole[]
-  sessions         AuthSession[]
-  auditLogs        AuditLog[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                        Int            @id @default(autoincrement())
+  restaurantId              Int
+  restaurant                Restaurant     @relation("RestaurantEmployees", fields: [restaurantId], references: [id], onDelete: Cascade)
+  ownedRestaurants          Restaurant[]   @relation("RestaurantOwner")
+  username                  String         @unique
+  displayName               String
+  passwordHash              String
+  email                     String?        @db.VarChar(254)
+  emailVerifiedAt           DateTime?
+  emailVerificationRequired Boolean        @default(false)
+  accountTokens             AccountToken[]
+  active                    Boolean        @default(true)
+  lastLoginAt               DateTime?
+  roles                     EmployeeRole[]
+  sessions                  AuthSession[]
+  auditLogs                 AuditLog[]
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
 
   @@unique([restaurantId, username])
+  @@index([email])
 }
 
 model EmployeeRole {
@@ -316,6 +334,62 @@ model EmployeeRole {
   role       StaffRole
 
   @@id([employeeId, role])
+}
+
+model AccountToken {
+  tokenHash  String   @id @db.VarChar(64)
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  purpose    String   @db.VarChar(16)
+  email      String   @db.VarChar(254)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId, purpose])
+  @@index([expiresAt])
+}
+
+model PlatformAdmin {
+  id           Int               @id @default(autoincrement())
+  username     String            @unique
+  displayName  String
+  passwordHash String
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  sessions     PlatformSession[]
+  logs         PlatformLog[]
+}
+
+model PlatformSession {
+  tokenHash String        @id @db.VarChar(64)
+  adminId   Int
+  admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model PlatformSettings {
+  id               Int      @id @default(1)
+  name             String   @default("Restaurant Management System")
+  logoUrl          String?
+  registrationOpen Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+model PlatformLog {
+  id           Int            @id @default(autoincrement())
+  adminId      Int?
+  admin        PlatformAdmin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  actorName    String
+  action       String
+  restaurantId Int?
+  details      Json?
+  createdAt    DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([restaurantId, createdAt])
 }
 
 model AuthSession {
@@ -345,6 +419,8 @@ model AuditLog {
   @@index([employeeId])
   @@index([restaurantId])
   @@index([restaurantId, createdAt])
+  @@index([restaurantId, action, createdAt, id])
+  @@index([restaurantId, employeeId, createdAt, id])
   @@index([createdAt])
 }
 
@@ -402,27 +478,27 @@ enum StaffRole {
 }
 
 model TableSession {
-  id              Int      @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   tableId         Int
   table           RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  token           String   @unique @db.VarChar(64)
-  orderId         Int?     @unique
-  paused          Boolean  @default(false)
+  token           String          @unique @db.VarChar(64)
+  orderId         Int?            @unique
+  paused          Boolean         @default(false)
   billRequestedAt DateTime?
   closedAt        DateTime?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime        @default(now())
   submissions     QrSubmission[]
 
   @@index([tableId, closedAt])
 }
 
 model QrSubmission {
-  id        Int      @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   sessionId Int
   session   TableSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  requestId String   @db.VarChar(64)
-  guestId   String   @db.VarChar(64)
-  createdAt DateTime @default(now())
+  requestId String       @db.VarChar(64)
+  guestId   String       @db.VarChar(64)
+  createdAt DateTime     @default(now())
 
   @@unique([sessionId, requestId])
   @@index([sessionId, guestId, createdAt])

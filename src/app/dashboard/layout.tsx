@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
-import RoleBoundary from "../components/RoleBoundary";
+import Sidebar from "./_components/Sidebar";
+import Header from "./_components/Header";
+import RoleBoundary from "./_components/RoleBoundary";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

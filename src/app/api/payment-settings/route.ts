@@ -2,27 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isStripePromptPayGatewayEnabled } from "@/lib/stripe";
 
 const defaultSettings = {
   promptPayEnabled: false,
-  promptPayMode: "MANUAL_QR",
   promptPayAccountName: "",
   promptPayIdentifier: "",
   promptPayQrImageUrl: "",
-  stripeEnabled: false,
-  stripeAccountId: "",
-  stripeChargesEnabled: false,
-  stripePayoutsEnabled: false,
-  stripeDetailsSubmitted: false,
 };
 
-function serialize(settings: typeof defaultSettings) {
+function serialize(settings: {
+  promptPayEnabled: boolean;
+  promptPayAccountName: string | null;
+  promptPayIdentifier: string | null;
+  promptPayQrImageUrl: string | null;
+}) {
   return {
-    ...settings,
-    stripeGatewayReady: isStripePromptPayGatewayEnabled(),
-    stripeConnected: Boolean(settings.stripeAccountId),
-    stripeReady: Boolean(settings.stripeAccountId && settings.stripeChargesEnabled),
+    promptPayEnabled: settings.promptPayEnabled,
+    promptPayAccountName: settings.promptPayAccountName || "",
+    promptPayIdentifier: settings.promptPayIdentifier || "",
+    promptPayQrImageUrl: settings.promptPayQrImageUrl || "",
   };
 }
 
@@ -34,18 +32,7 @@ export async function GET() {
     where: { restaurantId: auth.user.restaurantId },
   });
 
-  return NextResponse.json(serialize(settings ? {
-    promptPayEnabled: settings.promptPayEnabled,
-    promptPayMode: settings.promptPayMode,
-    promptPayAccountName: settings.promptPayAccountName || "",
-    promptPayIdentifier: settings.promptPayIdentifier || "",
-    promptPayQrImageUrl: settings.promptPayQrImageUrl || "",
-    stripeEnabled: settings.stripeEnabled,
-    stripeAccountId: settings.stripeAccountId || "",
-    stripeChargesEnabled: settings.stripeChargesEnabled,
-    stripePayoutsEnabled: settings.stripePayoutsEnabled,
-    stripeDetailsSubmitted: settings.stripeDetailsSubmitted,
-  } : defaultSettings));
+  return NextResponse.json(settings ? serialize(settings) : defaultSettings);
 }
 
 export async function PATCH(req: NextRequest) {
@@ -53,24 +40,20 @@ export async function PATCH(req: NextRequest) {
   if ("response" in auth) return auth.response;
 
   const body = await req.json();
-  const promptPayMode = body.promptPayMode === "STRIPE" ? "STRIPE" : "MANUAL_QR";
   const data = {
     promptPayEnabled: Boolean(body.promptPayEnabled),
-    promptPayMode,
     promptPayAccountName: String(body.promptPayAccountName || "").trim() || null,
     promptPayIdentifier: String(body.promptPayIdentifier || "").trim() || null,
     promptPayQrImageUrl: String(body.promptPayQrImageUrl || "").trim() || null,
-    stripeEnabled: Boolean(body.stripeEnabled),
   };
 
-  if (data.promptPayEnabled && promptPayMode === "MANUAL_QR" && !data.promptPayQrImageUrl) {
+  if (data.promptPayEnabled && !data.promptPayQrImageUrl) {
     return NextResponse.json({ error: "กรุณาอัปโหลดรูป QR พร้อมเพย์" }, { status: 400 });
   }
-  const current = await prisma.paymentSettings.findUnique({ where: { restaurantId: auth.user.restaurantId } });
-  if (data.promptPayEnabled && promptPayMode === "STRIPE" && (!current?.stripeAccountId || !current.stripeChargesEnabled)) {
-    return NextResponse.json({ error: "กรุณาเชื่อมต่อ Stripe ให้พร้อมใช้งานก่อน" }, { status: 400 });
-  }
 
+  const current = await prisma.paymentSettings.findUnique({
+    where: { restaurantId: auth.user.restaurantId },
+  });
   const settings = await prisma.paymentSettings.upsert({
     where: { restaurantId: auth.user.restaurantId },
     create: { restaurantId: auth.user.restaurantId, ...data },
@@ -79,28 +62,9 @@ export async function PATCH(req: NextRequest) {
 
   await writeAudit(auth.user.id, "UPDATE_PAYMENT_SETTINGS", "PaymentSettings", settings.id, {
     qrChanged: (current?.promptPayQrImageUrl || null) !== settings.promptPayQrImageUrl,
-    before: {
-      promptPayEnabled: current?.promptPayEnabled ?? false,
-      promptPayMode: current?.promptPayMode ?? "MANUAL_QR",
-      stripeEnabled: current?.stripeEnabled ?? false,
-    },
-    after: {
-      promptPayEnabled: settings.promptPayEnabled,
-      promptPayMode: settings.promptPayMode,
-      stripeEnabled: settings.stripeEnabled,
-    },
+    before: { promptPayEnabled: current?.promptPayEnabled ?? false },
+    after: { promptPayEnabled: settings.promptPayEnabled },
   });
 
-  return NextResponse.json(serialize({
-    promptPayEnabled: settings.promptPayEnabled,
-    promptPayMode: settings.promptPayMode,
-    promptPayAccountName: settings.promptPayAccountName || "",
-    promptPayIdentifier: settings.promptPayIdentifier || "",
-    promptPayQrImageUrl: settings.promptPayQrImageUrl || "",
-    stripeEnabled: settings.stripeEnabled,
-    stripeAccountId: settings.stripeAccountId || "",
-    stripeChargesEnabled: settings.stripeChargesEnabled,
-    stripePayoutsEnabled: settings.stripePayoutsEnabled,
-    stripeDetailsSubmitted: settings.stripeDetailsSubmitted,
-  }));
+  return NextResponse.json(serialize(settings));
 }

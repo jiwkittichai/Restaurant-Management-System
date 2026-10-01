@@ -1,0 +1,9 @@
+import { Plus, Search } from "lucide-react";
+import type { TableTab } from "../types";
+import TableFilterCard from "./TableFilterCard";
+
+type Tab = { key: TableTab; label: string; value: string; tone: string; activeClass: string; hoverClass: string };
+
+export default function TablesHeader({ search, tabs, activeTab, onSearch, onTab, onAdd }: { search: string; tabs: Tab[]; activeTab: TableTab; onSearch: (value: string) => void; onTab: (value: TableTab) => void; onAdd: () => void }) {
+  return <section className="rounded-2xl border border-gray-100 bg-white px-4 py-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold text-gray-900">ภาพรวมโต๊ะอาหาร</h2><p className="mt-0.5 text-sm text-gray-400">ดูสถานะโต๊ะ ออเดอร์ในครัว และยอดบิลได้จากหน้านี้</p></div><button type="button" title="เพิ่มโต๊ะ" aria-label="เพิ่มโต๊ะ" onClick={onAdd} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#356DDB] text-white shadow-sm transition hover:bg-blue-700"><Plus size={18} /></button></div><div className="mt-3 flex flex-col gap-2 xl:flex-row"><div className="relative xl:min-w-[260px] xl:flex-[1.35]"><Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" /><input value={search} onChange={event => onSearch(event.target.value)} placeholder="ค้นหาโต๊ะ เลขออเดอร์ หรือสถานะ" className="h-full min-h-[58px] w-full rounded-xl border border-gray-100 bg-white pl-11 pr-4 text-sm font-medium text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex-[4]">{tabs.map(tab => <TableFilterCard key={tab.key} active={activeTab === tab.key} label={tab.label} value={tab.value} tone={tab.tone} activeClass={tab.activeClass} hoverClass={tab.hoverClass} onClick={() => onTab(tab.key)} />)}</div></div></section>;
+}

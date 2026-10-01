@@ -1,5 +1,6 @@
+import { moneyJson } from "@/lib/money";
 import { lockTable } from "@/lib/table-session";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
@@ -34,21 +35,21 @@ export async function GET() {
       },
     },
   });
-  return NextResponse.json(tables);
+  return moneyJson(tables);
 }
 
 export async function POST(req: NextRequest) {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const { name, seats = 2 } = await req.json();
-    if (!name?.trim()) return NextResponse.json({ error: "กรุณาระบุชื่อโต๊ะ" }, { status: 400 });
+    if (!name?.trim()) return moneyJson({ error: "กรุณาระบุชื่อโต๊ะ" }, { status: 400 });
     const table = await prisma.restaurantTable.create({
       data: { restaurantId: auth.user.restaurantId, name: name.trim(), seats: Math.max(1, Number(seats)) },
     });
     await writeAudit(auth.user.id,"CREATE_TABLE","RestaurantTable",table.id,{name:table.name,seats:table.seats});
-    return NextResponse.json(table, { status: 201 });
+    return moneyJson(table, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "ชื่อโต๊ะนี้มีอยู่แล้ว" }, { status: 409 });
+    return moneyJson({ error: "ชื่อโต๊ะนี้มีอยู่แล้ว" }, { status: 409 });
   }
 }
 
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const { id, status } = await req.json();
     const current = await prisma.restaurantTable.findFirst({ where: { id: Number(id), restaurantId: auth.user.restaurantId } });
-    if (!current) return NextResponse.json({ error: "ไม่พบโต๊ะ" }, { status: 404 });
+    if (!current) return moneyJson({ error: "ไม่พบโต๊ะ" }, { status: 404 });
     const table = await prisma.$transaction(async tx => {
       await lockTable(tx, current.id);
       if (status !== "OCCUPIED" && (await tx.tableSession.count({ where: { tableId: current.id, closedAt: null } }) || await tx.order.count({ where: { tableId: current.id, paymentStatus: "UNPAID", status: { not: "CANCELLED" } } }))) throw new Error("ACTIVE_TABLE");
@@ -68,8 +69,8 @@ export async function PATCH(req: NextRequest) {
       before:{status:current.status},
       after:{status:table.status},
     });
-    return NextResponse.json(table);
+    return moneyJson(table);
   } catch {
-    return NextResponse.json({ error: "อัปเดตโต๊ะไม่สำเร็จ" }, { status: 500 });
+    return moneyJson({ error: "อัปเดตโต๊ะไม่สำเร็จ" }, { status: 500 });
   }
 }

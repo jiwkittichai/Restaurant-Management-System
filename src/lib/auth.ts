@@ -5,18 +5,22 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { publicNumbers } from "@/lib/money";
+import { lockRestaurantAccess } from "@/lib/restaurant-access";
 
 export const SESSION_COOKIE = "restaurant_session";
 const SESSION_HOURS = 12;
 const RETAINED_AUDIT_ACTIONS = new Set([
   "LOGIN", "LOGIN_FAILED", "LOGIN_INACTIVE", "REGISTER_RESTAURANT",
+  "VERIFY_EMAIL", "RESET_PASSWORD",
+  "UPDATE_ACCOUNT",
   "CREATE_EMPLOYEE", "UPDATE_EMPLOYEE",
-  "CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PAY_ORDER_STRIPE", "PICKUP_ORDER", "CANCEL_ORDER",
+  "CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PICKUP_ORDER", "CANCEL_ORDER",
   "CREATE_TABLE", "UPDATE_TABLE_STATUS", "QR_TABLE_ROTATE",
   "CREATE_CATEGORY", "UPDATE_CATEGORY", "DELETE_CATEGORY",
   "CREATE_MENU", "UPDATE_MENU", "TOGGLE_MENU", "DELETE_MENU",
   "CREATE_INGREDIENT", "UPDATE_INGREDIENT", "DELETE_INGREDIENT", "STOCK_IN", "ADJUST_STOCK", "UPDATE_RECIPE",
-  "UPDATE_RESTAURANT_PROFILE", "UPDATE_PAYMENT_SETTINGS", "CONNECT_STRIPE_ACCOUNT",
+  "UPDATE_RESTAURANT_PROFILE", "UPDATE_PAYMENT_SETTINGS",
 ]);
 
 export type CurrentUser = {
@@ -31,10 +35,17 @@ function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export async function createSession(employeeId: number) {
+export async function createSession(employeeId: number, expectedPasswordHash?: string) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000);
-  await prisma.authSession.create({ data: { tokenHash: tokenHash(token), employeeId, expiresAt } });
+  await prisma.$transaction(async tx => {
+    const scope = await tx.employee.findUniqueOrThrow({ where: { id: employeeId }, select: { restaurantId: true } });
+    await lockRestaurantAccess(tx, scope.restaurantId);
+    await tx.$queryRaw`SELECT id FROM Employee WHERE id = ${employeeId} FOR UPDATE`;
+    const employee = await tx.employee.findUniqueOrThrow({ where: { id: employeeId } });
+    if (!employee.active || (expectedPasswordHash && employee.passwordHash !== expectedPasswordHash)) throw new Error("SESSION_REJECTED");
+    await tx.authSession.create({ data: { tokenHash: tokenHash(token), employeeId, expiresAt } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -57,9 +68,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!token) return null;
   const session = await prisma.authSession.findUnique({
     where: { tokenHash: tokenHash(token) },
-    include: { employee: { include: { roles: true } } },
+    include: { employee: { include: { roles: true, restaurant: { select: { active: true, approvalStatus: true } } } } },
   });
-  if (!session || session.expiresAt <= new Date() || !session.employee.active) {
+  if (!session || session.expiresAt <= new Date() || !session.employee.active || !session.employee.restaurant.active || session.employee.restaurant.approvalStatus !== "APPROVED") {
     if (session) await prisma.authSession.deleteMany({ where: { tokenHash: session.tokenHash } });
     return null;
   }
@@ -86,7 +97,7 @@ export async function writeAudit(
   action: string,
   entityType: string,
   entityId?: string | number | null,
-  details?: Prisma.InputJsonObject,
+  details?: Record<string, unknown>,
   context?: { tx?: Prisma.TransactionClient; restaurantId: number },
 ) {
   // Keep only events that are useful for financial, stock, security, or
@@ -94,7 +105,7 @@ export async function writeAudit(
   // its source table, not in the audit trail.
   if (!RETAINED_AUDIT_ACTIONS.has(action)) return;
 
-  const compactDetails = details ? compactAuditDetails(details) : undefined;
+  const compactDetails = details ? compactAuditDetails(publicNumbers(details)) : undefined;
   const db = context?.tx ?? prisma;
   const employee = employeeId
     ? await db.employee.findUnique({ where: { id: employeeId }, select: { restaurantId: true, displayName: true } })
@@ -110,7 +121,7 @@ export async function writeAudit(
       entityType,
       entityId: entityId == null ? null : String(entityId),
       requestId: randomUUID(),
-      details: { ...compactDetails, actorName: employee?.displayName ?? (details?.provider === "stripe" ? "ระบบ Stripe" : "ลูกค้าผ่าน QR") },
+      details: { ...compactDetails, actorName: employee?.displayName ?? "ลูกค้าผ่าน QR" },
     },
   });
 }

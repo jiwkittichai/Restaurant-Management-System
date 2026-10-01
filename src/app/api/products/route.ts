@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { money, moneyJson } from "@/lib/money";
+import { NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
@@ -9,9 +10,9 @@ export const GET = async () => {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;
   try {
     const products = await prisma.product.findMany({ where: { restaurantId: auth.user.restaurantId } });
-    return NextResponse.json(products);
+    return moneyJson(products);
   } catch (err) {
-    return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
+    return moneyJson({ error: "Fetch failed" }, { status: 500 });
   }
 };
 
@@ -20,11 +21,11 @@ export const POST = async (req: NextRequest) => {
   try {
     const { name, sku, category, qty, price, image } = await req.json();
     const product = await prisma.product.create({
-      data: { restaurantId: auth.user.restaurantId, name, sku, category, qty, price, image },
+      data: { restaurantId: auth.user.restaurantId, name, sku, category, qty, price: money(price), image },
     });
-    return NextResponse.json(product);
+    return moneyJson(product);
   } catch (err) {
-    return NextResponse.json({ error: "Create failed" }, { status: 500 });
+    return moneyJson({ error: "Create failed" }, { status: 500 });
   }
 };
 
@@ -33,11 +34,11 @@ export const DELETE = async (req: NextRequest) => {
   try {
     const { id } = await req.json(); // รับ id จาก body
     const product = await prisma.product.findFirst({ where: { id, restaurantId: auth.user.restaurantId } });
-    if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!product) return moneyJson({ error: "Not found" }, { status: 404 });
     await prisma.product.delete({ where: { id: product.id } });
-    return NextResponse.json({ success: true });
+    return moneyJson({ success: true });
   } catch (err) {
     console.error("Delete error:", err);
-    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    return moneyJson({ error: "Delete failed" }, { status: 500 });
   }
 };

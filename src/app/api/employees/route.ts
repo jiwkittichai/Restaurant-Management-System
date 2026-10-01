@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { moneyJson } from "@/lib/money";
+import { NextRequest } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
@@ -6,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 const allowedRoles = Object.values(StaffRole);
 const internalAuditActions = ["UPDATE_KITCHEN_STATUS"];
-const billActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PAY_ORDER_STRIPE", "PICKUP_ORDER"];
+const billActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PICKUP_ORDER"];
 
 
 function isJsonObject(value: unknown): value is Prisma.JsonObject {
@@ -91,7 +92,7 @@ export async function GET() {
       },
     };
   });
-  return NextResponse.json({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})), recentAudits: enrichedRecentAudits });
+  return moneyJson({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})), recentAudits: enrichedRecentAudits });
 }
 
 export async function POST(req: NextRequest) {
@@ -103,17 +104,17 @@ export async function POST(req: NextRequest) {
     const displayName = String(body.displayName||"").trim();
     const password = String(body.password||"");
     const roles = normalizeRoles(body.roles);
-    if (!/^[a-z0-9._-]{3,30}$/.test(username) || !displayName || password.length < 8 || !roles.length) {
-      return NextResponse.json({ error:"กรุณากรอกชื่อผู้ใช้ ชื่อพนักงาน รหัสผ่านอย่างน้อย 8 ตัว และเลือกบทบาท" }, { status:400 });
+    if (!/^[a-z0-9._-]{3,30}$/.test(username) || !displayName || displayName.length > 100 || password.length < 8 || password.length > 128 || !roles.length) {
+      return moneyJson({ error:"กรุณากรอกชื่อผู้ใช้ ชื่อพนักงาน รหัสผ่านอย่างน้อย 8 ตัว และเลือกบทบาท" }, { status:400 });
     }
     const employee = await prisma.employee.create({
       data: { restaurantId: auth.user.restaurantId, username, displayName, passwordHash:await hashPassword(password), roles:{create:roles.map(role=>({role}))} },
       select: { id:true, username:true, displayName:true },
     });
     await writeAudit(auth.user.id,"CREATE_EMPLOYEE","Employee",employee.id,{username,displayName,roles});
-    return NextResponse.json(employee,{status:201});
+    return moneyJson(employee,{status:201});
   } catch {
-    return NextResponse.json({ error:"สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบว่าชื่อผู้ใช้ไม่ซ้ำ" }, { status:409 });
+    return moneyJson({ error:"สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบว่าชื่อผู้ใช้ไม่ซ้ำ" }, { status:409 });
   }
 }
 
@@ -126,20 +127,22 @@ export async function PATCH(req: NextRequest) {
     const current = await prisma.employee.findFirstOrThrow({where:{id, restaurantId: auth.user.restaurantId},include:{roles:true}});
     const currentRoles = current.roles.map(item=>item.role);
     const roles = body.roles === undefined ? null : normalizeRoles(body.roles);
-    if (roles && !roles.length) return NextResponse.json({error:"พนักงานต้องมีอย่างน้อยหนึ่งบทบาท"},{status:400});
+    if (roles && !roles.length) return moneyJson({error:"พนักงานต้องมีอย่างน้อยหนึ่งบทบาท"},{status:400});
     if (id===auth.user.id && (body.active===false || (roles && !roles.includes(StaffRole.OWNER)))) {
-      return NextResponse.json({error:"ไม่สามารถระงับหรือนำสิทธิ์เจ้าของร้านออกจากบัญชีที่กำลังใช้งาน"},{status:400});
+      return moneyJson({error:"ไม่สามารถระงับหรือนำสิทธิ์เจ้าของร้านออกจากบัญชีที่กำลังใช้งาน"},{status:400});
     }
     const password = body.password ? String(body.password) : "";
-    if (password && password.length<8) return NextResponse.json({error:"รหัสผ่านต้องมีอย่างน้อย 8 ตัว"},{status:400});
+    if (password && (password.length<8 || password.length>128)) return moneyJson({error:"รหัสผ่านต้องมี 8–128 ตัวอักษร"},{status:400});
     const data: {displayName?:string;active?:boolean;passwordHash?:string} = {};
     if (body.displayName!==undefined) data.displayName=String(body.displayName).trim();
     if (body.active!==undefined) data.active=Boolean(body.active);
     if (password) data.passwordHash=await hashPassword(password);
     const employee = await prisma.$transaction(async tx=>{
+      await tx.$queryRaw`SELECT id FROM Employee WHERE id = ${id} FOR UPDATE`;
       const updated=await tx.employee.update({where:{id},data});
       if(roles){await tx.employeeRole.deleteMany({where:{employeeId:id}});await tx.employeeRole.createMany({data:roles.map(role=>({employeeId:id,role}))});}
-      if(body.active===false)await tx.authSession.deleteMany({where:{employeeId:id}});
+      if(body.active===false || password)await tx.authSession.deleteMany({where:{employeeId:id}});
+      if(body.active===false || password)await tx.accountToken.deleteMany({where:{employeeId:id}});
       return updated;
     });
     await writeAudit(auth.user.id,"UPDATE_EMPLOYEE","Employee",id,{
@@ -148,8 +151,8 @@ export async function PATCH(req: NextRequest) {
       after: { displayName: employee.displayName, roles: roles||currentRoles, active: employee.active },
       passwordReset:Boolean(password),
     });
-    return NextResponse.json({success:true});
+    return moneyJson({success:true});
   } catch {
-    return NextResponse.json({error:"อัปเดตบัญชีพนักงานไม่สำเร็จ"},{status:409});
+    return moneyJson({error:"อัปเดตบัญชีพนักงานไม่สำเร็จ"},{status:409});
   }
 }

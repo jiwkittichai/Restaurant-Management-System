@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
-import { Client } from "minio";
+import { Client } from "@/lib/storage-client";
 import { prisma } from "@/lib/prisma";
 import { menuImageObjectKey } from "@/lib/menu-image";
 
@@ -15,8 +15,8 @@ const types: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", p
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string; id: string }> }) {
   const { token, id } = await params;
   if (!/^[a-f0-9]{64}$/.test(token) || !/^\d+$/.test(id) || !Number.isSafeInteger(Number(id))) return new NextResponse(null, { status: 404 });
-  const session = await prisma.tableSession.findUnique({ where: { token }, select: { closedAt: true, table: { select: { restaurantId: true } } } });
-  if (!session || session.closedAt) return new NextResponse(null, { status: 410 });
+  const session = await prisma.tableSession.findUnique({ where: { token }, select: { closedAt: true, table: { select: { restaurantId: true, restaurant: { select: { active: true, approvalStatus: true } } } } } });
+  if (!session || session.closedAt || !session.table.restaurant.active || session.table.restaurant.approvalStatus !== "APPROVED") return new NextResponse(null, { status: 410 });
   const menu = await prisma.menuItem.findFirst({ where: { id: Number(id), restaurantId: session.table.restaurantId }, select: { image: true } });
   const key = menuImageObjectKey(menu?.image || null);
   if (!key) return new NextResponse(null, { status: 404 });
