@@ -1,4 +1,24 @@
-import type { Audit } from "./utils";
+export type AuditDetails = Record<string, unknown>;
+
+export type Audit = {
+  id: number;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  details?: AuditDetails | null;
+  createdAt: string;
+  employee?: { displayName: string } | null;
+};
+
+export type AuditBillItem = {
+  key: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  note: string;
+  modifiers: Array<{ name: string; price: number }>;
+  lineTotal: number;
+};
 
 export type AuditMeta = { totalCount: number; oldestAt?: string | null; latestAt?: string | null; limit: number; nextCursor: string | null };
 export type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "CUSTOM";

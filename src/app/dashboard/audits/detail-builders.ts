@@ -1,110 +1,6 @@
-export type AuditDetails = Record<string, unknown>;
-
-export type Audit = {
-  id: number;
-  action: string;
-  entityType: string;
-  entityId?: string | null;
-  details?: AuditDetails | null;
-  createdAt: string;
-  employee?: { displayName: string } | null;
-};
-
-export function auditActorName(audit: Audit): string {
-  const recordedName = audit.details?.actorName;
-  if (typeof recordedName === "string" && recordedName.trim()) return recordedName;
-  return audit.employee?.displayName || "ไม่ระบุผู้ทำรายการ";
-}
-
-export const roleText: Record<string, string> = {
-  OWNER: "เจ้าของร้าน/ผู้จัดการ",
-  CASHIER: "แคชเชียร์",
-  KITCHEN: "พนักงานครัว",
-  STOCK: "พนักงานสต็อก",
-};
-
-export const actionText: Record<string, string> = {
-  LOGIN: "เข้าสู่ระบบ",
-  VERIFY_EMAIL: "ยืนยันอีเมลบัญชี",
-  RESET_PASSWORD: "กู้รหัสผ่านด้วยอีเมล",
-  UPDATE_ACCOUNT: "แก้ไขบัญชีผู้ใช้",
-  LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
-  LOGIN_INACTIVE: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน",
-  REGISTER_RESTAURANT: "สมัครร้านใหม่",
-  CREATE_EMPLOYEE: "สร้างบัญชีพนักงาน",
-  UPDATE_EMPLOYEE: "แก้ไขบัญชีพนักงาน",
-  CREATE_ORDER: "สร้างออเดอร์",
-  ADD_ORDER_ITEMS: "เพิ่มรายการในบิล",
-  PAY_ORDER: "รับชำระเงิน",
-  PICKUP_ORDER: "ส่งมอบออเดอร์",
-  CANCEL_ORDER: "ยกเลิกออเดอร์",
-  CREATE_INGREDIENT: "เพิ่มวัตถุดิบ",
-  STOCK_IN: "รับวัตถุดิบเข้า",
-  ADJUST_STOCK: "ปรับยอดสต็อก",
-  UPDATE_INGREDIENT: "แก้ไขวัตถุดิบ",
-  DELETE_INGREDIENT: "ลบวัตถุดิบ",
-  UPDATE_RECIPE: "แก้ไขสูตรอาหาร",
-  CREATE_CATEGORY: "เพิ่มหมวดหมู่",
-  UPDATE_CATEGORY: "แก้ไขหมวดหมู่",
-  DELETE_CATEGORY: "ลบหมวดหมู่",
-  CREATE_TABLE: "เพิ่มโต๊ะ",
-  UPDATE_TABLE_STATUS: "เปลี่ยนสถานะโต๊ะ",
-  QR_TABLE_ROTATE: "สร้าง QR โต๊ะใหม่",
-  CREATE_MENU: "เพิ่มเมนู",
-  UPDATE_MENU: "แก้ไขเมนู",
-  TOGGLE_MENU: "เปลี่ยนสถานะเมนู",
-  DELETE_MENU: "ลบเมนู",
-  UPDATE_RESTAURANT_PROFILE: "แก้ไขข้อมูลร้าน",
-  UPDATE_PAYMENT_SETTINGS: "แก้ไขการตั้งค่าชำระเงิน",
-};
-
-const statusText: Record<string, string> = {
-  SENT: "ส่งเข้าครัว",
-  PREPARING: "กำลังทำ",
-  READY: "พร้อมเสิร์ฟ",
-  SERVED: "เสิร์ฟแล้ว",
-  PAID: "ชำระเงินแล้ว",
-  CANCELLED: "ยกเลิก",
-  DINE_IN: "ทานที่ร้าน",
-  TAKEAWAY: "ซื้อกลับบ้าน",
-  CASH: "เงินสด",
-  PROMPTPAY: "พร้อมเพย์",
-  CARD: "บัตร",
-};
-
-function asText(value: unknown): string {
-  if (value === undefined || value === null || value === "") return "";
-  if (typeof value === "boolean") return value ? "ใช้งาน" : "ปิดใช้งาน";
-  if (typeof value === "number") return value.toLocaleString("th-TH");
-  if (typeof value === "string") return statusText[value] || roleText[value] || value;
-  if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(", ");
-  return JSON.stringify(value);
-}
-
-export function money(value: unknown): string {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "";
-  return `${amount.toLocaleString("th-TH", { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })} บาท`;
-}
-
-function detailValue(details: AuditDetails | null | undefined, key: string): unknown {
-  return details && Object.prototype.hasOwnProperty.call(details, key) ? details[key] : undefined;
-}
-
-function asNumber(value: unknown, fallback = 0): number {
-  const amount = Number(value);
-  return Number.isFinite(amount) ? amount : fallback;
-}
-
-export type AuditBillItem = {
-  key: string;
-  name: string;
-  qty: number;
-  unitPrice: number;
-  note: string;
-  modifiers: Array<{ name: string; price: number }>;
-  lineTotal: number;
-};
+import { actionText } from "./labels";
+import { asNumber, asText, auditActorName, detailValue, money } from "./formatters";
+import type { Audit, AuditBillItem, AuditDetails } from "./types";
 
 export function auditBillItems(audit: Audit): AuditBillItem[] {
   const details = audit.details || {};
@@ -141,24 +37,6 @@ export function auditBillItems(audit: Audit): AuditBillItem[] {
       };
     })
     .filter((item): item is AuditBillItem => Boolean(item?.name));
-}
-
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
-export function formatDate(value?: string) {
-  if (!value) return "ยังไม่เคยเข้าสู่ระบบ";
-  const date = new Date(value);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (dateKey(date) === dateKey(now)) return `วันนี้ ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
-  if (dateKey(date) === dateKey(yesterday)) return `เมื่อวาน ${date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`;
-  const diffMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const diffDays = Math.floor(diffMs / 86400000);
-  if (diffDays < 30) return `${diffDays} วันที่แล้ว`;
-  return date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function auditSummary(audit: Audit) {
@@ -211,25 +89,10 @@ export function auditChangeRows(audit: Audit) {
 
   if (before || after) {
     const fields: Array<[string, string]> = [
-      ["displayName", "ชื่อที่แสดง"],
-      ["username", "ชื่อผู้ใช้เข้าสู่ระบบ"],
-      ["active", "สถานะบัญชี"],
-      ["roles", "บทบาท"],
-      ["name", "ชื่อรายการ"],
-      ["description", "รายละเอียด"],
-      ["price", "ราคา"],
-      ["saleUnit", "หน่วยขาย"],
-      ["categoryId", "หมวดหมู่"],
-      ["unit", "หน่วย"],
-      ["status", "สถานะ"],
-      ["available", "สถานะการขาย"],
-      ["stock", "ยอดคงเหลือ"],
-      ["minStock", "สต็อกขั้นต่ำ"],
-      ["address", "ที่อยู่ร้าน"],
-      ["phone", "เบอร์โทรร้าน"],
-      ["welcomeMessage", "ข้อความต้อนรับ"],
-      ["receiptFooter", "ท้ายใบเสร็จ"],
-      ["promptPayEnabled", "พร้อมเพย์"],
+      ["displayName", "ชื่อที่แสดง"], ["username", "ชื่อผู้ใช้เข้าสู่ระบบ"], ["active", "สถานะบัญชี"], ["roles", "บทบาท"],
+      ["name", "ชื่อรายการ"], ["description", "รายละเอียด"], ["price", "ราคา"], ["saleUnit", "หน่วยขาย"], ["categoryId", "หมวดหมู่"],
+      ["unit", "หน่วย"], ["status", "สถานะ"], ["available", "สถานะการขาย"], ["stock", "ยอดคงเหลือ"], ["minStock", "สต็อกขั้นต่ำ"],
+      ["address", "ที่อยู่ร้าน"], ["phone", "เบอร์โทรร้าน"], ["welcomeMessage", "ข้อความต้อนรับ"], ["receiptFooter", "ท้ายใบเสร็จ"], ["promptPayEnabled", "พร้อมเพย์"],
     ];
     for (const [key, label] of fields) {
       const beforeValue = before ? asText(before[key]) : "";
@@ -257,28 +120,12 @@ export function auditDetailRows(audit: Audit) {
   ];
 
   for (const [key, label] of [
-    ["orderNumber", "เลขออเดอร์"],
-    ["type", "ประเภทออเดอร์"],
-    ["method", "วิธีชำระเงิน"],
-    ["total", "ยอดเงิน"],
-    ["subtotal", "ยอดก่อนส่วนลด"],
-    ["discount", "ส่วนลด"],
-    ["receivedAmount", "เงินรับ"],
-    ["changeAmount", "เงินทอน"],
-    ["paymentId", "รหัสการชำระเงิน"],
-    ["quantity", "จำนวน"],
-    ["stock", "ยอดคงเหลือ"],
-    ["status", "สถานะ"],
-    ["itemName", "รายการอาหาร"],
-    ["itemCount", "จำนวนรายการ"],
-    ["tableName", "โต๊ะ"],
-    ["queueNumber", "คิว"],
-    ["name", "ชื่อรายการ"],
-    ["unit", "หน่วย"],
-    ["note", "หมายเหตุ"],
-    ["displayName", "ชื่อพนักงาน"],
-    ["username", "ชื่อผู้ใช้"],
-    ["ingredientCount", "จำนวนวัตถุดิบในสูตร"],
+    ["orderNumber", "เลขออเดอร์"], ["type", "ประเภทออเดอร์"], ["method", "วิธีชำระเงิน"], ["total", "ยอดเงิน"],
+    ["subtotal", "ยอดก่อนส่วนลด"], ["discount", "ส่วนลด"], ["receivedAmount", "เงินรับ"], ["changeAmount", "เงินทอน"],
+    ["paymentId", "รหัสการชำระเงิน"], ["quantity", "จำนวน"], ["stock", "ยอดคงเหลือ"], ["status", "สถานะ"],
+    ["itemName", "รายการอาหาร"], ["itemCount", "จำนวนรายการ"], ["tableName", "โต๊ะ"], ["queueNumber", "คิว"],
+    ["name", "ชื่อรายการ"], ["unit", "หน่วย"], ["note", "หมายเหตุ"], ["displayName", "ชื่อพนักงาน"],
+    ["username", "ชื่อผู้ใช้"], ["ingredientCount", "จำนวนวัตถุดิบในสูตร"],
   ] as const) {
     const value = detailValue(details, key);
     if (value !== undefined) rows.push({ label, value: key === "total" ? money(value) : asText(value) });

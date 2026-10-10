@@ -5,49 +5,13 @@ import { FormEvent, useState } from "react";
 import { ArrowLeft, RotateCcw, Save, UserCog } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import EmployeeFormFields from "../../../_components/EmployeeFormFields";
+import RoleSelector from "../../../_components/RoleSelector";
+import type { Employee, EmployeeEditForm } from "../../../types";
 
-type Role = "OWNER" | "CASHIER" | "KITCHEN" | "STOCK";
-type Employee = {
-  id: number;
-  username: string;
-  displayName: string;
-  active: boolean;
-  roles: Role[];
-};
-
-type EditForm = {
-  displayName: string;
-  password: string;
-  active: boolean;
-  roles: Role[];
-};
-
-const roleText: Record<Role, string> = {
-  OWNER: "เจ้าของร้าน/ผู้จัดการ",
-  CASHIER: "แคชเชียร์",
-  KITCHEN: "พนักงานครัว",
-  STOCK: "พนักงานสต็อก",
-};
-
-const roleDescription: Record<Role, string> = {
-  OWNER: "เข้าถึงทุกเมนูและจัดการพนักงาน",
-  CASHIER: "รับออเดอร์และชำระเงิน",
-  KITCHEN: "ดูและอัปเดตสถานะอาหาร",
-  STOCK: "จัดการวัตถุดิบและสูตรอาหาร",
-};
-
-function toggleRole(form: EditForm, selectedRole: Role): EditForm {
-  return {
-    ...form,
-    roles: form.roles.includes(selectedRole)
-      ? form.roles.filter((role) => role !== selectedRole)
-      : [...form.roles, selectedRole],
-  };
-}
-
-export default function EmployeeEditForm({ employee }: { employee: Employee }) {
+export default function EmployeeEditForm({ employee }: { employee: Pick<Employee, "id" | "username" | "displayName" | "active" | "roles"> }) {
   const router = useRouter();
-  const [form, setForm] = useState<EditForm>({
+  const [form, setForm] = useState<EmployeeEditForm>({
     displayName: employee.displayName,
     password: "",
     active: employee.active,
@@ -101,28 +65,12 @@ export default function EmployeeEditForm({ employee }: { employee: Employee }) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">ชื่อพนักงาน</span>
-            <input
-              required
-              maxLength={100}
-              value={form.displayName}
-              onChange={(event) => setForm({ ...form, displayName: event.target.value })}
-              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-400"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">ชื่อผู้ใช้</span>
-            <input
-              disabled
-              value={employee.username}
-              className="mt-2 w-full cursor-not-allowed rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-400"
-            />
-            <span className="mt-1 block text-xs text-gray-400">ชื่อผู้ใช้ไม่สามารถแก้ไขได้</span>
-          </label>
-        </div>
+        <EmployeeFormFields
+          displayName={form.displayName}
+          username={employee.username}
+          usernameDisabled
+          onDisplayName={(displayName) => setForm({ ...form, displayName })}
+        />
 
         <label className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
           <span>
@@ -140,34 +88,7 @@ export default function EmployeeEditForm({ employee }: { employee: Employee }) {
           </span>
         </label>
 
-        <div className="mt-5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-gray-700">บทบาท</span>
-            <span className="text-xs text-gray-400">เลือกได้หลายบทบาท</span>
-          </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {(Object.keys(roleText) as Role[]).map((role) => (
-              <label
-                key={role}
-                className={`cursor-pointer rounded-xl border p-4 text-sm transition ${
-                  form.roles.includes(role)
-                    ? "border-blue-300 bg-blue-50 text-blue-700"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
-                }`}
-              >
-                <span className="flex items-center gap-2 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={form.roles.includes(role)}
-                    onChange={() => setForm(toggleRole(form, role))}
-                  />
-                  {roleText[role]}
-                </span>
-                <span className="mt-1 block text-xs text-gray-400">{roleDescription[role]}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <RoleSelector roles={form.roles} onChange={(roles) => setForm({ ...form, roles })} />
 
         <label className="mt-5 block">
           <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">

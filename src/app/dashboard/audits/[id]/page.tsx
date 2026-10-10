@@ -3,7 +3,7 @@ import { StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { queryAuditById } from "@/lib/audit-query";
 import { publicNumbers } from "@/lib/money";
-import { Audit } from "../utils";
+import type { Audit } from "../types";
 import AuditDetailPage from "../_components/AuditDetailPage";
 
 export default async function AuditDetailRoute({ params }: { params: Promise<{ id: string }> }) {

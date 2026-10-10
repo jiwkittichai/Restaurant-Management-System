@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { roleText } from "../../../audits/utils";
+import { roleText } from "../../roles";
 import AuditsClient from "../../../audits/_components/AuditsClient";
 import { queryAudits } from "@/lib/audit-query";
 import { publicNumbers } from "@/lib/money";

@@ -2,7 +2,10 @@
 
 import { ArrowLeft, Clock3, FileClock, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Audit, actionText, auditActorName, auditBillItems, auditChangeRows, auditDetailRows, auditSummary, formatDate, money } from "../utils";
+import { actionText } from "../labels";
+import { auditActorName, formatDate, money } from "../formatters";
+import { auditBillItems, auditChangeRows, auditDetailRows, auditSummary } from "../detail-builders";
+import type { Audit } from "../types";
 
 export default function AuditDetailPage({ audit }: { audit: Audit }) {
   const router = useRouter();

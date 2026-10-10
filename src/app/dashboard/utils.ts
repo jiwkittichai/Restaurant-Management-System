@@ -1,4 +1,4 @@
-import { roleText } from "./audits/utils";
+import { roleText } from "./employees/roles";
 import type { Role } from "./types";
 
 export function isToday(value: string) {

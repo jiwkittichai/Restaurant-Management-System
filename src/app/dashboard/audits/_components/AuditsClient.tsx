@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Audit, actionText, auditActorName, auditChangeRows, auditSummary, formatDate } from "../utils";
+import { actionText } from "../labels";
+import { auditActorName, formatDate } from "../formatters";
+import { auditChangeRows, auditSummary } from "../detail-builders";
 import AuditFilters, { allActionsValue } from "./AuditFilters";
 import { daysAgo, localDate, monthStart } from "../date-utils";
-import type { AuditMeta, AuditsClientProps, RangeMode } from "../types";
+import type { Audit, AuditMeta, AuditsClientProps, RangeMode } from "../types";
 
 export default function AuditsClient({
   initialAudits,

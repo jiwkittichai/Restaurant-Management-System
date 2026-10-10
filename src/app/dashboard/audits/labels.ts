@@ -1,0 +1,52 @@
+import { roleText } from "../employees/roles";
+
+export { roleText };
+
+export const actionText: Record<string, string> = {
+  LOGIN: "เข้าสู่ระบบ",
+  VERIFY_EMAIL: "ยืนยันอีเมลบัญชี",
+  RESET_PASSWORD: "กู้รหัสผ่านด้วยอีเมล",
+  UPDATE_ACCOUNT: "แก้ไขบัญชีผู้ใช้",
+  LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
+  LOGIN_INACTIVE: "พยายามเข้าสู่ระบบด้วยบัญชีที่ปิดใช้งาน",
+  REGISTER_RESTAURANT: "สมัครร้านใหม่",
+  CREATE_EMPLOYEE: "สร้างบัญชีพนักงาน",
+  UPDATE_EMPLOYEE: "แก้ไขบัญชีพนักงาน",
+  CREATE_ORDER: "สร้างออเดอร์",
+  ADD_ORDER_ITEMS: "เพิ่มรายการในบิล",
+  PAY_ORDER: "รับชำระเงิน",
+  PICKUP_ORDER: "ส่งมอบออเดอร์",
+  CANCEL_ORDER: "ยกเลิกออเดอร์",
+  CREATE_INGREDIENT: "เพิ่มวัตถุดิบ",
+  STOCK_IN: "รับวัตถุดิบเข้า",
+  ADJUST_STOCK: "ปรับยอดสต็อก",
+  UPDATE_INGREDIENT: "แก้ไขวัตถุดิบ",
+  DELETE_INGREDIENT: "ลบวัตถุดิบ",
+  UPDATE_RECIPE: "แก้ไขสูตรอาหาร",
+  CREATE_CATEGORY: "เพิ่มหมวดหมู่",
+  UPDATE_CATEGORY: "แก้ไขหมวดหมู่",
+  DELETE_CATEGORY: "ลบหมวดหมู่",
+  CREATE_TABLE: "เพิ่มโต๊ะ",
+  UPDATE_TABLE_STATUS: "เปลี่ยนสถานะโต๊ะ",
+  QR_TABLE_ROTATE: "สร้าง QR โต๊ะใหม่",
+  CREATE_MENU: "เพิ่มเมนู",
+  UPDATE_MENU: "แก้ไขเมนู",
+  TOGGLE_MENU: "เปลี่ยนสถานะเมนู",
+  DELETE_MENU: "ลบเมนู",
+  UPDATE_RESTAURANT_PROFILE: "แก้ไขข้อมูลร้าน",
+  UPDATE_PAYMENT_SETTINGS: "แก้ไขการตั้งค่าชำระเงิน",
+};
+
+export const statusText: Record<string, string> = {
+  SENT: "ส่งเข้าครัว",
+  PREPARING: "กำลังทำ",
+  READY: "พร้อมเสิร์ฟ",
+  SERVED: "เสิร์ฟแล้ว",
+  PAID: "ชำระเงินแล้ว",
+  CANCELLED: "ยกเลิก",
+  DINE_IN: "ทานที่ร้าน",
+  TAKEAWAY: "ซื้อกลับบ้าน",
+  CASH: "เงินสด",
+  PROMPTPAY: "พร้อมเพย์",
+  CARD: "บัตร",
+};

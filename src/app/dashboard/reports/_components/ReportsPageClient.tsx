@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarDays, ClipboardList, Percent, ReceiptText } from "lucide-react";
 import { useRouter } from "next/navigation";
-import SalesChart from "./SalesChart";
 import { emptyReport, type RangeMode, type Report } from "../types";
-import { daysAgoText, localDate, methodText, money, monthStartText, todayText, yearStartText } from "../utils";
+import { daysAgoText, localDate, monthStartText, todayText, yearStartText } from "../utils";
+import OrdersReportTable from "./OrdersReportTable";
+import ReportRangeFilter from "./ReportRangeFilter";
+import ReportSummaryCards from "./ReportSummaryCards";
+import SalesChart from "./SalesChart";
 
 export default function ReportsPageClient() {
   const router = useRouter();
@@ -16,9 +18,8 @@ export default function ReportsPageClient() {
 
   const reportQuery = useMemo(() => {
     const params = new URLSearchParams();
-    if (rangeMode === "ALL") {
-      params.set("range", "all");
-    } else {
+    if (rangeMode === "ALL") params.set("range", "all");
+    else {
       params.set("from", from);
       params.set("to", to);
     }
@@ -65,12 +66,6 @@ export default function ReportsPageClient() {
     };
   }, [rangeMode, to]);
 
-  const cards = [
-    { label: "ยอดขาย", value: money(report.summary.sales), icon: Banknote, color: "text-emerald-600 bg-emerald-50" },
-    { label: "จำนวนบิล", value: report.summary.orders, icon: ReceiptText, color: "text-blue-600 bg-blue-50" },
-    { label: "ยอดเฉลี่ยต่อบิล", value: money(report.summary.average), icon: ClipboardList, color: "text-violet-600 bg-violet-50" },
-    { label: "ส่วนลดรวม", value: money(report.summary.discounts), icon: Percent, color: "text-amber-600 bg-amber-50" },
-  ];
   const allFromValue = report.meta.oldestPaidAt ? localDate(new Date(report.meta.oldestPaidAt)) : "";
   const allToValue = todayText();
   const visibleFrom = rangeMode === "ALL" ? from || allFromValue : from;
@@ -111,154 +106,54 @@ export default function ReportsPageClient() {
     }
   }
 
-  function resetToToday() {
-    setRange("TODAY");
+  function setCustomFrom(value: string) {
+    setRangeMode("CUSTOM");
+    setFrom(value);
+    if (!to) setTo(visibleTo || todayText());
   }
 
-  const rangeOptions: Array<{ value: RangeMode; label: string }> = [
-    { value: "ALL", label: "ทั้งหมด" },
-    { value: "TODAY", label: "วันนี้" },
-    { value: "7D", label: "7 วันล่าสุด" },
-    { value: "MONTH", label: "เดือนนี้" },
-    { value: "YEAR", label: "ปีนี้" },
-    { value: "CUSTOM", label: "กำหนดเอง" },
-  ];
+  function setCustomTo(value: string) {
+    setRangeMode("CUSTOM");
+    setTo(value);
+    if (!from) setFrom(visibleFrom || todayText());
+  }
 
   return (
-    <div className="p-6 space-y-5 overflow-y-auto">
-      <section className="bg-white rounded-2xl border border-gray-100 p-4">
-        <div>
-          <h2 className="font-semibold text-gray-900">ภาพรวมยอดขาย</h2>
-          <p className="mt-1 text-sm text-gray-400">เลือกช่วงวันที่เพื่อดูยอดขาย บิล และเมนูขายดี</p>
-        </div>
+    <div className="space-y-5 overflow-y-auto p-6">
+      <ReportRangeFilter
+        rangeMode={rangeMode}
+        from={visibleFrom}
+        to={visibleTo}
+        onRange={setRange}
+        onFrom={setCustomFrom}
+        onTo={setCustomTo}
+        onReset={() => setRange("TODAY")}
+      />
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <label className="text-sm text-gray-500 sm:w-52">
-            แสดง
-            <div className="relative mt-1">
-              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <select
-                value={rangeMode}
-                onChange={(event) => setRange(event.target.value as RangeMode)}
-                className="block w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-8 text-gray-800 outline-none focus:border-blue-400"
-              >
-                {rangeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-          </label>
-          <label className="text-sm text-gray-500 sm:w-44">
-            จาก
-            <input
-              type="date"
-              value={visibleFrom}
-              onChange={(event) => {
-                setRangeMode("CUSTOM");
-                setFrom(event.target.value);
-                if (!to) setTo(visibleTo || todayText());
-              }}
-              className="block mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-gray-800 outline-none focus:border-blue-400"
-            />
-          </label>
-          <label className="text-sm text-gray-500 sm:w-44">
-            ถึง
-            <input
-              type="date"
-              value={visibleTo}
-              onChange={(event) => {
-                setRangeMode("CUSTOM");
-                setTo(event.target.value);
-                if (!from) setFrom(visibleFrom || todayText());
-              }}
-              className="block mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-gray-800 outline-none focus:border-blue-400"
-            />
-          </label>
-          {rangeMode === "CUSTOM" && (
-            <button type="button" onClick={resetToToday} className="w-fit rounded-xl border border-gray-200 px-4 py-2.5 text-gray-600">
-              รีเซ็ต
-            </button>
-          )}
-        </div>
-      </section>
+      <ReportSummaryCards summary={report.summary} />
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {cards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 flex gap-4">
-            <div className={`w-11 h-11 rounded-xl grid place-items-center ${color}`}><Icon size={21} /></div>
-            <div>
-              <p className="text-sm text-gray-400">{label}</p>
-              <p className="text-xl font-semibold">{value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 lg:grid-cols-2">
         <SalesChart report={report} rangeMode={rangeMode} />
-        <section className="bg-white rounded-2xl border border-gray-100 p-5">
+        <section className="rounded-2xl border border-gray-100 bg-white p-5">
           <h2 className="font-semibold">เมนูขายดี</h2>
           <div className="mt-4 space-y-3">
             {report.topItems.map((item, index) => (
               <div key={item.name} className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 grid place-items-center text-xs">{index + 1}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-gray-400">{item.qty} รายการ</p>
-                </div>
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-blue-50 text-xs text-blue-600">{index + 1}</span>
+                <div className="flex-1"><p className="text-sm font-medium">{item.name}</p><p className="text-xs text-gray-400">{item.qty} รายการ</p></div>
                 <span className="font-medium">฿{item.sales.toFixed(2)}</span>
               </div>
             ))}
-            {!report.topItems.length && <p className="text-gray-400 text-sm">ยังไม่มีข้อมูล</p>}
+            {!report.topItems.length && <p className="text-sm text-gray-400">ยังไม่มีข้อมูล</p>}
           </div>
         </section>
       </div>
 
-      <section className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-        <div className="p-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="font-semibold">ประวัติการชำระเงิน</h2>
-            <p className="mt-1 text-sm text-gray-400">พบ {report.recent.length} รายการ</p>
-          </div>
-          <div className="flex gap-3 text-xs text-gray-500">{report.payments.map((payment) => <span key={payment.method}>{methodText[payment.method]} ฿{payment.amount.toFixed(2)}</span>)}</div>
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500">
-            <tr>
-              <th className="p-3 text-left">เลขออเดอร์</th>
-              <th className="p-3 text-left">โต๊ะ</th>
-              <th className="p-3 text-left">เวลา</th>
-              <th className="p-3 text-left">ช่องทาง</th>
-              <th className="p-3 text-right">ยอดรวม</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.recent.map((row) => (
-              <tr
-                key={row.id}
-                tabIndex={0}
-                role="button"
-                aria-label={`ดูรายละเอียด ${row.orderNumber}`}
-                className="cursor-pointer border-t border-gray-100 transition hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
-                onClick={() => router.push(`/dashboard/reports/orders/${row.id}`)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    router.push(`/dashboard/reports/orders/${row.id}`);
-                  }
-                }}
-              >
-                <td className="p-3 font-medium text-gray-900">{row.orderNumber}</td>
-                <td className="p-3">{row.table}</td>
-                <td className="p-3 text-gray-500">{new Date(row.paidAt).toLocaleString("th-TH")}</td>
-                <td className="p-3">{methodText[row.method] || row.method}</td>
-                <td className="p-3 text-right font-medium">฿{row.total.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!report.recent.length && <p className="text-center py-8 text-gray-400">ยังไม่มีประวัติการชำระเงิน</p>}
-      </section>
+      <OrdersReportTable
+        rows={report.recent}
+        payments={report.payments}
+        onOpen={(id) => router.push(`/dashboard/reports/orders/${id}`)}
+      />
     </div>
   );
 }

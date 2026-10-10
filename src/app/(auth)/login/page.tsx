@@ -13,12 +13,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     if (new URLSearchParams(window.location.search).get("registered") === "pending") {
       setNotice("สมัครใช้งานเรียบร้อย กรุณารอการอนุมัติเพื่อเริ่มใช้งาน");
       window.history.replaceState(null, "", window.location.pathname);
     }
+
+    fetch("/api/platform-info", { signal: controller.signal, cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => setRegistrationOpen(data?.registrationOpen === true))
+      .catch(() => {});
+
+    return () => controller.abort();
   }, []);
 
   async function submit(event: FormEvent) {
@@ -65,12 +75,12 @@ export default function LoginPage() {
           <button disabled={loading} className="w-full rounded-xl bg-[#356DDB] text-white py-3 disabled:opacity-50">{loading?"กำลังเข้าสู่ระบบ...":"เข้าสู่ระบบ"}</button>
         </form>
         <div className="mt-4 text-right text-sm text-blue-600"><Link href="/forgot-password">ลืมรหัสผ่าน</Link></div>
-        <p className="mt-5 text-center text-sm text-gray-500">
+        {registrationOpen && <p className="mt-5 text-center text-sm text-gray-500">
           ยังไม่มีร้านในระบบ{" "}
           <Link href="/register" className="font-medium text-blue-600">
             สมัครใช้งาน
           </Link>
-        </p>
+        </p>}
       </div>
     </main>
   );
