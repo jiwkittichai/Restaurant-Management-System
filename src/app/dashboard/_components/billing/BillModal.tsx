@@ -6,10 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { RestaurantBrand } from "@/lib/restaurant-brand";
 import { itemStatusText, methodText, money } from "./formatters";
 import { buildReceiptHtml } from "./receipt";
-import type { BillModalProps, BillOrder, PaymentMethod, PromptPaySettings } from "./types";
+import type { BillModalProps, PaymentMethod } from "./types";
 import PrintableReceipt from "./PrintableReceipt";
-
-export type { BillOrder, PromptPaySettings } from "./types";
 
 export default function BillModal({ order, title = "เช็คบิล", loading = false, onClose, onConfirm, promptPaySettings }: BillModalProps) {
   const [brand, setBrand] = useState<RestaurantBrand | null>(null);
@@ -152,8 +150,6 @@ export default function BillModal({ order, title = "เช็คบิล", load
                   onClick={() => {
                     setMethod(option);
                     if (option !== "CASH") setReceived(order.total.toFixed(2));
-                    if (option === "CASH") {
-                    }
                   }}
                   className={`rounded-xl py-2.5 text-sm ${method === option ? "bg-[#356DDB] text-white" : "bg-gray-100 text-gray-500"}`}
                 >

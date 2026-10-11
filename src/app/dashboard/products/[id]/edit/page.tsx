@@ -1,44 +1,250 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import LoadErrorMessage from "../../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
+import ModifierGroupsEditor from "../../_components/ModifierGroupsEditor";
+import ProductFormFields from "../../_components/ProductFormFields";
+import type {
+  EditableProduct,
+  ModifierGroupDraft,
+  ProductCategory,
+  ProductForm,
+} from "../../types";
 
-type Category={id:number;name:string};
-type OptionDraft = { name: string; price: string };
-type GroupDraft = { name: string; required: boolean; minSelect: string; maxSelect: string; options: OptionDraft[] };
-type Menu={id:number;name:string;sku:string;description?:string;price:number;saleUnit:string;image?:string;available:boolean;categoryId:number;modifierGroups?:Array<{name:string;required:boolean;minSelect:number;maxSelect:number;options:Array<{name:string;price:number}>}>};
+type EditProductForm = ProductForm & {
+  image: string;
+  available: boolean;
+};
 
-export default function EditMenuPage(){
-  const router=useRouter();const params=useParams<{id:string}>();
-  const [categories,setCategories]=useState<Category[]>([]);const [file,setFile]=useState<File|null>(null);const [preview,setPreview]=useState("");
-  const [form,setForm]=useState({name:"",sku:"",description:"",price:"",saleUnit:"จาน",categoryId:"",image:"",available:true});
-  const [modifierGroups,setModifierGroups]=useState<GroupDraft[]>([]);
-  const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [error,setError]=useState("");
+const emptyForm: EditProductForm = {
+  name: "",
+  sku: "",
+  description: "",
+  price: "",
+  saleUnit: "จาน",
+  categoryId: "",
+  image: "",
+  available: true,
+};
 
-  useEffect(()=>{Promise.all([fetch("/api/menu").then(r=>r.json()),fetch("/api/categories").then(r=>r.json())]).then(([menu,categories]:[Menu[],Category[]])=>{const item=menu.find(m=>m.id===Number(params.id));setCategories(categories);if(!item){setError("ไม่พบเมนูอาหาร");return;}setForm({name:item.name,sku:item.sku,description:item.description||"",price:String(item.price),saleUnit:item.saleUnit||"จาน",categoryId:String(item.categoryId),image:item.image||"",available:item.available});setModifierGroups((item.modifierGroups||[]).map(group=>({name:group.name,required:group.required,minSelect:String(group.minSelect),maxSelect:String(group.maxSelect),options:group.options.map(option=>({name:option.name,price:String(option.price)}))})));}).catch(()=>setError("โหลดข้อมูลไม่สำเร็จ")).finally(()=>setLoading(false));},[params.id]);
+export default function EditMenuPage() {
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [form, setForm] = useState<EditProductForm>(emptyForm);
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroupDraft[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
-  async function submit(e:FormEvent){e.preventDefault();setSaving(true);setError("");try{let image=form.image;if(file){const body=new FormData();body.append("file",file);const upload=await fetch("/api/upload",{method:"POST",body});if(!upload.ok)throw new Error("อัปโหลดรูปไม่สำเร็จ");image=(await upload.json()).url;}const response=await fetch("/api/menu",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,id:Number(params.id),image,modifierGroups})});const data=await response.json();if(!response.ok)throw new Error(data.error);router.push("/dashboard/products");}catch(error){setError(error instanceof Error?error.message:"แก้ไขเมนูไม่สำเร็จ");}finally{setSaving(false);}}
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
 
-  if(loading)return <div className="p-10 text-center text-gray-400">กำลังโหลดข้อมูล...</div>;
-  return <div className="p-6 max-w-3xl mx-auto"><form onSubmit={submit} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"><div><label className="text-sm text-gray-600">รูปเมนู</label><p className="text-xs text-gray-400 mt-1">แนะนำภาพแนวนอนอัตราส่วน 4:3 เช่น 1200 × 900 พิกเซล</p><div className="mt-3 flex items-center gap-4"><div className="w-40 aspect-[4/3] rounded-xl bg-gray-100 overflow-hidden">{(preview||form.image)&&<img src={preview||form.image} alt="รูปเมนู" className="w-full h-full object-cover object-center"/>}</div><div className="space-y-2"><label className="block w-fit bg-blue-50 text-blue-600 px-4 py-2 rounded-xl cursor-pointer">เปลี่ยนรูป<input type="file" accept="image/*" className="hidden" onChange={e=>{const selected=e.target.files?.[0];if(selected){setFile(selected);setPreview(URL.createObjectURL(selected));}}}/></label>{form.image&&<button type="button" onClick={()=>{setForm({...form,image:""});setPreview("");setFile(null);}} className="text-xs text-red-500">ลบรูปปัจจุบัน</button>}</div></div></div>
-  <div className="grid sm:grid-cols-2 gap-4"><Field label="ชื่อเมนู" value={form.name} onChange={value=>setForm({...form,name:value})}/><Field label="รหัสเมนู" value={form.sku} onChange={value=>setForm({...form,sku:value})}/></div>
-  <div><label className="text-sm text-gray-600">รายละเอียด</label><textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400"/></div>
-  <div className="grid sm:grid-cols-3 gap-4"><Field label="ราคา" type="number" value={form.price} onChange={value=>setForm({...form,price:value})}/><SaleUnitField value={form.saleUnit} onChange={value=>setForm({...form,saleUnit:value})}/><div><label className="text-sm text-gray-600">หมวดหมู่</label><select required value={form.categoryId} onChange={e=>setForm({...form,categoryId:e.target.value})} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 bg-white"><option value="">เลือกหมวดหมู่</option>{categories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
-  <ModifierGroupsEditor groups={modifierGroups} onChange={setModifierGroups} />
-  <label className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3"><span><b className="text-sm">สถานะพร้อมขาย</b><small className="block text-gray-400">ปิดสถานะเพื่อซ่อนเมนูจากหน้ารับออเดอร์</small></span><input type="checkbox" checked={form.available} onChange={e=>setForm({...form,available:e.target.checked})} className="w-5 h-5 accent-blue-600"/></label>
-  {error&&<p className="text-red-500 text-sm">{error}</p>}<div className="flex gap-3"><button disabled={saving||!!error&&error==="ไม่พบเมนูอาหาร"} className="bg-[#356DDB] text-white px-6 py-3 rounded-xl disabled:opacity-50">{saving?"กำลังบันทึก...":"บันทึกการแก้ไข"}</button><button type="button" onClick={()=>router.back()} className="bg-gray-100 px-6 py-3 rounded-xl">ยกเลิก</button></div></form></div>;
-}
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [menuData, categoriesData] = await Promise.all([
+        fetchJson("/api/menu"),
+        fetchJson("/api/categories"),
+      ]);
+      if (!Array.isArray(menuData) || !Array.isArray(categoriesData))
+        throw new Error("รูปแบบข้อมูลเมนูไม่ถูกต้อง");
+      const item = (menuData as EditableProduct[]).find(
+        (product) => product.id === Number(params.id),
+      );
+      setCategories(categoriesData as ProductCategory[]);
+      if (!item) {
+        setError("ไม่พบเมนูอาหาร");
+        setLoadError("");
+        return;
+      }
+      setForm({
+        name: item.name,
+        sku: item.sku,
+        description: item.description || "",
+        price: String(item.price),
+        saleUnit: item.saleUnit || "จาน",
+        categoryId: String(item.categoryId),
+        image: item.image || "",
+        available: item.available,
+      });
+      setModifierGroups(
+        (item.modifierGroups || []).map((group) => ({
+          name: group.name,
+          required: group.required,
+          minSelect: String(group.minSelect),
+          maxSelect: String(group.maxSelect),
+          options: group.options.map((option) => ({
+            name: option.name,
+            price: String(option.price),
+          })),
+        })),
+      );
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load menu for editing", loadFailure);
+      setLoadError("โหลดข้อมูลเมนูไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id]);
 
-function Field({label,value,onChange,type="text"}:{label:string;value:string;onChange:(value:string)=>void;type?:string}){return <div><label className="text-sm text-gray-600">{label}</label><input required type={type} min={type==="number"?0:undefined} step={type==="number"?"0.01":undefined} value={value} onChange={e=>onChange(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400"/></div>}
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-function SaleUnitField({value,onChange}:{value:string;onChange:(value:string)=>void}){return <div><label className="text-sm text-gray-600">หน่วยขาย</label><input required list="sale-unit-options" value={value} onChange={e=>onChange(e.target.value)} placeholder="เช่น จาน" className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400"/><datalist id="sale-unit-options">{["จาน","ชาม","ถ้วย","แก้ว","ขวด","ชิ้น"].map(unit=><option key={unit} value={unit}/>)}</datalist></div>}
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      let image = form.image;
+      if (file) {
+        const body = new FormData();
+        body.append("file", file);
+        const upload = await fetch("/api/upload", { method: "POST", body });
+        if (!upload.ok) throw new Error("อัปโหลดรูปไม่สำเร็จ");
+        image = (await upload.json()).url;
+      }
+      const response = await fetch("/api/menu", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          id: Number(params.id),
+          image,
+          modifierGroups,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      router.push("/dashboard/products");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "แก้ไขเมนูไม่สำเร็จ",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
-function ModifierGroupsEditor({ groups, onChange }: { groups:GroupDraft[]; onChange:(groups:GroupDraft[])=>void }) {
-  function updateGroup(index:number, patch:Partial<GroupDraft>) { onChange(groups.map((group,i)=>i===index?{...group,...patch}:group)); }
-  function updateOption(groupIndex:number, optionIndex:number, patch:Partial<OptionDraft>) { onChange(groups.map((group,i)=>i!==groupIndex?group:{...group,options:group.options.map((option,j)=>j===optionIndex?{...option,...patch}:option)})); }
-  return <section className="rounded-2xl border border-gray-100 p-4">
-    <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold text-gray-900">กลุ่มตัวเลือก</h2></div><button type="button" onClick={()=>onChange([...groups,{name:"",required:false,minSelect:"0",maxSelect:"1",options:[{name:"",price:"0"}]}])} className="rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-600">เพิ่มกลุ่ม</button></div>
-    <div className="mt-4 space-y-4">{groups.map((group,index)=><div key={index} className="rounded-xl border border-gray-100 p-3"><div className="grid gap-3 sm:grid-cols-[1fr_110px_110px]"><Field label="ชื่อกลุ่ม" value={group.name} onChange={value=>updateGroup(index,{name:value})}/><Field label="เลือกต่ำสุด" type="number" value={group.minSelect} onChange={value=>updateGroup(index,{minSelect:value})}/><Field label="เลือกสูงสุด" type="number" value={group.maxSelect} onChange={value=>updateGroup(index,{maxSelect:value})}/></div><label className="mt-3 flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={group.required} onChange={event=>updateGroup(index,{required:event.target.checked,minSelect:event.target.checked&&group.minSelect==="0"?"1":group.minSelect})} className="h-4 w-4 accent-blue-600"/>บังคับเลือก</label><div className="mt-3 space-y-2">{group.options.map((option,optionIndex)=><div key={optionIndex} className="grid gap-2 sm:grid-cols-[1fr_120px_40px]"><input value={option.name} onChange={event=>updateOption(index,optionIndex,{name:event.target.value})} placeholder="ชื่อตัวเลือก เช่น ไข่ดาว" className="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none"/><input type="number" min="0" step="0.01" value={option.price} onChange={event=>updateOption(index,optionIndex,{price:event.target.value})} placeholder="ราคาเพิ่ม" className="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none"/><button type="button" onClick={()=>updateGroup(index,{options:group.options.filter((_,i)=>i!==optionIndex)})} className="rounded-xl bg-red-50 text-red-500">ลบ</button></div>)}</div><div className="mt-3 flex gap-2"><button type="button" onClick={()=>updateGroup(index,{options:[...group.options,{name:"",price:"0"}]})} className="rounded-xl bg-gray-100 px-3 py-2 text-sm text-gray-600">เพิ่มตัวเลือก</button><button type="button" onClick={()=>onChange(groups.filter((_,i)=>i!==index))} className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-500">ลบกลุ่ม</button></div></div>)}</div>
-    {!groups.length&&<p className="mt-4 text-sm text-gray-400">เมนูนี้ยังไม่มีตัวเลือกเพิ่มเติม</p>}
-  </section>;
+  if (loading)
+    return (
+      <div className="p-10 text-center text-gray-400">กำลังโหลดข้อมูล...</div>
+    );
+  return (
+    <div className="mx-auto max-w-3xl p-6">
+      <div className="mb-4">
+        <LoadErrorMessage message={loadError} onRetry={load} />
+      </div>
+      <form
+        onSubmit={submit}
+        className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6"
+      >
+        <div>
+          <label className="text-sm text-gray-600">รูปเมนู</label>
+          <p className="mt-1 text-xs text-gray-400">
+            แนะนำภาพแนวนอนอัตราส่วน 4:3 เช่น 1200 × 900 พิกเซล
+          </p>
+          <div className="mt-3 flex items-center gap-4">
+            <div className="aspect-[4/3] w-40 overflow-hidden rounded-xl bg-gray-100">
+              {(preview || form.image) && (
+                <img
+                  src={preview || form.image}
+                  alt="รูปเมนู"
+                  className="h-full w-full object-cover object-center"
+                />
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="block w-fit cursor-pointer rounded-xl bg-blue-50 px-4 py-2 text-blue-600">
+                เปลี่ยนรูป
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0];
+                    if (selected) {
+                      setFile(selected);
+                      setPreview(URL.createObjectURL(selected));
+                    }
+                  }}
+                />
+              </label>
+              {form.image && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({ ...form, image: "" });
+                    setPreview("");
+                    setFile(null);
+                  }}
+                  className="text-xs text-red-500"
+                >
+                  ลบรูปปัจจุบัน
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <ProductFormFields
+          form={form}
+          categories={categories}
+          onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+        />
+        <ModifierGroupsEditor
+          groups={modifierGroups}
+          onChange={setModifierGroups}
+        />
+        <label className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3">
+          <span>
+            <b className="text-sm">สถานะพร้อมขาย</b>
+            <small className="block text-gray-400">
+              ปิดสถานะเพื่อซ่อนเมนูจากหน้ารับออเดอร์
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            checked={form.available}
+            onChange={(event) =>
+              setForm({ ...form, available: event.target.checked })
+            }
+            className="h-5 w-5 accent-blue-600"
+          />
+        </label>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <div className="flex gap-3">
+          <button
+            disabled={
+              saving || Boolean(loadError) || error === "ไม่พบเมนูอาหาร"
+            }
+            className="rounded-xl bg-[#356DDB] px-6 py-3 text-white disabled:opacity-50"
+          >
+            {saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-xl bg-gray-100 px-6 py-3"
+          >
+            ยกเลิก
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }

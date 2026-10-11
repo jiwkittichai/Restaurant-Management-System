@@ -1,10 +1,8 @@
 import { money, moneyJson } from "@/lib/money";
 import { NextRequest } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";
-
-const prisma = new PrismaClient();
 
 export const GET = async () => {
   const auth=await authorizeApi([StaffRole.OWNER]);if("response" in auth)return auth.response;

@@ -1,6 +1,6 @@
 import { CheckCircle2, Filter, History, Pencil, Power, Search } from "lucide-react";
 import Link from "next/link";
-import { formatDate } from "../../audits/formatters";
+import { formatRelativeDate } from "../../formatters";
 import { roleText } from "../roles";
 import type { Employee, Role } from "../types";
 import EmployeeCard from "./EmployeeCard";
@@ -65,7 +65,7 @@ export default function EmployeeList({
               <tr key={employee.id} className="border-t border-gray-100">
                 <td className="p-4"><p className="font-medium text-gray-900">{employee.displayName}</p><p className="text-xs text-gray-400">@{employee.username}</p></td>
                 <td className="p-4"><div className="flex flex-wrap gap-1">{employee.roles.map((role) => <span key={role} className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-600">{roleText[role]}</span>)}</div></td>
-                <td className="p-4 text-gray-500">{formatDate(employee.lastLoginAt)}</td>
+                <td className="p-4 text-gray-500">{employee.lastLoginAt ? formatRelativeDate(employee.lastLoginAt) : "ยังไม่เคยเข้าสู่ระบบ"}</td>
                 <td className="p-4 text-center"><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs ${employee.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}><CheckCircle2 size={13} />{employee.active ? "ใช้งาน" : "ปิดใช้งาน"}</span></td>
                 <td className="p-4">
                   <div className="flex flex-wrap justify-center gap-2">

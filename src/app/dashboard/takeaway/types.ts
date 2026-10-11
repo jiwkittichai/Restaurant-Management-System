@@ -1,4 +1,4 @@
-import type { BillOrder } from "../_components/billing/BillModal";
+import type { BillOrder } from "../_components/billing/types";
 
 export type TakeawayItem = { id: number; name: string; qty: number; price: number; note?: string | null; status?: string; modifiers?: Array<{ id: number; name: string; price: number }> };
 export type TakeawayOrder = BillOrder & { queueNumber: string; customerName?: string; customerPhone?: string; status: string; paymentStatus: string; createdAt: string; items: TakeawayItem[] };

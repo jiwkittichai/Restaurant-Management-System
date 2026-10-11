@@ -5,6 +5,8 @@ import { CheckCircle2, Pencil, QrCode, Save, UploadCloud, X } from "lucide-react
 import Link from "next/link";
 import { emptyPaymentSettings, type PaymentSettings } from "../types";
 import PromptPayPreview from "./PromptPayPreview";
+import LoadErrorMessage from "../../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function PaymentSettingsForm() {
   const [settings, setSettings] = useState<PaymentSettings>(emptyPaymentSettings);
@@ -15,18 +17,26 @@ export default function PaymentSettingsForm() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
-    fetch("/api/payment-settings")
-      .then((response) => response.json())
-      .then((data) => {
-        const next = { ...emptyPaymentSettings, ...data };
-        setSettings(next);
-        setSavedSettings(next);
-      })
-      .catch(() => setError("โหลดการตั้งค่าการชำระเงินไม่สำเร็จ"))
-      .finally(() => setLoading(false));
-  }, []);
+  async function loadSettings() {
+    setLoading(true);
+    try {
+      const data = await fetchJson("/api/payment-settings");
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("รูปแบบข้อมูลการชำระเงินไม่ถูกต้อง");
+      const next = { ...emptyPaymentSettings, ...data } as PaymentSettings;
+      setSettings(next);
+      setSavedSettings(next);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load payment settings", loadFailure);
+      setLoadError("โหลดการตั้งค่าการชำระเงินไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void loadSettings(); }, []);
 
   async function uploadQr(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -81,10 +91,11 @@ export default function PaymentSettingsForm() {
   }
 
   if (loading) return <div className="p-6 text-sm text-gray-400">กำลังโหลดการตั้งค่า...</div>;
-  const disabled = !editing || saving || uploading;
+  const disabled = !editing || saving || uploading || Boolean(loadError);
 
   return (
     <div className="space-y-6 p-4 lg:p-6">
+      <LoadErrorMessage message={loadError} onRetry={loadSettings} />
       <section className="rounded-2xl border border-gray-100 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -97,7 +108,7 @@ export default function PaymentSettingsForm() {
               {settings.promptPayEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}
             </span>
             {!editing ? (
-              <button onClick={() => { setMessage(""); setError(""); setEditing(true); }} className="rounded-xl bg-[#356DDB] px-4 py-2.5 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><Pencil size={16} />แก้ไข</span></button>
+              <button disabled={Boolean(loadError)} onClick={() => { setMessage(""); setError(""); setEditing(true); }} className="rounded-xl bg-[#356DDB] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"><span className="inline-flex items-center gap-2"><Pencil size={16} />แก้ไข</span></button>
             ) : (
               <button onClick={cancelEdit} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600"><span className="inline-flex items-center gap-2"><X size={16} />ยกเลิก</span></button>
             )}
@@ -141,7 +152,7 @@ export default function PaymentSettingsForm() {
       </section>
 
       <div className="flex justify-end">
-        <button onClick={save} disabled={!editing || saving || uploading} className="rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={save} disabled={!editing || saving || uploading || Boolean(loadError)} className="rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
           <span className="inline-flex items-center gap-2">{message ? <CheckCircle2 size={17} /> : <Save size={17} />}{saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}</span>
         </button>
       </div>

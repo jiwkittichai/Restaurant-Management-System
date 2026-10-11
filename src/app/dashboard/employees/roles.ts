@@ -1,10 +1,8 @@
 import type { Role } from "./types";
+import { employeeRoleText } from "../roles";
 
 export const roleText: Record<Role, string> = {
-  OWNER: "เจ้าของร้าน/ผู้จัดการ",
-  CASHIER: "แคชเชียร์",
-  KITCHEN: "พนักงานครัว",
-  STOCK: "พนักงานสต็อก",
+  ...employeeRoleText,
 };
 
 export const roleDescription: Record<Role, string> = {

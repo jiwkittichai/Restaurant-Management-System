@@ -7,6 +7,8 @@ import DeleteIngredientDialog from "./DeleteIngredientDialog";
 import IngredientCard from "./IngredientCard";
 import InventoryHeader from "./InventoryHeader";
 import type { EditForm, Ingredient, IngredientForm, StockFilter } from "../types";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function InventoryPageClient() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -21,11 +23,19 @@ export default function InventoryPageClient() {
   const [saving, setSaving] = useState(false);
   const [receive, setReceive] = useState<Record<number, string>>({});
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
 
-  const load = useCallback(
-    () => fetch("/api/inventory").then((r) => r.json()).then(setIngredients),
-    [],
-  );
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson("/api/inventory");
+      if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลสต็อกไม่ถูกต้อง");
+      setIngredients(data as Ingredient[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load inventory", loadFailure);
+      setLoadError("โหลดข้อมูลสต็อกไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -118,6 +128,7 @@ export default function InventoryPageClient() {
       />
 
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
+      <LoadErrorMessage message={loadError} onRetry={load} />
 
       <section>
         <div className="mb-3">

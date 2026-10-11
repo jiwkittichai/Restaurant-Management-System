@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Ingredient, Menu, RecipeTarget } from "../types";
 import RecipeEditor from "./RecipeEditor";
 import RecipeMenuList from "./RecipeMenuList";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function RecipesPageClient() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -14,14 +16,20 @@ export default function RecipesPageClient() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
-  const load = useCallback(
-    () => Promise.all([fetch("/api/inventory").then((response) => response.json()), fetch("/api/recipes").then((response) => response.json())]).then(([inventoryData, menuData]) => {
-      setIngredients(Array.isArray(inventoryData) ? inventoryData : []);
-      setMenu(Array.isArray(menuData) ? menuData : []);
-    }),
-    [],
-  );
+  const load = useCallback(async () => {
+    try {
+      const [inventoryData, menuData] = await Promise.all([fetchJson("/api/inventory"), fetchJson("/api/recipes")]);
+      if (!Array.isArray(inventoryData) || !Array.isArray(menuData)) throw new Error("รูปแบบข้อมูลสูตรอาหารไม่ถูกต้อง");
+      setIngredients(inventoryData as Ingredient[]);
+      setMenu(menuData as Menu[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load recipe data", loadFailure);
+      setLoadError("โหลดข้อมูลสูตรอาหารไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -100,9 +108,11 @@ export default function RecipesPageClient() {
   }
 
   return (
-    <div className="grid min-h-0 gap-5 overflow-y-auto p-4 sm:p-6 xl:h-[calc(100dvh-96px)] xl:grid-cols-[360px_minmax(0,1fr)] xl:overflow-hidden">
-      <RecipeMenuList menu={filteredMenu} selectedMenuId={selectedMenu} search={search} onSearch={setSearch} onSelect={chooseMenu} />
-      <RecipeEditor
+    <div className="space-y-4 overflow-y-auto p-4 sm:p-6 xl:h-[calc(100dvh-96px)] xl:overflow-hidden">
+      <LoadErrorMessage message={loadError} onRetry={load} />
+      <div className="grid min-h-0 gap-5 xl:h-full xl:grid-cols-[360px_minmax(0,1fr)]">
+        <RecipeMenuList menu={filteredMenu} selectedMenuId={selectedMenu} search={search} onSearch={setSearch} onSelect={chooseMenu} />
+        <RecipeEditor
         menu={selected}
         targets={recipeTargets}
         selectedTarget={selectedTarget}
@@ -114,7 +124,8 @@ export default function RecipesPageClient() {
         onTarget={chooseTarget}
         onQuantity={(ingredientId, value) => setQuantities({ ...quantities, [ingredientId]: value })}
         onSave={saveRecipe}
-      />
+        />
+      </div>
     </div>
   );
 }

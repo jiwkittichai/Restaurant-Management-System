@@ -3,7 +3,8 @@
 import { ArrowLeft, Clock3, FileClock, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { actionText } from "../labels";
-import { auditActorName, formatDate, money } from "../formatters";
+import { auditActorName, money } from "../formatters";
+import { formatRelativeDate } from "../../formatters";
 import { auditBillItems, auditChangeRows, auditDetailRows, auditSummary } from "../detail-builders";
 import type { Audit } from "../types";
 
@@ -38,7 +39,7 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4">
             <Clock3 size={18} className="shrink-0 text-gray-400" />
-            <div><p className="text-xs text-gray-400">เวลา</p><p className="mt-1 text-sm font-medium text-gray-900">{formatDate(audit.createdAt)}</p></div>
+            <div><p className="text-xs text-gray-400">เวลา</p><p className="mt-1 text-sm font-medium text-gray-900">{formatRelativeDate(audit.createdAt)}</p></div>
           </div>
         </div>
 

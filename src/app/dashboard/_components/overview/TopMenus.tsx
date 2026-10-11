@@ -1,4 +1,4 @@
-import { money } from "../../utils";
+import { money } from "./utils";
 
 export type TopMenu = { name: string; qty: number; total: number };
 

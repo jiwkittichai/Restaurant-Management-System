@@ -1,6 +1,6 @@
 import { Eye } from "lucide-react";
-import type { Employee } from "../../types";
-import { formatLogin, primaryRole } from "../../utils";
+import type { Employee } from "./types";
+import { formatLogin, primaryRole } from "./utils";
 
 type TodayEmployeesProps = {
   employees: Employee[];

@@ -7,6 +7,7 @@ import EmployeeList from "./EmployeeList";
 import EmployeesHeader from "./EmployeesHeader";
 import EmployeeStatusDialog from "./EmployeeStatusDialog";
 import RecentEmployeeActivity from "./RecentEmployeeActivity";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
@@ -17,6 +18,7 @@ export default function EmployeesPageClient() {
   const [roleFilter, setRoleFilter] = useState<"ALL" | Role>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [confirmingToggle, setConfirmingToggle] = useState<Employee | null>(null);
 
   const load = useCallback(
@@ -25,10 +27,15 @@ export default function EmployeesPageClient() {
         .then(async (response) => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
+          if (!Array.isArray(data.employees) || !Array.isArray(data.recentAudits)) throw new Error("รูปแบบข้อมูลพนักงานไม่ถูกต้อง");
           setEmployees(data.employees);
           setAudits(data.recentAudits);
+          setLoadError("");
         })
-        .catch((error) => setMessage(error.message)),
+        .catch((loadFailure) => {
+          console.error("Failed to load employees", loadFailure);
+          setLoadError("โหลดข้อมูลพนักงานไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+        }),
     [],
   );
 
@@ -72,6 +79,7 @@ export default function EmployeesPageClient() {
       <EmployeesHeader totalCount={employees.length} activeCount={activeCount} />
 
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
+      <LoadErrorMessage message={loadError} onRetry={load} />
 
       <EmployeeList
         employees={filteredEmployees}

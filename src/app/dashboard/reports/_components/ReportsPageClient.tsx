@@ -8,6 +8,14 @@ import OrdersReportTable from "./OrdersReportTable";
 import ReportRangeFilter from "./ReportRangeFilter";
 import ReportSummaryCards from "./ReportSummaryCards";
 import SalesChart from "./SalesChart";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
+
+function isReport(data: unknown): data is Report {
+  if (!data || typeof data !== "object") return false;
+  const report = data as Partial<Report>;
+  return Boolean(report.summary && report.meta && Array.isArray(report.topItems) && Array.isArray(report.payments) && Array.isArray(report.daily) && Array.isArray(report.recent));
+}
 
 export default function ReportsPageClient() {
   const router = useRouter();
@@ -15,6 +23,7 @@ export default function ReportsPageClient() {
   const [from, setFrom] = useState(() => todayText());
   const [to, setTo] = useState(() => todayText());
   const [report, setReport] = useState<Report>(emptyReport);
+  const [loadError, setLoadError] = useState("");
 
   const reportQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -27,10 +36,17 @@ export default function ReportsPageClient() {
     return params.toString();
   }, [from, rangeMode, to]);
 
-  const load = useCallback(
-    () => fetch(`/api/reports?${reportQuery}`).then((response) => response.json()).then(setReport),
-    [reportQuery],
-  );
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson(`/api/reports?${reportQuery}`);
+      if (!isReport(data)) throw new Error("รูปแบบข้อมูลรายงานไม่ถูกต้อง");
+      setReport(data);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load reports", loadFailure);
+      setLoadError("โหลดรายงานไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, [reportQuery]);
 
   useEffect(() => {
     load();
@@ -129,6 +145,8 @@ export default function ReportsPageClient() {
         onTo={setCustomTo}
         onReset={() => setRange("TODAY")}
       />
+
+      <LoadErrorMessage message={loadError} onRetry={load} />
 
       <ReportSummaryCards summary={report.summary} />
 

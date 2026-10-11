@@ -344,6 +344,7 @@ CREATE TABLE `PlatformSession` (
 CREATE TABLE `PlatformSettings` (
     `id` INTEGER NOT NULL DEFAULT 1,
     `name` VARCHAR(191) NOT NULL DEFAULT 'Restaurant Management System',
+    `logoUrl` VARCHAR(191) NULL,
     `registrationOpen` BOOLEAN NOT NULL DEFAULT true,
     `updatedAt` DATETIME(3) NOT NULL,
 

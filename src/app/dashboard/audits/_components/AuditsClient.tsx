@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { actionText } from "../labels";
-import { auditActorName, formatDate } from "../formatters";
+import { auditActorName } from "../formatters";
+import { formatRelativeDate } from "../../formatters";
 import { auditChangeRows, auditSummary } from "../detail-builders";
 import AuditFilters, { allActionsValue } from "./AuditFilters";
 import { daysAgo, localDate, monthStart } from "../date-utils";
@@ -189,7 +190,7 @@ export default function AuditsClient({
                       </div>
                     )}
                   </div>
-                  <span className="text-sm text-gray-400 whitespace-nowrap">{formatDate(audit.createdAt)}</span>
+                  <span className="text-sm text-gray-400 whitespace-nowrap">{formatRelativeDate(audit.createdAt)}</span>
                 </div>
               </Link>
             );

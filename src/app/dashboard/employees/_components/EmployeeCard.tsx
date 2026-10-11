@@ -1,6 +1,6 @@
 import { History, Pencil, Power } from "lucide-react";
 import Link from "next/link";
-import { formatDate } from "../../audits/formatters";
+import { formatRelativeDate } from "../../formatters";
 import { roleText } from "../roles";
 import type { Employee } from "../types";
 
@@ -14,7 +14,7 @@ export default function EmployeeCard({ employee, onToggle }: { employee: Employe
       <div className="mt-3 flex flex-wrap gap-1">
         {employee.roles.map((role) => <span key={role} className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-600">{roleText[role]}</span>)}
       </div>
-      <p className="mt-3 text-xs text-gray-400">เข้าสู่ระบบล่าสุด: {formatDate(employee.lastLoginAt)}</p>
+      <p className="mt-3 text-xs text-gray-400">เข้าสู่ระบบล่าสุด: {employee.lastLoginAt ? formatRelativeDate(employee.lastLoginAt) : "ยังไม่เคยเข้าสู่ระบบ"}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Link href={`/dashboard/employees/${employee.id}/history`} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-600"><History size={15} />ประวัติ</Link>
         <Link href={`/dashboard/employees/${employee.id}/edit`} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-600"><Pencil size={15} />แก้ไข</Link>

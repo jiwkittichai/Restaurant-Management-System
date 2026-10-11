@@ -1,0 +1,14 @@
+import type { CartItem, MenuItem } from "./types";
+
+export function saleUnit(item: MenuItem) {
+  return item.saleUnit || "จาน";
+}
+
+export function lineUnitPrice(item: CartItem) {
+  return (
+    item.price +
+    item.modifiers
+      .filter((modifier) => item.modifierIds.includes(modifier.id))
+      .reduce((sum, modifier) => sum + modifier.price, 0)
+  );
+}

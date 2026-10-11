@@ -7,9 +7,12 @@ import AddTableModal from "./AddTableModal";
 import CancelOrderDialog from "./CancelOrderDialog";
 import TablesHeader from "./TablesHeader";
 import TableCard from "./TableCard";
-import BillModal, { BillOrder, PromptPaySettings } from "../../_components/billing/BillModal";
+import BillModal from "../../_components/billing/BillModal";
+import type { BillOrder, PromptPaySettings } from "../../_components/billing/types";
 import type { ActiveOrder, RestaurantTable as Table, TableTab } from "../types";
 import { orderStatusText, statusText } from "../utils";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function TablesPageClient() {
   const [tables, setTables] = useState<Table[]>([]);
@@ -25,8 +28,19 @@ export default function TablesPageClient() {
   const [confirmingCancel, setConfirmingCancel] = useState<ActiveOrder | null>(null);
   const [paying, setPaying] = useState(false);
   const [promptPaySettings, setPromptPaySettings] = useState<PromptPaySettings | null>(null);
+  const [loadError, setLoadError] = useState("");
 
-  const load = useCallback(() => fetch("/api/tables").then((response) => response.json()).then(setTables), []);
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson("/api/tables");
+      if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลโต๊ะไม่ถูกต้อง");
+      setTables(data as Table[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load tables", loadFailure);
+      setLoadError("โหลดข้อมูลโต๊ะไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -173,6 +187,7 @@ export default function TablesPageClient() {
       <TablesHeader search={search} tabs={tableTabs} activeTab={activeTab} onSearch={setSearch} onTab={setActiveTab} onAdd={() => setAddingTable(true)} />
 
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
+      <LoadErrorMessage message={loadError} onRetry={load} />
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredTables.map((table) => (

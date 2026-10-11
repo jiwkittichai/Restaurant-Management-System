@@ -8,19 +8,29 @@ import KitchenOrderCard from "./KitchenOrderCard";
 import RecipeModal from "./RecipeModal";
 import type { KitchenItem, KitchenOrder as Order, MonitorTab, RecipeLine, SelectedRecipe } from "../types";
 import { itemText } from "../utils";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function KitchenPageClient() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   useNotificationTarget(() => { setSearch(""); setActiveTab("ALL"); });
   const [activeTab, setActiveTab] = useState<MonitorTab>("ALL");
   const [selectedRecipe, setSelectedRecipe] = useState<SelectedRecipe | null>(null);
 
-  const load = useCallback(
-    () => fetch("/api/orders").then((response) => response.json()).then(setOrders).catch(() => setError("โหลดออเดอร์ไม่สำเร็จ")),
-    [],
-  );
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson("/api/orders");
+      if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลออเดอร์ไม่ถูกต้อง");
+      setOrders(data as Order[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load kitchen orders", loadFailure);
+      setLoadError("โหลดออเดอร์เข้าครัวไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -161,6 +171,7 @@ export default function KitchenPageClient() {
         </div>
       </section>
 
+      <LoadErrorMessage message={loadError} onRetry={load} />
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

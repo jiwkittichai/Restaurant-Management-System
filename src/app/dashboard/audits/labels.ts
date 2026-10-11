@@ -1,4 +1,4 @@
-import { roleText } from "../employees/roles";
+import { employeeRoleText as roleText } from "../roles";
 
 export { roleText };
 

@@ -5,6 +5,8 @@ import { Plus } from "lucide-react";
 import type { Category } from "../types";
 import AddCategoryModal from "./AddCategoryModal";
 import CategoryCard from "./CategoryCard";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function CategoriesPageClient() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -14,8 +16,19 @@ export default function CategoriesPageClient() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
-  const load = useCallback(() => fetch("/api/categories").then((response) => response.json()).then(setCategories), []);
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson("/api/categories");
+      if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลหมวดหมู่ไม่ถูกต้อง");
+      setCategories(data as Category[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load categories", loadFailure);
+      setLoadError("โหลดหมวดหมู่ไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -78,6 +91,7 @@ export default function CategoriesPageClient() {
       </section>
 
       {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+      <div className="mt-3"><LoadErrorMessage message={loadError} onRetry={load} /></div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredCategories.map((category) => (

@@ -1,1 +1,0 @@
-ALTER TABLE `PlatformSettings` ADD COLUMN `logoUrl` VARCHAR(191) NULL;

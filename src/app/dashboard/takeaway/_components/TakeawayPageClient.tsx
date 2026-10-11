@@ -3,13 +3,16 @@ import { useNotificationTarget } from "../../_hooks/useNotificationTarget";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search, ShoppingBag } from "lucide-react";
-import BillModal, { BillOrder, PromptPaySettings } from "../../_components/billing/BillModal";
+import BillModal from "../../_components/billing/BillModal";
+import type { BillOrder, PromptPaySettings } from "../../_components/billing/types";
 import SummaryCard from "./SummaryCard";
 import TakeawayOrderDetailDrawer from "./TakeawayOrderDetailDrawer";
 import CancelTakeawayDialog from "./CancelTakeawayDialog";
 import TakeawayOrderCard from "./TakeawayOrderCard";
 import type { QueueTab, TakeawayOrder as Order } from "../types";
 import { itemStatusText, priority, statusText } from "../utils";
+import LoadErrorMessage from "../../_components/LoadErrorMessage";
+import { fetchJson } from "@/lib/client-fetch";
 
 export default function TakeawayPageClient() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -22,8 +25,19 @@ export default function TakeawayPageClient() {
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<Order | null>(null);
   const [promptPaySettings, setPromptPaySettings] = useState<PromptPaySettings | null>(null);
+  const [loadError, setLoadError] = useState("");
 
-  const load = useCallback(() => fetch("/api/orders?view=takeaway").then((response) => response.json()).then(setOrders), []);
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJson("/api/orders?view=takeaway");
+      if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลคิวไม่ถูกต้อง");
+      setOrders(data as Order[]);
+      setLoadError("");
+    } catch (loadFailure) {
+      console.error("Failed to load takeaway orders", loadFailure);
+      setLoadError("โหลดคิวซื้อกลับบ้านไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    }
+  }, []);
 
   useEffect(() => {
     load();
@@ -165,6 +179,7 @@ export default function TakeawayPageClient() {
       </section>
 
       {message && <p className={`text-sm ${message.includes("แล้ว") ? "text-emerald-600" : "text-red-500"}`}>{message}</p>}
+      <LoadErrorMessage message={loadError} onRetry={load} />
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredOrders.map((order) => (
