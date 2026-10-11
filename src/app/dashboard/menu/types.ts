@@ -1,4 +1,4 @@
-export type ProductCategory = { id: number; name: string };
+export type MenuCategory = { id: number; name: string };
 
 export type ModifierOptionDraft = { name: string; price: string };
 
@@ -10,7 +10,7 @@ export type ModifierGroupDraft = {
   options: ModifierOptionDraft[];
 };
 
-export type ProductForm = {
+export type MenuItemForm = {
   name: string;
   sku: string;
   description: string;
@@ -19,7 +19,7 @@ export type ProductForm = {
   categoryId: string;
 };
 
-export type ProductListItem = {
+export type MenuItemListItem = {
   id: number;
   name: string;
   sku: string;
@@ -34,7 +34,7 @@ export type ProductListItem = {
   category: { name: string };
 };
 
-export type EditableProduct = {
+export type EditableMenuItem = {
   id: number;
   name: string;
   sku: string;

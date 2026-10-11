@@ -15,20 +15,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Product {
-  id           Int        @id @default(autoincrement())
-  restaurantId Int
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  name         String
-  sku          String
-  category     String
-  qty          Int
-  price        Decimal    @db.Decimal(14, 2)
-  image        String?
-
-  @@unique([restaurantId, sku])
-}
-
 enum RestaurantApproval {
   PENDING
   APPROVED
@@ -51,7 +37,6 @@ model Restaurant {
   slug            String                  @unique
   ownerId         Int?
   owner           Employee?               @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  products        Product[]
   categories      Category[]
   menuItems       MenuItem[]
   modifierGroups  MenuItemModifierGroup[]

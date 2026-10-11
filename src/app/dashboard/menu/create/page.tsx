@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import LoadErrorMessage from "../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
 import ModifierGroupsEditor from "../_components/ModifierGroupsEditor";
-import ProductFormFields from "../_components/ProductFormFields";
+import MenuItemFormFields from "../_components/MenuItemFormFields";
 import type {
   ModifierGroupDraft,
-  ProductCategory,
-  ProductForm,
+  MenuCategory,
+  MenuItemForm,
 } from "../types";
 
-const initialForm = (): ProductForm => ({
+const initialForm = (): MenuItemForm => ({
   name: "",
   sku: `MENU-${Date.now().toString().slice(-6)}`,
   description: "",
@@ -23,13 +23,13 @@ const initialForm = (): ProductForm => ({
 
 export default function CreateMenuPage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [form, setForm] = useState<ProductForm>(initialForm);
+  const [form, setForm] = useState<MenuItemForm>(initialForm);
   const [modifierGroups, setModifierGroups] = useState<ModifierGroupDraft[]>(
     [],
   );
@@ -46,7 +46,7 @@ export default function CreateMenuPage() {
       const data = await fetchJson("/api/categories");
       if (!Array.isArray(data))
         throw new Error("รูปแบบข้อมูลหมวดหมู่ไม่ถูกต้อง");
-      setCategories(data as ProductCategory[]);
+      setCategories(data as MenuCategory[]);
       setLoadError("");
     } catch (loadFailure) {
       console.error("Failed to load categories for menu creation", loadFailure);
@@ -78,7 +78,7 @@ export default function CreateMenuPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      router.push("/dashboard/products");
+      router.push("/dashboard/menu");
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "เกิดข้อผิดพลาด",
@@ -129,7 +129,7 @@ export default function CreateMenuPage() {
             )}
           </div>
         </div>
-        <ProductFormFields
+        <MenuItemFormFields
           form={form}
           categories={categories}
           onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}

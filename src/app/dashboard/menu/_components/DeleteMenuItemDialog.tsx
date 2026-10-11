@@ -1,11 +1,11 @@
-import type { ProductListItem } from "../types";
+import type { MenuItemListItem } from "../types";
 
-export default function DeleteProductDialog({
-  product,
+export default function DeleteMenuItemDialog({
+  menuItem,
   onClose,
   onConfirm,
 }: {
-  product: ProductListItem;
+  menuItem: MenuItemListItem;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -14,7 +14,7 @@ export default function DeleteProductDialog({
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
         <h2 className="font-semibold text-gray-900">ลบเมนูอาหาร</h2>
         <p className="mt-2 text-sm text-gray-500">
-          ต้องการลบ {product.name} หรือไม่?
+          ต้องการลบ {menuItem.name} หรือไม่?
           หากเมนูนี้มีประวัติออเดอร์หรือข้อมูลที่เกี่ยวข้อง ระบบจะไม่อนุญาตให้ลบ
         </p>
         <div className="mt-5 flex gap-2">

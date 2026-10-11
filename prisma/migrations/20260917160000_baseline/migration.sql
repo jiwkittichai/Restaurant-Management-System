@@ -9,21 +9,6 @@ CREATE TABLE `RateLimitBucket` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `Product` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `restaurantId` INTEGER NOT NULL,
-    `name` VARCHAR(191) NOT NULL,
-    `sku` VARCHAR(191) NOT NULL,
-    `category` VARCHAR(191) NOT NULL,
-    `qty` INTEGER NOT NULL,
-    `price` DECIMAL(14, 2) NOT NULL,
-    `image` VARCHAR(191) NULL,
-
-    UNIQUE INDEX `Product_restaurantId_sku_key`(`restaurantId`, `sku`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `Restaurant` (
     `approvalStatus` ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'APPROVED',
     `reviewedAt` DATETIME(3) NULL,
@@ -428,9 +413,6 @@ CREATE TABLE `QrSubmission` (
     UNIQUE INDEX `QrSubmission_sessionId_requestId_key`(`sessionId`, `requestId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- AddForeignKey
-ALTER TABLE `Product` ADD CONSTRAINT `Product_restaurantId_fkey` FOREIGN KEY (`restaurantId`) REFERENCES `Restaurant`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Restaurant` ADD CONSTRAINT `Restaurant_ownerId_fkey` FOREIGN KEY (`ownerId`) REFERENCES `Employee`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

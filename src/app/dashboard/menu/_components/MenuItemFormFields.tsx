@@ -1,13 +1,13 @@
-import type { ProductCategory, ProductForm } from "../types";
+import type { MenuCategory, MenuItemForm } from "../types";
 
-export default function ProductFormFields({
+export default function MenuItemFormFields({
   form,
   categories,
   onChange,
 }: {
-  form: ProductForm;
-  categories: ProductCategory[];
-  onChange: (patch: Partial<ProductForm>) => void;
+  form: MenuItemForm;
+  categories: MenuCategory[];
+  onChange: (patch: Partial<MenuItemForm>) => void;
 }) {
   return (
     <>

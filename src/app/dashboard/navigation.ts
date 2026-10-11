@@ -60,7 +60,7 @@ export const dashboardSections: readonly DashboardSection[] = [
     sidebar: { label: "หมวดหมู่", icon: "Tags", order: 8 },
   },
   {
-    path: "/dashboard/products",
+    path: "/dashboard/menu",
     pageTitle: "เมนูอาหาร",
     roles: ["OWNER"],
     sidebar: { label: "เมนูอาหาร", icon: "UtensilsCrossed", order: 7 },
@@ -111,7 +111,7 @@ export const dashboardSections: readonly DashboardSection[] = [
 
 const exactPageTitles: Record<string, string> = {
   "/dashboard/onboarding": "เริ่มต้นใช้งาน",
-  "/dashboard/products/create": "เพิ่มเมนูอาหาร",
+  "/dashboard/menu/create": "เพิ่มเมนูอาหาร",
   "/dashboard/settings/account": "บัญชีผู้ใช้",
   "/dashboard/settings/restaurant": "ข้อมูลร้าน",
   "/dashboard/settings/payments": "ตั้งค่า",
@@ -159,7 +159,7 @@ export function getDashboardPageTitle(pathname: string) {
   if (/^\/dashboard\/employees\/\d+\/history$/.test(pathname)) {
     return "ประวัติพนักงาน";
   }
-  if (/^\/dashboard\/products\/[^/]+\/edit$/.test(pathname)) {
+  if (/^\/dashboard\/menu\/[^/]+\/edit$/.test(pathname)) {
     return "แก้ไขเมนูอาหาร";
   }
   if (/^\/dashboard\/reports\/orders\/[^/]+$/.test(pathname)) {

@@ -5,20 +5,20 @@ import { useParams, useRouter } from "next/navigation";
 import LoadErrorMessage from "../../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
 import ModifierGroupsEditor from "../../_components/ModifierGroupsEditor";
-import ProductFormFields from "../../_components/ProductFormFields";
+import MenuItemFormFields from "../../_components/MenuItemFormFields";
 import type {
-  EditableProduct,
+  EditableMenuItem,
   ModifierGroupDraft,
-  ProductCategory,
-  ProductForm,
+  MenuCategory,
+  MenuItemForm,
 } from "../../types";
 
-type EditProductForm = ProductForm & {
+type EditMenuItemForm = MenuItemForm & {
   image: string;
   available: boolean;
 };
 
-const emptyForm: EditProductForm = {
+const emptyForm: EditMenuItemForm = {
   name: "",
   sku: "",
   description: "",
@@ -32,10 +32,10 @@ const emptyForm: EditProductForm = {
 export default function EditMenuPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
-  const [form, setForm] = useState<EditProductForm>(emptyForm);
+  const [form, setForm] = useState<EditMenuItemForm>(emptyForm);
   const [modifierGroups, setModifierGroups] = useState<ModifierGroupDraft[]>(
     [],
   );
@@ -60,10 +60,10 @@ export default function EditMenuPage() {
       ]);
       if (!Array.isArray(menuData) || !Array.isArray(categoriesData))
         throw new Error("รูปแบบข้อมูลเมนูไม่ถูกต้อง");
-      const item = (menuData as EditableProduct[]).find(
-        (product) => product.id === Number(params.id),
+      const item = (menuData as EditableMenuItem[]).find(
+        (menuItem) => menuItem.id === Number(params.id),
       );
-      setCategories(categoriesData as ProductCategory[]);
+      setCategories(categoriesData as MenuCategory[]);
       if (!item) {
         setError("ไม่พบเมนูอาหาร");
         setLoadError("");
@@ -129,7 +129,7 @@ export default function EditMenuPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      router.push("/dashboard/products");
+      router.push("/dashboard/menu");
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -201,7 +201,7 @@ export default function EditMenuPage() {
             </div>
           </div>
         </div>
-        <ProductFormFields
+        <MenuItemFormFields
           form={form}
           categories={categories}
           onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}

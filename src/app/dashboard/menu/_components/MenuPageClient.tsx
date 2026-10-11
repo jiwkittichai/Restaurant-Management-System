@@ -5,23 +5,23 @@ import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import LoadErrorMessage from "../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
-import type { ProductListItem } from "../types";
-import DeleteProductDialog from "./DeleteProductDialog";
-import ProductTable from "./ProductTable";
+import type { MenuItemListItem } from "../types";
+import DeleteMenuItemDialog from "./DeleteMenuItemDialog";
+import MenuItemTable from "./MenuItemTable";
 
-export default function ProductsPageClient() {
+export default function MenuPageClient() {
   const router = useRouter();
-  const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItemListItem[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [confirmingDelete, setConfirmingDelete] =
-    useState<ProductListItem | null>(null);
+    useState<MenuItemListItem | null>(null);
   const load = useCallback(async () => {
     try {
       const data = await fetchJson("/api/menu");
       if (!Array.isArray(data)) throw new Error("รูปแบบข้อมูลเมนูไม่ถูกต้อง");
-      setProducts(data as ProductListItem[]);
+      setMenuItems(data as MenuItemListItem[]);
       setLoadError("");
     } catch (loadFailure) {
       console.error("Failed to load menu items", loadFailure);
@@ -32,11 +32,14 @@ export default function ProductsPageClient() {
     void load();
   }, [load]);
 
-  async function toggle(product: ProductListItem) {
+  async function toggle(menuItem: MenuItemListItem) {
     await fetch("/api/menu", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: product.id, available: !product.available }),
+      body: JSON.stringify({
+        id: menuItem.id,
+        available: !menuItem.available,
+      }),
     });
     void load();
   }
@@ -54,8 +57,8 @@ export default function ProductsPageClient() {
     }
   }
   const query = search.toLowerCase();
-  const filteredProducts = products.filter((product) =>
-    `${product.name} ${product.sku} ${product.category.name}`
+  const filteredMenuItems = menuItems.filter((menuItem) =>
+    `${menuItem.name} ${menuItem.sku} ${menuItem.category.name}`
       .toLowerCase()
       .includes(query),
   );
@@ -73,7 +76,7 @@ export default function ProductsPageClient() {
           />
         </div>
         <button
-          onClick={() => router.push("/dashboard/products/create")}
+          onClick={() => router.push("/dashboard/menu/create")}
           className="flex items-center justify-center gap-2 rounded-xl bg-[#356DDB] px-5 py-3 text-white"
         >
           <Plus size={18} /> เพิ่มเมนู
@@ -83,17 +86,17 @@ export default function ProductsPageClient() {
       <div className="mb-3">
         <LoadErrorMessage message={loadError} onRetry={load} />
       </div>
-      <ProductTable
-        products={filteredProducts}
-        onEdit={(product) =>
-          router.push(`/dashboard/products/${product.id}/edit`)
+      <MenuItemTable
+        menuItems={filteredMenuItems}
+        onEdit={(menuItem) =>
+          router.push(`/dashboard/menu/${menuItem.id}/edit`)
         }
         onDelete={setConfirmingDelete}
         onToggle={toggle}
       />
       {confirmingDelete && (
-        <DeleteProductDialog
-          product={confirmingDelete}
+        <DeleteMenuItemDialog
+          menuItem={confirmingDelete}
           onClose={() => setConfirmingDelete(null)}
           onConfirm={() => remove(confirmingDelete.id)}
         />
