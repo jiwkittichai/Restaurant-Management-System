@@ -8,6 +8,7 @@
     "start": "next start",
     "db:seed": "node scripts/seed-realistic.mjs --apply --confirm-database=restaurant_system",
     "db:seed:preview": "node scripts/seed-realistic.mjs",
+    "db:seed:platform": "node scripts/init-platform.mjs",
     "minio:init": "node scripts/init-minio.js"
   },
   "dependencies": {
