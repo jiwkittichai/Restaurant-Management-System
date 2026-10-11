@@ -135,7 +135,7 @@ export default function ReportsPageClient() {
   }
 
   return (
-    <div className="space-y-5 overflow-y-auto p-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-5 sm:p-6 lg:p-8">
       <ReportRangeFilter
         rangeMode={rangeMode}
         from={visibleFrom}
@@ -150,16 +150,16 @@ export default function ReportsPageClient() {
 
       <ReportSummaryCards summary={report.summary} />
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
         <SalesChart report={report} rangeMode={rangeMode} />
-        <section className="rounded-2xl border border-gray-100 bg-white p-5">
+        <section className="min-w-0 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
           <h2 className="font-semibold">เมนูขายดี</h2>
           <div className="mt-4 space-y-3">
             {report.topItems.map((item, index) => (
-              <div key={item.name} className="flex items-center gap-3">
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-blue-50 text-xs text-blue-600">{index + 1}</span>
-                <div className="flex-1"><p className="text-sm font-medium">{item.name}</p><p className="text-xs text-gray-400">{item.qty} รายการ</p></div>
-                <span className="font-medium">฿{item.sales.toFixed(2)}</span>
+              <div key={item.name} className="flex min-w-0 items-center gap-3">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-xs text-blue-600">{index + 1}</span>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{item.name}</p><p className="text-xs text-gray-400">{item.qty} รายการ</p></div>
+                <span className="shrink-0 text-sm font-medium sm:text-base">฿{item.sales.toFixed(2)}</span>
               </div>
             ))}
             {!report.topItems.length && <p className="text-sm text-gray-400">ยังไม่มีข้อมูล</p>}
