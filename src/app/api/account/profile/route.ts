@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
-import { authorizeApi, writeAudit } from "@/lib/auth";
+import { authorizeApi, replaceEmployeeSessions, setSessionCookie, writeAudit } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, requestError, RequestError, smallJson } from "@/lib/request-security";
@@ -49,17 +49,19 @@ export async function PATCH(req: NextRequest) {
     if (await verifyPassword(newPassword, employee.passwordHash)) throw new RequestError("รหัสผ่านใหม่ต้องต่างจากรหัสผ่านปัจจุบัน");
     const passwordHash = await hashPassword(newPassword);
 
-    await prisma.$transaction(async (tx) => {
+    const replacementSession = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM Employee WHERE id = ${employee.id} FOR UPDATE`;
       const current = await tx.employee.findUniqueOrThrow({ where: { id: employee.id }, select: { passwordHash: true } });
       if (current.passwordHash !== employee.passwordHash) throw new RequestError("ข้อมูลบัญชีมีการเปลี่ยนแปลง กรุณาลองใหม่", 409);
       await tx.employee.update({ where: { id: employee.id }, data: { passwordHash } });
-      await tx.authSession.deleteMany({ where: { employeeId: employee.id } });
       await tx.accountToken.deleteMany({ where: { employeeId: employee.id } });
+      const session = await replaceEmployeeSessions(tx, employee.id);
       await writeAudit(employee.id, "UPDATE_ACCOUNT", "Employee", employee.id, { targetName: employee.displayName, passwordReset: true }, { tx, restaurantId: employee.restaurantId });
+      return session;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+    await setSessionCookie(replacementSession);
 
-    return NextResponse.json({ success: true, message: "เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบอีกครั้ง", requiresLogin: true });
+    return NextResponse.json({ success: true, message: "เปลี่ยนรหัสผ่านสำเร็จ และออกจากระบบอุปกรณ์อื่นแล้ว" });
   } catch (error) {
     if (error instanceof RequestError) return requestError(error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

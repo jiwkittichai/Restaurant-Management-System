@@ -31,29 +31,48 @@ export type CurrentUser = {
   roles: StaffRole[];
 };
 
+type SessionCredentials = { token: string; expiresAt: Date };
+
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function newSessionCredentials(): SessionCredentials {
+  return {
+    token: randomBytes(32).toString("hex"),
+    expiresAt: new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000),
+  };
+}
+
+export async function setSessionCookie(session: SessionCredentials) {
+  const store = await cookies();
+  store.set(SESSION_COOKIE, session.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: session.expiresAt,
+  });
+}
+
+export async function replaceEmployeeSessions(tx: Prisma.TransactionClient, employeeId: number) {
+  const session = newSessionCredentials();
+  await tx.authSession.deleteMany({ where: { employeeId } });
+  await tx.authSession.create({ data: { tokenHash: tokenHash(session.token), employeeId, expiresAt: session.expiresAt } });
+  return session;
+}
+
 export async function createSession(employeeId: number, expectedPasswordHash?: string) {
-  const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000);
+  const session = newSessionCredentials();
   await prisma.$transaction(async tx => {
     const scope = await tx.employee.findUniqueOrThrow({ where: { id: employeeId }, select: { restaurantId: true } });
     await lockRestaurantAccess(tx, scope.restaurantId);
     await tx.$queryRaw`SELECT id FROM Employee WHERE id = ${employeeId} FOR UPDATE`;
     const employee = await tx.employee.findUniqueOrThrow({ where: { id: employeeId } });
     if (!employee.active || (expectedPasswordHash && employee.passwordHash !== expectedPasswordHash)) throw new Error("SESSION_REJECTED");
-    await tx.authSession.create({ data: { tokenHash: tokenHash(token), employeeId, expiresAt } });
+    await tx.authSession.create({ data: { tokenHash: tokenHash(session.token), employeeId, expiresAt: session.expiresAt } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
-  const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: expiresAt,
-  });
+  await setSessionCookie(session);
 }
 
 export async function destroySession() {

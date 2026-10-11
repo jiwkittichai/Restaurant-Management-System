@@ -29,10 +29,6 @@ export default function PasswordForm({ busyTask, onBusyTask }: { busyTask: Accou
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "เปลี่ยนรหัสผ่านไม่สำเร็จ");
-      if (data.requiresLogin) {
-        window.location.assign("/login");
-        return;
-      }
       setPassword(emptyPassword);
       setEditing(false);
       setFeedback({ type: "success", text: data.message });
@@ -60,19 +56,19 @@ export default function PasswordForm({ busyTask, onBusyTask }: { busyTask: Accou
       </div>
       {editing && (
         <>
-          <p className="mt-5 text-sm text-gray-500">หลังเปลี่ยนรหัสผ่าน ระบบจะให้ออกจากระบบทุกอุปกรณ์</p>
+          <p className="mt-5 text-sm text-gray-500">หลังเปลี่ยนรหัสผ่าน ระบบจะให้ออกจากระบบอุปกรณ์อื่น โดยอุปกรณ์นี้ยังใช้งานต่อได้</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="block sm:col-span-2"><span className="text-sm font-medium text-gray-700">รหัสผ่านปัจจุบัน</span><input required type="password" maxLength={128} autoComplete="current-password" value={password.current} onChange={(event) => setPassword({ ...password, current: event.target.value })} className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-400" /></label>
             <label className="block"><span className="text-sm font-medium text-gray-700">รหัสผ่านใหม่</span><input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={password.next} onChange={(event) => setPassword({ ...password, next: event.target.value })} placeholder="อย่างน้อย 8 ตัวอักษร" className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-400" /></label>
             <label className="block"><span className="text-sm font-medium text-gray-700">ยืนยันรหัสผ่านใหม่</span><input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={password.confirm} onChange={(event) => setPassword({ ...password, confirm: event.target.value })} className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-400" /></label>
           </div>
-          <FeedbackMessage feedback={feedback} />
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" disabled={busy} onClick={cancelEdit} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-gray-600 disabled:opacity-50"><X size={16} />ยกเลิก</button>
             <button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-white disabled:opacity-50"><ShieldCheck size={17} />{busyTask === "password" ? "กำลังเปลี่ยน..." : "ยืนยันเปลี่ยนรหัสผ่าน"}</button>
           </div>
         </>
       )}
+      <FeedbackMessage feedback={feedback} />
     </form>
   );
 }

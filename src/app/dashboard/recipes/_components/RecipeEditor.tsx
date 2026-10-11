@@ -131,11 +131,6 @@ export default function RecipeEditor({
               );
             })}
           </div>
-          {menu.modifierGroups.length === 0 && (
-            <p className="mt-2 text-sm text-gray-400">
-              เมนูนี้ยังไม่มีตัวเลือก จึงมีเฉพาะสูตรเมนูหลัก
-            </p>
-          )}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">

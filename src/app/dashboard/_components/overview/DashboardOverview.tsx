@@ -170,7 +170,7 @@ export default function DashboardOverview() {
   ];
 
   return (
-    <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
+    <div className="min-w-0 space-y-4 overflow-x-hidden p-3 sm:space-y-5 sm:p-6">
       <LoadErrorMessage message={loadError} onRetry={loadDashboard} />
       <SummaryCards cards={summaryCards} />
       <SummaryCards
