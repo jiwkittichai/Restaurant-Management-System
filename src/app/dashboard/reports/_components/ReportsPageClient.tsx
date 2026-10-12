@@ -10,6 +10,7 @@ import ReportSummaryCards from "./ReportSummaryCards";
 import SalesChart from "./SalesChart";
 import LoadErrorMessage from "../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
+import { reportFilterParams, type ReportFilterState } from "../filter-state";
 
 function isReport(data: unknown): data is Report {
   if (!data || typeof data !== "object") return false;
@@ -17,15 +18,15 @@ function isReport(data: unknown): data is Report {
   return Boolean(report.summary && report.meta && Array.isArray(report.topItems) && Array.isArray(report.payments) && Array.isArray(report.daily) && Array.isArray(report.recent));
 }
 
-export default function ReportsPageClient() {
+export default function ReportsPageClient({ initialFilters }: { initialFilters: ReportFilterState }) {
   const router = useRouter();
-  const [rangeMode, setRangeMode] = useState<RangeMode>("TODAY");
-  const [from, setFrom] = useState(() => todayText());
-  const [to, setTo] = useState(() => todayText());
+  const [rangeMode, setRangeMode] = useState<RangeMode>(initialFilters.rangeMode);
+  const [from, setFrom] = useState(initialFilters.from);
+  const [to, setTo] = useState(initialFilters.to);
   const [report, setReport] = useState<Report>(emptyReport);
   const [loadError, setLoadError] = useState("");
-  const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(initialFilters.query);
+  const [search, setSearch] = useState(initialFilters.query);
   const [loading, setLoading] = useState(false);
   const requestVersion = useRef(0);
   useEffect(() => {
@@ -44,8 +45,16 @@ export default function ReportsPageClient() {
     return params.toString();
   }, [from, rangeMode, to]);
   const paginationKey = `${reportQuery}&q=${encodeURIComponent(search)}`;
-  const [pagination, setPagination] = useState({ key: "", page: 1 });
+  const [pagination, setPagination] = useState({ key: paginationKey, page: initialFilters.page });
   const page = pagination.key === paginationKey ? pagination.page : 1;
+  const filterUrl = reportFilterParams({ rangeMode, from, to, query, page }).toString();
+  const reportsHref = `/dashboard/reports${filterUrl ? `?${filterUrl}` : ""}`;
+
+  useEffect(() => {
+    const nextUrl = `${reportsHref}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) router.replace(nextUrl, { scroll: false });
+  }, [reportsHref, router]);
 
   const load = useCallback(async () => {
     const version = ++requestVersion.current;
@@ -55,6 +64,9 @@ export default function ReportsPageClient() {
       if (!isReport(data)) throw new Error("รูปแบบข้อมูลรายงานไม่ถูกต้อง");
       if (version !== requestVersion.current) return;
       setReport(data);
+      if (data.recentPage && data.recentPage !== page) {
+        setPagination({ key: paginationKey, page: data.recentPage });
+      }
       setLoadError("");
     } catch (loadFailure) {
       if (version !== requestVersion.current) return;
@@ -151,6 +163,11 @@ export default function ReportsPageClient() {
     if (!from) setFrom(visibleFrom || todayText());
   }
 
+  function setOrderQuery(value: string) {
+    setQuery(value);
+    setPagination({ key: "", page: 1 });
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-5 sm:p-6 lg:p-8">
       <ReportRangeFilter
@@ -188,13 +205,13 @@ export default function ReportsPageClient() {
         rows={report.recent}
         payments={report.payments}
         query={query}
-        onQuery={setQuery}
+        onQuery={setOrderQuery}
         total={report.recentTotal ?? report.recent.length}
         page={report.recentPage ?? 1}
         pageSize={report.recentPageSize ?? 100}
         loading={loading || query.trim() !== search}
         onPage={next => setPagination({ key: paginationKey, page: next })}
-        onOpen={(id) => router.push(`/dashboard/reports/orders/${id}`)}
+        onOpen={(id) => router.push(`/dashboard/reports/orders/${id}?returnTo=${encodeURIComponent(reportsHref)}`)}
       />
     </div>
   );

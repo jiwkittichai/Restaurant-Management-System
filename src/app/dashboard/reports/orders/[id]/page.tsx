@@ -35,7 +35,13 @@ function DetailTile({ icon, label, children }: { icon: ReactNode; label: string;
   );
 }
 
-export default async function ReportOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReportOrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!user.roles.includes(StaffRole.OWNER)) redirect("/dashboard");
@@ -58,6 +64,12 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
   });
   if (!order?.payment) notFound();
 
+  const returnValue = (await searchParams).returnTo;
+  const requestedReturnHref = Array.isArray(returnValue) ? returnValue[0] : returnValue;
+  const returnHref = requestedReturnHref && /^\/dashboard\/reports(?:\?[^#]*)?$/.test(requestedReturnHref)
+    ? requestedReturnHref
+    : "/dashboard/reports";
+
   const placeLabel = order.type === "TAKEAWAY" ? "หมายเลขคิว" : "โต๊ะอาหาร";
   const placeValue = order.type === "TAKEAWAY" ? order.queueNumber || "ไม่ระบุคิว" : order.table?.name || "ไม่ระบุโต๊ะ";
   const payment = order.payment;
@@ -66,7 +78,7 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
   return (
     <div className="mx-auto w-full max-w-[1280px] space-y-4 px-3 py-4 sm:space-y-5 sm:p-6 lg:p-8">
       <Link
-        href="/dashboard/reports"
+        href={returnHref}
         className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600"
       >
         <ArrowLeft size={17} />
