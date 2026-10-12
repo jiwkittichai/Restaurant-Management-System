@@ -1,4 +1,5 @@
 export const logLabels: Record<string, string> = {
+  RESTAURANT_CREATED: "สร้างบัญชีร้าน",
   RESTAURANT_APPROVED: "อนุมัติร้าน",
   RESTAURANT_REJECTED: "ปฏิเสธคำขอร้าน",
   PLATFORM_LOGIN: "แอดมินเข้าสู่ระบบ",
@@ -19,11 +20,13 @@ const detailLabels: Record<string, string> = {
   registrationOpen: "การรับสมัครร้านใหม่",
   username: "ชื่อผู้ใช้",
   displayName: "ชื่อที่แสดง",
+  email: "อีเมล",
 };
 
 const groupLabels: Record<string, string> = { before: "ข้อมูลเดิม", after: "ข้อมูลใหม่" };
 
 export type LogDetailGroup = { label?: string; rows: { label: string; value: string }[] };
+export type LogChangeRow = { label: string; before?: string; after: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -60,9 +63,44 @@ export function logDetailGroups(details: unknown): LogDetailGroup[] {
   return groups;
 }
 
+export function logChangeRows(details: unknown): LogChangeRow[] {
+  if (!isRecord(details)) return [];
+  const before = isRecord(details.before) ? details.before : null;
+  const after = isRecord(details.after) ? details.after : null;
+  const rows: LogChangeRow[] = [];
+
+  if (before || after) {
+    const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+    for (const key of keys) {
+      const beforeValue = before && Object.prototype.hasOwnProperty.call(before, key) ? formatValue(key, before[key]) : "-";
+      const afterValue = after && Object.prototype.hasOwnProperty.call(after, key) ? formatValue(key, after[key]) : "-";
+      if (beforeValue !== afterValue) {
+        rows.push({ label: detailLabels[key] || key, before: beforeValue, after: afterValue });
+      }
+    }
+  }
+
+  for (const [key, value] of Object.entries(details)) {
+    if (key === "before" || key === "after") continue;
+    if (isRecord(value)) {
+      for (const [nestedKey, nestedValue] of Object.entries(value)) {
+        rows.push({ label: detailLabels[nestedKey] || nestedKey, after: formatValue(nestedKey, nestedValue) });
+      }
+    } else {
+      rows.push({ label: detailLabels[key] || key, after: formatValue(key, value) });
+    }
+  }
+
+  return rows;
+}
+
 export function logRestaurantName(details: unknown) {
   if (!isRecord(details)) return null;
   return typeof details.restaurantName === "string" && details.restaurantName.trim() ? details.restaurantName : null;
+}
+
+export function restaurantCode(id: number) {
+  return `RST-${String(id).padStart(6, "0")}`;
 }
 
 export function restaurantStatus(restaurant: { approvalStatus: string; active: boolean }) {

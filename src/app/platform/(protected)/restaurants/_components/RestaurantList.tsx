@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Building2,
   CircleCheck,
   CircleX,
   History,
+  Search,
   ShieldAlert,
   Store,
+  UserPlus,
 } from "lucide-react";
+import CreateRestaurantModal from "./CreateRestaurantModal";
 import RestaurantActionModal from "./RestaurantActionModal";
 import { platformRequest } from "../../_lib/api";
-import { restaurantStatus } from "../../_lib/formatters";
+import { restaurantCode, restaurantStatus } from "../../_lib/formatters";
 import type {
   PlatformRestaurant,
   RestaurantAction,
@@ -27,11 +32,13 @@ export default function RestaurantList() {
   const [data, setData] = useState<RestaurantListData | null>(null);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("pending");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [status, setStatus] = useState("");
+  const [sort, setSort] = useState<"newest" | "oldest">("oldest");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [reviewAction, setReviewAction] = useState<RestaurantAction | null>(
     null,
   );
@@ -48,7 +55,7 @@ export default function RestaurantList() {
         `/api/platform/restaurants?${params}`,
       ),
     );
-  }, [search, status, sort, page]);
+  }, [search, status, sort, page, revision]);
 
   useEffect(() => {
     let alive = true;
@@ -61,16 +68,18 @@ export default function RestaurantList() {
     };
   }, [load]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setPage(1);
+      setSearch(query.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+
   function selectStatus(next: string) {
     setStatus(next);
     setPage(1);
     setMessage("");
-  }
-
-  function submitSearch(event: FormEvent) {
-    event.preventDefault();
-    setPage(1);
-    setSearch(query);
   }
 
   function changePage(next: number) {
@@ -93,18 +102,18 @@ export default function RestaurantList() {
 
   const filters = [
     {
+      value: "",
+      label: "ร้านทั้งหมด",
+      count: data?.summary.restaurants ?? 0,
+      icon: Building2,
+      tone: "bg-blue-50 text-blue-600",
+    },
+    {
       value: "pending",
       label: "รออนุมัติ",
       count: data?.summary.pending ?? 0,
       icon: History,
       tone: "bg-amber-50 text-amber-600",
-    },
-    {
-      value: "active",
-      label: "เปิดใช้งาน",
-      count: data?.summary.active ?? 0,
-      icon: CircleCheck,
-      tone: "bg-emerald-50 text-emerald-600",
     },
     {
       value: "suspended",
@@ -121,11 +130,11 @@ export default function RestaurantList() {
       tone: "bg-red-50 text-red-500",
     },
     {
-      value: "",
-      label: "ร้านทั้งหมด",
-      count: data?.summary.restaurants ?? 0,
-      icon: Building2,
-      tone: "bg-blue-50 text-blue-600",
+      value: "active",
+      label: "เปิดใช้งาน",
+      count: data?.summary.active ?? 0,
+      icon: CircleCheck,
+      tone: "bg-emerald-50 text-emerald-600",
     },
   ];
   const totalPages = data
@@ -137,6 +146,12 @@ export default function RestaurantList() {
 
   return (
     <section className="space-y-4">
+      <div className="flex justify-end">
+        <button type="button" onClick={() => { setCreateOpen(true); setMessage(""); }} className="inline-flex items-center gap-2 rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+          <UserPlus size={18} />
+          เพิ่มบัญชีร้าน
+        </button>
+      </div>
       {error && (
         <p
           role="alert"
@@ -179,34 +194,33 @@ export default function RestaurantList() {
           </button>
         ))}
       </div>
-      <form
+      <div
         className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 sm:flex-row"
-        onSubmit={submitSearch}
       >
-        <input
-          aria-label="ค้นหาร้าน"
-          value={query}
-          maxLength={100}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="ค้นหาจากชื่อร้านหรือรหัสร้าน"
-          className={`${inputClass} min-w-0 flex-1`}
-        />
-        <select
-          aria-label="เรียงลำดับร้าน"
-          value={sort}
-          onChange={(event) => {
-            setSort(event.target.value as "newest" | "oldest");
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">ค้นหาร้าน</span>
+          <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={query}
+            maxLength={100}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="ค้นหาชื่อร้านหรือรหัสร้าน"
+            className={`${inputClass} w-full pl-10`}
+          />
+        </label>
+        <button
+          type="button"
+          aria-label={`เรียงลำดับร้าน: ${sort === "newest" ? "ใหม่-เก่า" : "เก่า-ใหม่"}`}
+          title={sort === "newest" ? "ใหม่-เก่า" : "เก่า-ใหม่"}
+          onClick={() => {
+            setSort(current => current === "newest" ? "oldest" : "newest");
             setPage(1);
           }}
-          className={`${inputClass} min-w-40 cursor-pointer`}
+          className={`${inputClass} grid h-[46px] w-[52px] shrink-0 cursor-pointer place-items-center self-end p-0 text-gray-700 hover:border-blue-200 hover:bg-blue-50 sm:self-auto`}
         >
-          <option value="newest">ใหม่–เก่า</option>
-          <option value="oldest">เก่า–ใหม่</option>
-        </select>
-        <button className="rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700">
-          ค้นหา
+          {sort === "newest" ? <ArrowDown size={17} /> : <ArrowUp size={17} />}
         </button>
-      </form>
+      </div>
       <div
         ref={resultsRef}
         className="scroll-mt-4 overflow-x-auto rounded-2xl border border-gray-100 bg-white"
@@ -231,7 +245,7 @@ export default function RestaurantList() {
                   <td className="px-6 py-5">
                     <p className="truncate font-semibold">{row.name}</p>
                     <p className="mt-1 truncate text-xs text-gray-400">
-                      #{row.id} · {row.slug}
+                      {restaurantCode(row.id)}
                     </p>
                   </td>
                   <td className="px-6 py-5">
@@ -348,6 +362,20 @@ export default function RestaurantList() {
             setReviewAction(null);
             setMessage(completed);
             void load();
+          }}
+        />
+      )}
+      {createOpen && (
+        <CreateRestaurantModal
+          onClose={() => setCreateOpen(false)}
+          onCompleted={(completed) => {
+            setCreateOpen(false);
+            setMessage(completed);
+            setQuery("");
+            setSearch("");
+            setStatus("active");
+            setPage(1);
+            setRevision(value => value + 1);
           }}
         />
       )}

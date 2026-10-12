@@ -9,7 +9,7 @@ export async function platformRequest<T>(url: string, init?: RequestInit): Promi
   return result as T;
 }
 
-export function jsonRequest(method: "PATCH" | "DELETE", body?: unknown): RequestInit {
+export function jsonRequest(method: "POST" | "PATCH" | "DELETE", body?: unknown): RequestInit {
   return body === undefined
     ? { method }
     : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };

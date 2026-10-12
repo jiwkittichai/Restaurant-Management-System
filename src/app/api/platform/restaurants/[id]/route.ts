@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     _count: { select: { employees: true, menuItems: true, orders: true } },
   } });
   if (!restaurant) return NextResponse.json({ error: "ไม่พบร้าน" }, { status: 404 });
-  const logs = await prisma.platformLog.findMany({ where: { restaurantId: id, action: { in: ["RESTAURANT_SUSPENDED", "RESTAURANT_RESUMED", "RESTAURANT_APPROVED", "RESTAURANT_REJECTED"] } }, orderBy: { id: "desc" }, take: 20,
+  const logs = await prisma.platformLog.findMany({ where: { restaurantId: id, action: { in: ["RESTAURANT_CREATED", "RESTAURANT_SUSPENDED", "RESTAURANT_RESUMED", "RESTAURANT_APPROVED", "RESTAURANT_REJECTED"] } }, orderBy: { id: "desc" }, take: 20,
     select: { id: true, action: true, actorName: true, details: true, createdAt: true } });
   return NextResponse.json({ restaurant, logs }, { headers: { "Cache-Control": "no-store" } });
 }

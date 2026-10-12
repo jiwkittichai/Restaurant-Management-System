@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, StaffRole } from "@prisma/client";
+import { normalizedEmail } from "@/lib/account-tokens";
+import { writeAudit } from "@/lib/auth";
+import { hashPassword } from "@/lib/password";
 import { authorizePlatform, platformWriteRequest, platformLog } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";
+import { uniqueRestaurantSlug } from "@/lib/restaurant-registration";
 import { smallJson, RequestError, requestError } from "@/lib/request-security";
 const PAGE_SIZE = 100;
 export async function GET(req: NextRequest) {
@@ -11,12 +15,79 @@ export async function GET(req: NextRequest) {
   if (!Number.isInteger(page)) return NextResponse.json({ error: "หน้าไม่ถูกต้อง" }, { status: 400 });
   const status = req.nextUrl.searchParams.get("status");
   const sort = req.nextUrl.searchParams.get("sort") === "oldest" ? "asc" : "desc";
-  const where: Prisma.RestaurantWhereInput = { ...(status === "pending" ? { approvalStatus: "PENDING" } : status === "rejected" ? { approvalStatus: "REJECTED" } : status === "active" ? { active: true, approvalStatus: "APPROVED" } : status === "suspended" ? { active: false, approvalStatus: "APPROVED" } : {}), ...(search ? { OR: [{ name: { contains: search } }, { slug: { contains: search } }] } : {}) };
+  const codeMatch = search.match(/^(?:#|rst[- ]?)?0*(\d+)$/i);
+  const codeId = codeMatch ? Number(codeMatch[1]) : 0;
+  const where: Prisma.RestaurantWhereInput = { ...(status === "pending" ? { approvalStatus: "PENDING" } : status === "rejected" ? { approvalStatus: "REJECTED" } : status === "active" ? { active: true, approvalStatus: "APPROVED" } : status === "suspended" ? { active: false, approvalStatus: "APPROVED" } : {}), ...(search ? { OR: [{ name: { contains: search } }, { slug: { contains: search } }, ...(Number.isSafeInteger(codeId) && codeId > 0 ? [{ id: codeId }] : [])] } : {}) };
   const [restaurants, total, all, active, employees, orders, pending, rejected, suspended] = await Promise.all([
     prisma.restaurant.findMany({ where, take: PAGE_SIZE, skip: (page - 1) * PAGE_SIZE, orderBy: { id: sort }, select: { id: true, name: true, slug: true, approvalStatus: true, active: true, suspendedAt: true, createdAt: true, owner: { select: { username: true, displayName: true, email: true, emailVerifiedAt: true } }, _count: { select: { employees: true, orders: true, menuItems: true } } } }),
     prisma.restaurant.count({ where }), prisma.restaurant.count(), prisma.restaurant.count({ where: { active: true, approvalStatus: "APPROVED" } }), prisma.employee.count(), prisma.order.count(), prisma.restaurant.count({ where: { approvalStatus: "PENDING" } }), prisma.restaurant.count({ where: { approvalStatus: "REJECTED" } }), prisma.restaurant.count({ where: { approvalStatus: "APPROVED", active: false } }),
   ]);
   return NextResponse.json({ restaurants, total, page, pageSize: PAGE_SIZE, summary: { restaurants: all, active, pending, rejected, suspended, employees, orders } });
+}
+export async function POST(req: NextRequest) {
+  const auth = await authorizePlatform(); if ("response" in auth) return auth.response;
+  try {
+    platformWriteRequest(req);
+    const body = await smallJson(req);
+    const restaurantName = String(body.restaurantName || "").trim();
+    const displayName = String(body.displayName || "").trim();
+    const username = String(body.username || "").trim().toLowerCase().replace(/^@+/, "");
+    const password = String(body.password || "");
+    if (!restaurantName || restaurantName.length > 100 || !displayName || displayName.length > 100) {
+      throw new RequestError("กรุณาระบุชื่อร้านและชื่อเจ้าของร้านไม่เกิน 100 ตัวอักษร");
+    }
+    if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
+      throw new RequestError("ชื่อผู้ใช้ต้องมี 3–30 ตัว และใช้ได้เฉพาะ a-z, 0-9, จุด, ขีดกลาง หรือขีดล่าง");
+    }
+    if (password.length < 8 || password.length > 128) {
+      throw new RequestError("รหัสผ่านต้องมี 8–128 ตัวอักษร");
+    }
+    const email = normalizedEmail(body.email);
+    const [employeeExists, adminExists] = await Promise.all([
+      prisma.employee.findUnique({ where: { username }, select: { id: true } }),
+      prisma.platformAdmin.findUnique({ where: { username }, select: { id: true } }),
+    ]);
+    if (employeeExists || adminExists) throw new RequestError("ชื่อผู้ใช้นี้ถูกใช้งานแล้ว", 409);
+
+    const [passwordHash, slug] = await Promise.all([
+      hashPassword(password),
+      uniqueRestaurantSlug(restaurantName),
+    ]);
+    const created = await prisma.$transaction(async tx => {
+      const reviewedAt = new Date();
+      const restaurant = await tx.restaurant.create({
+        data: {
+          name: restaurantName,
+          slug,
+          active: true,
+          approvalStatus: "APPROVED",
+          reviewedAt,
+          reviewReason: "สร้างโดยผู้ดูแลระบบ",
+        },
+      });
+      const employee = await tx.employee.create({
+        data: {
+          restaurantId: restaurant.id,
+          username,
+          displayName,
+          passwordHash,
+          email,
+          emailVerificationRequired: true,
+          roles: { create: { role: StaffRole.OWNER } },
+        },
+      });
+      await tx.restaurant.update({ where: { id: restaurant.id }, data: { ownerId: employee.id } });
+      await writeAudit(employee.id, "REGISTER_RESTAURANT", "Restaurant", restaurant.id, { restaurantName, username, displayName }, { tx, restaurantId: restaurant.id });
+      await platformLog(tx, auth.admin, "RESTAURANT_CREATED", restaurant.id, { restaurantName, displayName, username, email, reason: "สร้างโดยผู้ดูแลระบบ" });
+      return { id: restaurant.id, name: restaurant.name };
+    });
+    return NextResponse.json({ restaurant: created, message: `สร้างบัญชีร้าน ${created.name} แล้ว` }, { status: 201 });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "ชื่อผู้ใช้หรือรหัสร้านซ้ำกับข้อมูลเดิม กรุณาลองใหม่" }, { status: 409 });
+    }
+    return requestError(error);
+  }
 }
 export async function PATCH(req: NextRequest) {
   const auth = await authorizePlatform(); if ("response" in auth) return auth.response;
