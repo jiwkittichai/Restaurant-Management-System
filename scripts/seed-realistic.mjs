@@ -113,7 +113,7 @@ export async function resetAndSeed(db, config, runAt = new Date()) {
       { restaurantId: restaurant.id, employeeId: owner.id, action: 'VERIFY_EMAIL', entityType: 'Employee', entityId: String(owner.id), createdAt: approvedAt },
     ] });
     const admin = await tx.platformAdmin.findFirst({ where: { active: true }, orderBy: { id: 'asc' }, select: { id: true, displayName: true } });
-    await tx.platformLog.create({ data: { adminId: admin?.id, actorName: admin?.displayName || 'ผู้ดูแล PromRaan', action: 'RESTAURANT_APPROVED', restaurantId: restaurant.id, createdAt: approvedAt, details: { restaurantName: config.restaurantName, reason: 'ตรวจสอบและอนุมัติแล้ว' } } });
+    await tx.platformLog.create({ data: { adminId: admin?.id, actorName: 'Admin', action: 'RESTAURANT_APPROVED', restaurantId: restaurant.id, createdAt: approvedAt, details: { restaurantName: config.restaurantName, reason: 'ตรวจสอบและอนุมัติแล้ว' } } });
     await tx.paymentSettings.create({ data: { restaurantId: restaurant.id, promptPayEnabled: false } });
 
     const categories = {};

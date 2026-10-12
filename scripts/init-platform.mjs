@@ -57,7 +57,7 @@ export async function initializePlatform(db, env) {
       data: { username: config.username, displayName: config.displayName, passwordHash },
     });
     await tx.platformLog.create({
-      data: { adminId: admin.id, actorName: admin.displayName, action: 'PLATFORM_ADMIN_CREATED' },
+      data: { adminId: admin.id, actorName: 'Admin', action: 'PLATFORM_ADMIN_CREATED' },
     });
     return { admin: 'created', active: true, settings: settings ? 'unchanged' : 'created' };
   });

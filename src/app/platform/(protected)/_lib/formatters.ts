@@ -4,14 +4,16 @@ export const logLabels: Record<string, string> = {
   RESTAURANT_REJECTED: "ปฏิเสธคำขอร้าน",
   PLATFORM_LOGIN: "แอดมินเข้าสู่ระบบ",
   PLATFORM_LOGIN_FAILED: "เข้าสู่ระบบแอดมินไม่สำเร็จ",
-  RESTAURANT_SUSPENDED: "ระงับร้าน",
-  RESTAURANT_RESUMED: "เปิดร้านอีกครั้ง",
+  RESTAURANT_SUSPENDED: "ระงับบัญชีร้าน",
+  RESTAURANT_RESUMED: "เปิดใช้งานบัญชีร้าน",
   PLATFORM_SETTINGS_UPDATED: "แก้ไขการตั้งค่าส่วนกลาง",
   PLATFORM_LOGO_UPDATED: "เปลี่ยนโลโก้แพลตฟอร์ม",
   PLATFORM_LOGO_REMOVED: "นำโลโก้แพลตฟอร์มออก",
   PLATFORM_ADMIN_CREATED: "สร้างแอดมิน",
   PLATFORM_ADMIN_PASSWORD_RESET: "รีเซ็ตรหัสผ่านแอดมิน",
 };
+
+export const platformAdminName = "Admin";
 
 const detailLabels: Record<string, string> = {
   restaurantName: "ชื่อร้าน",
@@ -27,6 +29,7 @@ const groupLabels: Record<string, string> = { before: "ข้อมูลเด�
 
 export type LogDetailGroup = { label?: string; rows: { label: string; value: string }[] };
 export type LogChangeRow = { label: string; before?: string; after: string };
+export type LogDetailRow = { label: string; value: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -94,9 +97,59 @@ export function logChangeRows(details: unknown): LogChangeRow[] {
   return rows;
 }
 
+export function logComparisonRows(details: unknown): LogChangeRow[] {
+  if (!isRecord(details)) return [];
+  const before = isRecord(details.before) ? details.before : null;
+  const after = isRecord(details.after) ? details.after : null;
+  if (!before && !after) return [];
+
+  const rows: LogChangeRow[] = [];
+  const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+  for (const key of keys) {
+    const beforeValue = before && Object.prototype.hasOwnProperty.call(before, key) ? formatValue(key, before[key]) : "-";
+    const afterValue = after && Object.prototype.hasOwnProperty.call(after, key) ? formatValue(key, after[key]) : "-";
+    if (beforeValue !== afterValue) rows.push({ label: detailLabels[key] || key, before: beforeValue, after: afterValue });
+  }
+  return rows;
+}
+
+export function logDetailRows(details: unknown): LogDetailRow[] {
+  if (!isRecord(details)) return [];
+  const rows: LogDetailRow[] = [];
+  for (const [key, value] of Object.entries(details)) {
+    if (key === "before" || key === "after") continue;
+    if (isRecord(value)) {
+      for (const [nestedKey, nestedValue] of Object.entries(value)) {
+        rows.push({ label: detailLabels[nestedKey] || nestedKey, value: formatValue(nestedKey, nestedValue) });
+      }
+    } else {
+      rows.push({ label: detailLabels[key] || key, value: formatValue(key, value) });
+    }
+  }
+  return rows;
+}
+
 export function logRestaurantName(details: unknown) {
   if (!isRecord(details)) return null;
   return typeof details.restaurantName === "string" && details.restaurantName.trim() ? details.restaurantName : null;
+}
+
+export function logSummary(log: { action: string; details: unknown }) {
+  const label = logLabels[log.action] || log.action;
+  const restaurantName = logRestaurantName(log.details);
+  return restaurantName ? `${label} · ${restaurantName}` : label;
+}
+
+export function logEntityLabel(action: string) {
+  if (action.startsWith("RESTAURANT_")) return "ข้อมูลร้าน";
+  if (action === "PLATFORM_SETTINGS_UPDATED" || action.startsWith("PLATFORM_LOGO_")) return "การตั้งค่าแพลตฟอร์ม";
+  return "บัญชีและความปลอดภัย";
+}
+
+export function logActionTone(action: string) {
+  if (action.includes("FAILED") || action.includes("REJECTED") || action.includes("SUSPENDED")) return "bg-red-50 text-red-600";
+  if (action.includes("APPROVED") || action.includes("RESUMED") || action.includes("CREATED")) return "bg-emerald-50 text-emerald-600";
+  return "bg-blue-50 text-blue-600";
 }
 
 export function restaurantCode(id: number) {
@@ -106,6 +159,6 @@ export function restaurantCode(id: number) {
 export function restaurantStatus(restaurant: { approvalStatus: string; active: boolean }) {
   if (restaurant.approvalStatus === "PENDING") return { text: "รออนุมัติ", className: "bg-amber-50 text-amber-700" };
   if (restaurant.approvalStatus === "REJECTED") return { text: "ไม่อนุมัติ", className: "bg-red-50 text-red-600" };
-  if (!restaurant.active) return { text: "ระงับ", className: "bg-red-50 text-red-600" };
-  return { text: "เปิดใช้งาน", className: "bg-emerald-50 text-emerald-600" };
+  if (!restaurant.active) return { text: "ระงับ", className: "bg-gray-100 text-gray-500" };
+  return { text: "เปิดใช้งาน", className: "bg-emerald-100 text-emerald-700" };
 }

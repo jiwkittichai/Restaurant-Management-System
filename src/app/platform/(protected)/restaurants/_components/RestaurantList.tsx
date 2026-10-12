@@ -8,6 +8,7 @@ import {
   Building2,
   CircleCheck,
   CircleX,
+  Eye,
   History,
   Search,
   ShieldAlert,
@@ -237,6 +238,13 @@ export default function RestaurantList() {
           <tbody>
             {data?.restaurants.map((row) => {
               const current = restaurantStatus(row);
+              const StatusIcon = row.approvalStatus === "PENDING"
+                ? History
+                : row.approvalStatus === "REJECTED"
+                  ? CircleX
+                  : row.active
+                    ? CircleCheck
+                    : ShieldAlert;
               return (
                 <tr
                   key={row.id}
@@ -258,8 +266,9 @@ export default function RestaurantList() {
                   </td>
                   <td className="px-6 py-5">
                     <span
-                      className={`inline-flex rounded-full px-3 py-1.5 text-xs font-medium ${current.className}`}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${current.className}`}
                     >
+                      <StatusIcon size={13} aria-hidden="true" />
                       {current.text}
                     </span>
                   </td>
@@ -270,15 +279,17 @@ export default function RestaurantList() {
                           <button
                             type="button"
                             onClick={() => openAction(row, "APPROVED")}
-                            className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
                           >
+                            <CircleCheck size={15} aria-hidden="true" />
                             อนุมัติ
                           </button>
                           <button
                             type="button"
                             onClick={() => openAction(row, "REJECTED")}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
                           >
+                            <CircleX size={15} aria-hidden="true" />
                             ปฏิเสธ
                           </button>
                         </>
@@ -287,8 +298,9 @@ export default function RestaurantList() {
                         <button
                           type="button"
                           onClick={() => openAction(row, "APPROVED")}
-                          className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
                         >
+                          <CircleCheck size={15} aria-hidden="true" />
                           อนุมัติ
                         </button>
                       )}
@@ -298,15 +310,17 @@ export default function RestaurantList() {
                           onClick={() =>
                             openAction(row, row.active ? "SUSPEND" : "RESUME")
                           }
-                          className={`rounded-lg px-3 py-2 text-xs font-semibold ${row.active ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 ${row.active ? "bg-red-50 text-red-500 hover:bg-red-100 focus-visible:ring-red-200" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 focus-visible:ring-emerald-200"}`}
                         >
+                          {row.active ? <ShieldAlert size={15} aria-hidden="true" /> : <CircleCheck size={15} aria-hidden="true" />}
                           {row.active ? "ระงับ" : "เปิดใช้งาน"}
                         </button>
                       )}
                       <Link
                         href={`/platform/restaurants/${row.id}`}
-                        className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
                       >
+                        <Eye size={15} aria-hidden="true" />
                         ดูรายละเอียด
                       </Link>
                     </div>

@@ -7,5 +7,5 @@ export default async function Layout({ children }: { children: React.ReactNode }
   if (!admin) redirect("/login");
   const settings = await platformSettings();
   const logoUrl = settings.logoUrl ? `/api/platform/logo?v=${settings.updatedAt.getTime()}` : null;
-  return <PlatformShell adminName={admin.displayName} platformName={settings.name} logoUrl={logoUrl}>{children}</PlatformShell>;
+  return <PlatformShell platformName={settings.name} logoUrl={logoUrl}>{children}</PlatformShell>;
 }

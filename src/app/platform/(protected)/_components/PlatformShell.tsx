@@ -14,16 +14,15 @@ const navigation = [
 
 function currentTitle(pathname: string) {
   if (/^\/platform\/restaurants\/\d+/.test(pathname)) return "รายละเอียดร้าน";
+  if (/^\/platform\/logs\/\d+/.test(pathname)) return "รายละเอียดประวัติ";
   return navigation.find(item => item.href === pathname)?.label || "ศูนย์ดูแลแพลตฟอร์ม";
 }
 
 export default function PlatformShell({
-  adminName,
   platformName,
   logoUrl,
   children,
 }: {
-  adminName: string;
   platformName: string;
   logoUrl: string | null;
   children: React.ReactNode;
@@ -97,7 +96,7 @@ export default function PlatformShell({
           <div ref={profileRef} className="relative">
             <button type="button" onClick={() => setProfileOpen(value => !value)} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 shadow-sm transition hover:shadow-md">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-600"><UserRound size={18} /></span>
-              <span className="hidden text-left sm:block"><span className="block text-sm font-medium text-gray-800">{adminName}</span><span className="block text-xs text-gray-400">Platform Admin</span></span>
+              <span className="hidden text-left sm:block"><span className="block text-sm font-medium text-gray-800">Admin</span><span className="block text-xs text-gray-400">ผู้ดูแลระบบ</span></span>
               <ChevronDown size={16} className="text-gray-400" />
             </button>
             {profileOpen && <div className="absolute right-0 top-full z-30 mt-2 w-52 rounded-xl border border-gray-100 bg-white p-2 shadow-xl"><button type="button" onClick={() => void logout()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"><LogOut size={16} />ออกจากระบบ</button></div>}

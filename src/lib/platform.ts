@@ -47,5 +47,5 @@ export async function destroyPlatformSession() {
   store.delete(PLATFORM_COOKIE);
 }
 export async function platformLog(tx: Prisma.TransactionClient, admin: { id: number; displayName: string }, action: string, restaurantId?: number, details?: Prisma.InputJsonObject) {
-  await tx.platformLog.create({ data: { adminId: admin.id, actorName: admin.displayName, action, restaurantId, details } });
+  await tx.platformLog.create({ data: { adminId: admin.id, actorName: "Admin", action, restaurantId, details } });
 }

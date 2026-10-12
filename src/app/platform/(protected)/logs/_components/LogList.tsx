@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, ChevronDown, Filter, RefreshCw, Search, X } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Filter, RefreshCw, Search, X } from "lucide-react";
 import { formatRelativeDate } from "@/app/dashboard/formatters";
 import { platformRequest } from "../../_lib/api";
-import { logChangeRows, logLabels, logRestaurantName, restaurantCode } from "../../_lib/formatters";
+import { logActionTone, logChangeRows, logLabels, logRestaurantName, logSummary, platformAdminName } from "../../_lib/formatters";
 import type { PlatformLog } from "../../_lib/types";
 
 type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "YEAR" | "CUSTOM";
@@ -50,12 +51,6 @@ function daysAgo(amount: number) {
   return localDate(date);
 }
 
-function actionTone(action: string) {
-  if (action.includes("FAILED") || action.includes("REJECTED") || action.includes("SUSPENDED")) return "bg-red-50 text-red-600";
-  if (action.includes("APPROVED") || action.includes("RESUMED") || action.includes("CREATED")) return "bg-emerald-50 text-emerald-600";
-  return "bg-blue-50 text-blue-600";
-}
-
 export default function LogList() {
   const [logs, setLogs] = useState<PlatformLog[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
@@ -66,7 +61,6 @@ export default function LogList() {
   const [rangeMode, setRangeMode] = useState<RangeMode>("ALL");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
 
   const load = useCallback(async (before?: number) => {
     setLoading(true);
@@ -95,7 +89,7 @@ export default function LogList() {
       if (!normalizedQuery) return true;
       const restaurantName = logRestaurantName(log.details) || "";
       const details = logChangeRows(log.details).flatMap(row => [row.label, row.before || "", row.after]);
-      return [log.actorName, logLabels[log.action] || log.action, restaurantName, String(log.restaurantId || ""), ...details]
+      return [platformAdminName, logLabels[log.action] || log.action, restaurantName, String(log.restaurantId || ""), ...details]
         .some(value => value.toLocaleLowerCase("th-TH").includes(normalizedQuery));
     });
   }, [actionGroup, from, logs, query, to]);
@@ -123,15 +117,6 @@ export default function LogList() {
     setRangeMode("ALL");
     setFrom("");
     setTo("");
-  }
-
-  function toggleDetails(id: number) {
-    setExpandedIds(current => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   }
 
   return (
@@ -196,49 +181,30 @@ export default function LogList() {
         <div className="divide-y divide-gray-100">
           {filteredLogs.map((log) => {
             const changes = logChangeRows(log.details);
-            const restaurantName = logRestaurantName(log.details);
-            const expanded = expandedIds.has(log.id);
-            const visibleChanges = expanded ? changes : changes.slice(0, 4);
             return (
-              <article key={log.id} className="px-5 py-4 transition hover:bg-gray-50/60">
+              <Link key={log.id} href={`/platform/logs/${log.id}`} className="block w-full px-5 py-4 text-left transition hover:bg-gray-50">
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-900">{log.actorName}</span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs ${actionTone(log.action)}`}>{logLabels[log.action] || log.action}</span>
+                      <span className="font-medium text-gray-900">{platformAdminName}</span>
+                      <span className={`rounded-full px-2.5 py-1 text-xs ${logActionTone(log.action)}`}>{logLabels[log.action] || log.action}</span>
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                      {restaurantName ? `${logLabels[log.action] || log.action} · ${restaurantName}` : logLabels[log.action] || log.action}
-                    </p>
-                    {log.restaurantId && <p className="mt-1 text-xs text-gray-400">รหัสร้าน {restaurantCode(log.restaurantId)}</p>}
+                    <p className="mt-2 text-sm text-gray-600">{logSummary(log)}</p>
                   </div>
                   <time dateTime={log.createdAt} title={new Date(log.createdAt).toLocaleString("th-TH")} className="whitespace-nowrap text-sm text-gray-400">{formatRelativeDate(log.createdAt)}</time>
                 </div>
 
-                {visibleChanges.length > 0 && (
+                {changes.length > 0 && (
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
-                    {visibleChanges.map((row, index) => (
-                      <div key={`${log.id}-${row.label}-${index}`} className="rounded-xl bg-gray-50 px-3 py-2.5 text-xs">
+                    {changes.slice(0, 4).map((row, index) => (
+                      <div key={`${log.id}-${row.label}-${index}`} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
                         <p className="font-medium text-gray-600">{row.label}</p>
-                        {row.before !== undefined ? (
-                          <div className="mt-2 flex min-w-0 items-center gap-2">
-                            <div className="min-w-0 flex-1"><p className="text-[11px] text-gray-400">ก่อน</p><p className="mt-0.5 break-words font-medium text-gray-600">{row.before}</p></div>
-                            <ArrowRight size={14} className="shrink-0 text-gray-300" />
-                            <div className="min-w-0 flex-1 rounded-lg bg-blue-50 px-2 py-1.5"><p className="text-[11px] text-blue-400">หลัง</p><p className="mt-0.5 break-words font-medium text-blue-700">{row.after}</p></div>
-                          </div>
-                        ) : <p className="mt-1 break-words font-medium text-blue-700">{row.after}</p>}
+                        <p className="mt-1 break-words text-gray-400">{row.before !== undefined ? `${row.before} → ${row.after || "-"}` : row.after}</p>
                       </div>
                     ))}
                   </div>
                 )}
-
-                {changes.length > 4 && (
-                  <button type="button" onClick={() => toggleDetails(log.id)} aria-expanded={expanded} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline">
-                    {expanded ? "ย่อรายละเอียด" : `ดูรายละเอียดทั้งหมด (${changes.length.toLocaleString("th-TH")})`}
-                    <ChevronDown size={14} className={`transition ${expanded ? "rotate-180" : ""}`} />
-                  </button>
-                )}
-              </article>
+              </Link>
             );
           })}
           {!filteredLogs.length && !loading && <p className="px-5 py-8 text-center text-sm text-gray-400">{hasFilters ? "ไม่พบรายการที่ตรงกับตัวกรอง" : "ยังไม่มีรายการ"}</p>}
