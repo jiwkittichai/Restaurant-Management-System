@@ -11,6 +11,7 @@ export type DashboardIconName =
   | "UtensilsCrossed"
   | "Tags"
   | "ChartNoAxesCombined"
+  | "History"
   | "Users"
   | "Settings";
 
@@ -30,12 +31,13 @@ export const dashboardSections: readonly DashboardSection[] = [
     path: "/dashboard/employees",
     pageTitle: "จัดการพนักงาน",
     roles: ["OWNER"],
-    sidebar: { label: "จัดการพนักงาน", icon: "Users", order: 10 },
+    sidebar: { label: "จัดการพนักงาน", icon: "Users", order: 11 },
   },
   {
     path: "/dashboard/audits",
     pageTitle: "ประวัติกิจกรรม",
     roles: ["OWNER"],
+    sidebar: { label: "ประวัติกิจกรรม", icon: "History", order: 10 },
   },
   {
     path: "/dashboard/reports",
@@ -51,7 +53,7 @@ export const dashboardSections: readonly DashboardSection[] = [
     path: "/dashboard/settings",
     pageTitle: "ตั้งค่า",
     roles: ["OWNER"],
-    sidebar: { label: "ตั้งค่า", icon: "Settings", order: 11 },
+    sidebar: { label: "ตั้งค่า", icon: "Settings", order: 12 },
   },
   {
     path: "/dashboard/categories",

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Save, Store, Trash2, Upload, X } from "lucide-react";
 import type { RestaurantBrand } from "@/lib/restaurant-brand";
 import RestaurantPreview from "./RestaurantPreview";
+import SettingsBackLink from "../../SettingsBackLink";
 
 const emptyRestaurant: RestaurantBrand = {
   name: "",
@@ -151,7 +152,8 @@ export default function RestaurantSettingsForm() {
 
   return (
     <div className="max-w-6xl p-4 lg:p-6">
-      <h2 className="text-xl font-semibold">ข้อมูลและหน้าตาของร้าน</h2>
+      <SettingsBackLink />
+      <h2 className="mt-5 text-xl font-semibold">ข้อมูลและหน้าตาของร้าน</h2>
       <p className="mb-6 mt-1 text-sm text-slate-500">
         ใช้ข้อมูลเดียวกันบนหน้าเมนูลูกค้า ใบสั่งอาหาร QR และใบเสร็จ
       </p>

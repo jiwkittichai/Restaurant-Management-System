@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Audit } from "../../audits/types";
 import type { Employee, Role } from "../types";
 import EmployeeList from "./EmployeeList";
 import EmployeesHeader from "./EmployeesHeader";
 import EmployeeStatusDialog from "./EmployeeStatusDialog";
-import RecentEmployeeActivity from "./RecentEmployeeActivity";
 import LoadErrorMessage from "../../_components/LoadErrorMessage";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
 export default function EmployeesPageClient() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [audits, setAudits] = useState<Audit[]>([]);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | Role>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
@@ -27,9 +24,8 @@ export default function EmployeesPageClient() {
         .then(async (response) => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error);
-          if (!Array.isArray(data.employees) || !Array.isArray(data.recentAudits)) throw new Error("รูปแบบข้อมูลพนักงานไม่ถูกต้อง");
+          if (!Array.isArray(data.employees)) throw new Error("รูปแบบข้อมูลพนักงานไม่ถูกต้อง");
           setEmployees(data.employees);
-          setAudits(data.recentAudits);
           setLoadError("");
         })
         .catch((loadFailure) => {
@@ -91,8 +87,6 @@ export default function EmployeesPageClient() {
         onStatusFilter={setStatusFilter}
         onToggle={setConfirmingToggle}
       />
-
-      <RecentEmployeeActivity audits={audits} />
 
       {confirmingToggle && (
         <EmployeeStatusDialog

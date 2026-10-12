@@ -7,6 +7,7 @@ import { emptyPaymentSettings, type PaymentSettings } from "../types";
 import PromptPayPreview from "./PromptPayPreview";
 import LoadErrorMessage from "../../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
+import SettingsBackLink from "../../SettingsBackLink";
 
 export default function PaymentSettingsForm() {
   const [settings, setSettings] = useState<PaymentSettings>(emptyPaymentSettings);
@@ -90,11 +91,12 @@ export default function PaymentSettingsForm() {
     setError("");
   }
 
-  if (loading) return <div className="p-6 text-sm text-gray-400">กำลังโหลดการตั้งค่า...</div>;
+  if (loading) return <div className="space-y-5 p-4 lg:p-6"><SettingsBackLink /><p className="text-sm text-gray-400">กำลังโหลดการตั้งค่า...</p></div>;
   const disabled = !editing || saving || uploading || Boolean(loadError);
 
   return (
     <div className="space-y-6 p-4 lg:p-6">
+      <SettingsBackLink />
       <LoadErrorMessage message={loadError} onRetry={loadSettings} />
       <section className="rounded-2xl border border-gray-100 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -4,6 +4,7 @@ import {
   BookOpenText,
   ChartNoAxesCombined,
   ChefHat,
+  History,
   House,
   LayoutGrid,
   Menu,
@@ -31,6 +32,7 @@ const icons: Record<DashboardIconName, ElementType> = {
   UtensilsCrossed,
   Tags,
   ChartNoAxesCombined,
+  History,
   Users,
   Settings,
 };

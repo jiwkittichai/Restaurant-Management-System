@@ -119,11 +119,23 @@ CREATE TABLE `RestaurantTable` (
     `name` VARCHAR(191) NOT NULL,
     `seats` INTEGER NOT NULL DEFAULT 2,
     `status` ENUM('AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING') NOT NULL DEFAULT 'AVAILABLE',
+    `active` BOOLEAN NOT NULL DEFAULT true,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `RestaurantTable_restaurantId_name_key`(`restaurantId`, `name`),
+    INDEX `RestaurantTable_restaurantId_active_idx`(`restaurantId`, `active`),
     PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `OrderNumberCounter` (
+    `restaurantId` INTEGER NOT NULL,
+    `businessDate` VARCHAR(10) NOT NULL,
+    `orderSequence` INTEGER NOT NULL DEFAULT 0,
+    `queueSequence` INTEGER NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (`restaurantId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -134,6 +146,7 @@ CREATE TABLE `Order` (
     `tableId` INTEGER NULL,
     `type` ENUM('DINE_IN', 'TAKEAWAY') NOT NULL DEFAULT 'DINE_IN',
     `queueNumber` VARCHAR(191) NULL,
+    `queueDate` VARCHAR(10) NULL,
     `customerName` VARCHAR(191) NULL,
     `customerPhone` VARCHAR(191) NULL,
     `estimatedReadyAt` DATETIME(3) NULL,
@@ -149,7 +162,8 @@ CREATE TABLE `Order` (
     `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `Order_restaurantId_orderNumber_key`(`restaurantId`, `orderNumber`),
-    UNIQUE INDEX `Order_restaurantId_queueNumber_key`(`restaurantId`, `queueNumber`),
+    INDEX `Order_restaurantId_queueNumber_idx`(`restaurantId`, `queueNumber`),
+    UNIQUE INDEX `Order_restaurantId_queueDate_queueNumber_key`(`restaurantId`, `queueDate`, `queueNumber`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -449,6 +463,9 @@ ALTER TABLE `MenuItemModifierRecipe` ADD CONSTRAINT `MenuItemModifierRecipe_ingr
 
 -- AddForeignKey
 ALTER TABLE `RestaurantTable` ADD CONSTRAINT `RestaurantTable_restaurantId_fkey` FOREIGN KEY (`restaurantId`) REFERENCES `Restaurant`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `OrderNumberCounter` ADD CONSTRAINT `OrderNumberCounter_restaurantId_fkey` FOREIGN KEY (`restaurantId`) REFERENCES `Restaurant`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Order` ADD CONSTRAINT `Order_restaurantId_fkey` FOREIGN KEY (`restaurantId`) REFERENCES `Restaurant`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

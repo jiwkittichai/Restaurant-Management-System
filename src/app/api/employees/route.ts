@@ -1,18 +1,11 @@
 import { moneyJson } from "@/lib/money";
 import { NextRequest } from "next/server";
-import { Prisma, StaffRole } from "@prisma/client";
+import { StaffRole } from "@prisma/client";
 import { authorizeApi, writeAudit } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const allowedRoles = Object.values(StaffRole);
-const internalAuditActions = ["UPDATE_KITCHEN_STATUS"];
-const billActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PICKUP_ORDER"];
-
-
-function isJsonObject(value: unknown): value is Prisma.JsonObject {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
 
 function normalizeRoles(value: unknown): StaffRole[] {
   if (!Array.isArray(value)) return [];
@@ -22,77 +15,12 @@ function normalizeRoles(value: unknown): StaffRole[] {
 export async function GET() {
   const auth = await authorizeApi([StaffRole.OWNER]);
   if ("response" in auth) return auth.response;
-  const [employees, recentAudits] = await Promise.all([
-    prisma.employee.findMany({
-      where: { restaurantId: auth.user.restaurantId },
-      select: { id:true, username:true, displayName:true, active:true, lastLoginAt:true, createdAt:true, roles:{select:{role:true}} },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.auditLog.findMany({
-      where: { restaurantId: auth.user.restaurantId, action: { notIn: internalAuditActions } },
-      take: 20, orderBy: { createdAt: "desc" },
-      include: { employee: { select: { displayName:true } } },
-    }),
-  ]);
-  const paymentOrderIds = [
-    ...new Set(
-      recentAudits
-        .filter((audit) => billActions.includes(audit.action))
-        .map((audit) => Number(audit.entityId))
-        .filter((id) => Number.isInteger(id)),
-    ),
-  ];
-  const billOrders = paymentOrderIds.length
-    ? await prisma.order.findMany({
-        where: { restaurantId: auth.user.restaurantId, id: { in: paymentOrderIds } },
-        select: {
-          id: true,
-          orderNumber: true,
-          subtotal: true,
-          discount: true,
-          total: true,
-          table: { select: { name: true } },
-          queueNumber: true,
-          items: {
-            orderBy: { id: "asc" },
-            select: {
-              id: true,
-              name: true,
-              qty: true,
-              price: true,
-              note: true,
-              modifiers: {
-                orderBy: { id: "asc" },
-                select: { id: true, name: true, price: true },
-              },
-            },
-          },
-        },
-      })
-    : [];
-  const billOrderById = new Map(billOrders.map((order) => [order.id, order]));
-  const enrichedRecentAudits = recentAudits.map((audit) => {
-    if (!billActions.includes(audit.action)) return audit;
-    const order = billOrderById.get(Number(audit.entityId));
-    if (!order) return audit;
-    const details = isJsonObject(audit.details) ? audit.details : {};
-    return {
-      ...audit,
-      details: {
-        ...details,
-        orderNumber: details.orderNumber ?? order.orderNumber,
-        subtotal: details.subtotal ?? order.subtotal,
-        discount: details.discount ?? order.discount,
-        total: details.total ?? order.total,
-        tableName: details.tableName ?? order.table?.name,
-        queueNumber: details.queueNumber ?? order.queueNumber,
-        items: details.items ?? order.items,
-        itemsSource: Array.isArray(details.items) ? "snapshot" : "current",
-        itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0),
-      },
-    };
+  const employees = await prisma.employee.findMany({
+    where: { restaurantId: auth.user.restaurantId },
+    select: { id:true, username:true, displayName:true, active:true, lastLoginAt:true, createdAt:true, roles:{select:{role:true}} },
+    orderBy: { createdAt: "asc" },
   });
-  return moneyJson({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})), recentAudits: enrichedRecentAudits });
+  return moneyJson({ employees: employees.map(item=>({...item,roles:item.roles.map(role=>role.role)})) });
 }
 
 export async function POST(req: NextRequest) {

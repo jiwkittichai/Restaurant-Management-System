@@ -6,12 +6,14 @@ import type { Account, AccountTask } from "../types";
 import EmailForm from "./EmailForm";
 import PasswordForm from "./PasswordForm";
 import ProfileForm from "./ProfileForm";
+import SettingsBackLink from "../../SettingsBackLink";
 
 export default function AccountSettingsForm({ account }: { account: Account }) {
   const [busyTask, setBusyTask] = useState<AccountTask>(null);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+      <SettingsBackLink />
       <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
