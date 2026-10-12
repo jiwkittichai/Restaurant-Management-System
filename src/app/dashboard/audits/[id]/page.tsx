@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { queryAuditById } from "@/lib/audit-query";
 import { publicNumbers } from "@/lib/money";
 import type { Audit } from "../types";
-import AuditDetailPage from "../_components/AuditDetailPage";
+import AuditDetailPage from "../_components/detail/AuditDetailPage";
 
 export default async function AuditDetailRoute({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();

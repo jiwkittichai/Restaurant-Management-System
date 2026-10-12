@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get("mode");
   const fromText = req.nextUrl.searchParams.get("from");
   const toText = req.nextUrl.searchParams.get("to");
+  const query = (req.nextUrl.searchParams.get("q") || "").trim();
+  const page = Number(req.nextUrl.searchParams.get("page") || 1);
+  if (query.length > 100 || !Number.isSafeInteger(page) || page < 1) return moneyJson({ error: "ตัวกรองไม่ถูกต้อง" }, { status: 400 });
   const now = new Date();
   const from = range === "all" ? undefined : fromText ? new Date(`${fromText}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
   const to = range === "all" ? undefined : toText ? new Date(`${toText}T23:59:59.999`) : now;
@@ -127,6 +130,12 @@ export async function GET(req: NextRequest) {
     }
   }
   const chart = filledChartRows.length ? filledChartRows : chartRows;
+  // Search the complete paid-order result, not just the currently displayed page.
+  // Keep report totals/charts scoped to the selected dates, independent of bill search.
+  const needle = query.toLowerCase();
+  const matchingOrders = orders.filter(order => !needle || [order.orderNumber, order.queueNumber].some(value => value?.toLowerCase().includes(needle)));
+  const pageSize = 100;
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(matchingOrders.length / pageSize)));
   return moneyJson({
     summary: { sales, discounts, orders: orders.length, average: orders.length ? sales.div(orders.length).toDecimalPlaces(2) : 0 },
     meta: { oldestPaidAt, latestPaidAt },
@@ -149,9 +158,13 @@ export async function GET(req: NextRequest) {
         average: orders ? amount.div(orders).toDecimalPlaces(2) : 0,
       })),
     chartMode: bucketMode,
-    recent: orders.slice(0, 20).map((order) => ({
+    recentTotal: matchingOrders.length,
+    recentPage: currentPage,
+    recentPageSize: pageSize,
+    recent: matchingOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
+      queueNumber: order.queueNumber,
       table: order.table?.name || "ซื้อกลับบ้าน",
       type: order.type,
       status: order.status,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { emptyReport, type RangeMode, type Report } from "../types";
 import { daysAgoText, localDate, monthStartText, todayText, yearStartText } from "../utils";
@@ -24,6 +24,14 @@ export default function ReportsPageClient() {
   const [to, setTo] = useState(() => todayText());
   const [report, setReport] = useState<Report>(emptyReport);
   const [loadError, setLoadError] = useState("");
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const requestVersion = useRef(0);
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const reportQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -35,18 +43,27 @@ export default function ReportsPageClient() {
     params.set("mode", rangeMode);
     return params.toString();
   }, [from, rangeMode, to]);
+  const paginationKey = `${reportQuery}&q=${encodeURIComponent(search)}`;
+  const [pagination, setPagination] = useState({ key: "", page: 1 });
+  const page = pagination.key === paginationKey ? pagination.page : 1;
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setLoading(true);
     try {
-      const data = await fetchJson(`/api/reports?${reportQuery}`);
+      const data = await fetchJson(`/api/reports?${paginationKey}&page=${page}`);
       if (!isReport(data)) throw new Error("รูปแบบข้อมูลรายงานไม่ถูกต้อง");
+      if (version !== requestVersion.current) return;
       setReport(data);
       setLoadError("");
     } catch (loadFailure) {
+      if (version !== requestVersion.current) return;
       console.error("Failed to load reports", loadFailure);
       setLoadError("โหลดรายงานไม่สำเร็จ ข้อมูลเดิมยังคงแสดงอยู่");
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [reportQuery]);
+  }, [paginationKey, page]);
 
   useEffect(() => {
     load();
@@ -150,9 +167,9 @@ export default function ReportsPageClient() {
 
       <ReportSummaryCards summary={report.summary} />
 
-      <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
+      <div className="grid min-w-0 gap-4 sm:gap-5 xl:h-[560px] xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)] xl:items-stretch">
         <SalesChart report={report} rangeMode={rangeMode} />
-        <section className="min-w-0 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
+        <section className="h-full min-w-0 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
           <h2 className="font-semibold">เมนูขายดี</h2>
           <div className="mt-4 space-y-3">
             {report.topItems.map((item, index) => (
@@ -170,6 +187,13 @@ export default function ReportsPageClient() {
       <OrdersReportTable
         rows={report.recent}
         payments={report.payments}
+        query={query}
+        onQuery={setQuery}
+        total={report.recentTotal ?? report.recent.length}
+        page={report.recentPage ?? 1}
+        pageSize={report.recentPageSize ?? 100}
+        loading={loading || query.trim() !== search}
+        onPage={next => setPagination({ key: paginationKey, page: next })}
         onOpen={(id) => router.push(`/dashboard/reports/orders/${id}`)}
       />
     </div>

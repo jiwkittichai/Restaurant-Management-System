@@ -13,6 +13,14 @@ function axisMaximum(value: number) {
   return niceStep * magnitude * 4;
 }
 
+export function chartAxisRows(maximum: number) {
+  const step = maximum / 4;
+  return [4, 3, 2, 1, 0].map((multiplier) => ({
+    value: step * multiplier,
+    ratio: multiplier / 4,
+  }));
+}
+
 export default function SalesChart({ report, rangeMode }: { report: Report; rangeMode: RangeMode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -26,7 +34,9 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
         orders: day.orders || 0,
         average: day.average || 0,
       })), [report.chart, report.daily]);
-  const maxAmount = Math.max(...data.map((item) => item.amount), 1);
+  // Use the real maximum. Falling back to 1 made an empty chart use a 1.2-baht
+  // ceiling; rounding its ticks then produced duplicate React keys (1, 1, 1, 0, 0).
+  const maxAmount = Math.max(...data.map((item) => item.amount), 0);
   const max = axisMaximum(maxAmount);
   const best = data.reduce<(typeof data)[number] | null>(
     (current, item) => (!current || item.amount > current.amount ? item : current),
@@ -36,7 +46,7 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
   const title = mode === "hour" ? "ยอดขายรายชั่วโมง" : mode === "year" ? "ยอดขายรายปี" : mode === "month" ? "ยอดขายรายเดือน" : "ยอดขายรายวัน";
   const axisLabel = mode === "hour" ? "เวลา" : mode === "year" ? "ปี" : mode === "month" ? "เดือน" : "วันที่";
   const compact = viewportWidth > 0 && viewportWidth < 640;
-  const height = compact ? 320 : 300;
+  const height = compact ? 320 : 400;
   const margin = { top: 36, right: compact ? 12 : 18, bottom: 56, left: compact ? 58 : 72 };
   const pointWidth = compact
     ? mode === "hour" ? 54 : mode === "day" ? 70 : mode === "month" ? 76 : 84
@@ -46,8 +56,8 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
   const shouldScroll = viewportWidth > 0 && width > viewportWidth + 1;
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const rows = [1, 0.75, 0.5, 0.25, 0].map((ratio) => ({
-    value: Math.round(max * ratio),
+  const rows = chartAxisRows(max).map(({ value, ratio }) => ({
+    value,
     y: margin.top + (1 - ratio) * plotHeight,
   }));
   const slot = data.length ? plotWidth / data.length : plotWidth;
@@ -77,7 +87,7 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
   }, [data, margin.left, mode, shouldScroll, slot]);
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
+    <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
@@ -91,11 +101,11 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
         )}
       </div>
 
-      <div ref={containerRef} className="mt-4 min-w-0 sm:mt-5">
+      <div ref={containerRef} className="mt-4 flex min-h-[320px] min-w-0 flex-1 flex-col sm:mt-5 sm:min-h-[300px]">
         {data.length ? (
           <>
             {shouldScroll && <p className="mb-2 text-right text-xs text-gray-400">เลื่อนซ้าย–ขวาเพื่อดูข้อมูลทั้งหมด</p>}
-            <div ref={scrollRef} className="max-w-full overflow-x-auto overscroll-x-contain pb-2" tabIndex={shouldScroll ? 0 : undefined} aria-label={shouldScroll ? "เลื่อนกราฟซ้ายขวาเพื่อดูข้อมูลทั้งหมด" : undefined}>
+            <div ref={scrollRef} className="min-h-0 max-w-full flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2" tabIndex={shouldScroll ? 0 : undefined} aria-label={shouldScroll ? "เลื่อนกราฟซ้ายขวาเพื่อดูข้อมูลทั้งหมด" : undefined}>
               <svg
                 role="img"
                 aria-label={title}
@@ -104,8 +114,8 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
                 style={{ width, height }}
               >
                 <text x={0} y={14} className="fill-gray-400 text-[11px] font-medium">ยอดขาย (บาท)</text>
-                {rows.map(({ value, y }) => (
-                  <g key={value}>
+                {rows.map(({ value, y }, index) => (
+                  <g key={`axis-${index}`}>
                     <line x1={margin.left} x2={width - margin.right} y1={y} y2={y} stroke="#eef2f7" strokeDasharray={value === 0 ? undefined : "4 4"} />
                     <text x={margin.left - 10} y={y + 4} textAnchor="end" className="fill-gray-400 text-[10px] font-medium">{compactMoney(value)}</text>
                   </g>

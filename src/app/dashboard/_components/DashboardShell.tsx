@@ -37,14 +37,14 @@ export default function DashboardShell({
   }, []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden overscroll-none">
       <Sidebar
         roles={user.roles}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onToggle={() => setIsSidebarOpen((open) => !open)}
       />
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-none">
         <Header
           user={user}
           restaurantName={restaurantName}

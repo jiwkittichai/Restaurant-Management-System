@@ -42,8 +42,8 @@ export default function TakeawayOrderCard({
               <ShoppingBag size={22} />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-xl font-semibold text-gray-900">{order.queueNumber}</h3>
-              <p className="truncate text-xs font-medium text-gray-400">{order.orderNumber}</p>
+              <p className="text-xs font-medium text-gray-500">คิวรับอาหาร</p>
+              <h3 title={order.queueNumber} className="break-all text-xl font-semibold text-gray-900">{order.queueNumber}</h3>
             </div>
           </div>
           <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(order)}`}>

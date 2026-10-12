@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { allocateOrderNumbers, orderBusinessDate } from '../src/lib/order-numbers.ts';
 
 const INGREDIENTS = [
   ['ข้าวสาร', 'กรัม', 1900, '0.045000', 7200], ['เนื้อไก่', 'กรัม', 1100, '0.095000', 2600],
@@ -72,19 +73,28 @@ function hashPassword(password) { const salt = randomBytes(16).toString('hex'); 
 function slugFrom(name) { const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48); return base || `restaurant-${Date.now().toString().slice(-6)}`; }
 function seeded(index, salt = 0) { const value = Math.sin(index * 99991 + salt * 7919) * 10000; return value - Math.floor(value); }
 export function salesDateRange(runAt = new Date()) {
-  const end = new Date(runAt.getFullYear(), runAt.getMonth(), runAt.getDate() - 1, 21, 59, 0, 0);
-  const start = new Date(end.getFullYear(), 0, 1, 10, 0, 0, 0);
+  const end = new Date(new Date(`${orderBusinessDate(runAt)}T21:59:00+07:00`).getTime() - 86400000);
+  const start = new Date(`${orderBusinessDate(end).slice(0, 4)}-01-01T10:00:00+07:00`);
   return { start, end };
 }
 export function saleDate(index, count, range) {
   const { start, end } = range;
   const time = start.getTime() + Math.floor((index / Math.max(1, count - 1)) * (end.getTime() - start.getTime()));
-  const date = new Date(time); date.setHours(10 + (index * 2 % 12), Math.floor(seeded(index, 2) * 60), 0, 0); return date;
+  const day = orderBusinessDate(new Date(time));
+  const hour = String(10 + (index * 2 % 12)).padStart(2, '0');
+  const minute = String(Math.floor(seeded(index, 2) * 60)).padStart(2, '0');
+  return new Date(`${day}T${hour}:${minute}:00+07:00`);
+}
+
+export function salesPlan(count, range) {
+  // Keep each sale's deterministic menu choices, but allocate numbers in time order.
+  return Array.from({ length: count }, (_, index) => ({ index, paidAt: saleDate(index, count, range) }))
+    .sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime() || a.index - b.index);
 }
 
 export async function resetAndSeed(db, config, runAt = new Date()) {
   const salesRange = salesDateRange(runAt);
-  const stockBalancedAt = new Date(salesRange.end); stockBalancedAt.setHours(23, 0, 0, 0);
+  const stockBalancedAt = new Date(`${orderBusinessDate(salesRange.end)}T23:00:00+07:00`);
   if (await db.platformAdmin.count({ where: { username: config.username } })) throw new Error('Owner username conflicts with a platform admin. No data changed.');
   return db.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM Restaurant ORDER BY id FOR UPDATE`;
@@ -94,7 +104,7 @@ export async function resetAndSeed(db, config, runAt = new Date()) {
     await tx.order.deleteMany(); await tx.menuItemModifierRecipe.deleteMany(); await tx.recipe.deleteMany();
     await tx.menuItemModifier.deleteMany(); await tx.menuItemModifierGroup.deleteMany(); await tx.menuItem.deleteMany(); await tx.restaurant.deleteMany();
 
-    const approvedAt = new Date(2025, 11, 20, 10, 0, 0);
+    const approvedAt = new Date('2025-12-20T10:00:00+07:00');
     const restaurant = await tx.restaurant.create({ data: { name: config.restaurantName, slug: slugFrom(config.restaurantName), approvalStatus: 'APPROVED', reviewedAt: approvedAt, reviewReason: 'ตรวจสอบและอนุมัติแล้ว' } });
     const owner = await tx.employee.create({ data: { restaurantId: restaurant.id, username: config.username, displayName: `เจ้าของร้าน ${config.restaurantName}`, passwordHash: hashPassword(config.password), email: config.email, emailVerifiedAt: approvedAt, emailVerificationRequired: false, roles: { create: { role: 'OWNER' } } } });
     await tx.restaurant.update({ where: { id: restaurant.id }, data: { ownerId: owner.id } });
@@ -131,8 +141,8 @@ export async function resetAndSeed(db, config, runAt = new Date()) {
     for (let i = 1; i <= 8; i++) tables.push(await tx.restaurantTable.create({ data: { restaurantId: restaurant.id, name: `โต๊ะ ${i}`, seats: i <= 4 ? 2 : 4 } }));
     for (const ingredient of Object.values(ingredients)) await tx.stockMovement.create({ data: { restaurantId: restaurant.id, ingredientId: ingredient.id, type: 'STOCK_IN', quantity: 10000000, reference: 'OPENING-BALANCE', note: 'ยอดยกมา', createdAt: approvedAt } });
 
-    for (let index = 0; index < config.salesCount; index++) {
-      const paidAt = saleDate(index, config.salesCount, salesRange); const lineCount = 2 + Math.floor(seeded(index, 3) * 3); const lines = []; const used = new Map();
+    for (const { index, paidAt } of salesPlan(config.salesCount, salesRange)) {
+      const lineCount = 2 + Math.floor(seeded(index, 3) * 3); const lines = []; const used = new Map();
       for (let line = 0; line < lineCount; line++) {
         const menu = menus[Math.floor(seeded(index, line + 10) * menus.length)]; const qty = seeded(index, line + 30) > 0.82 ? 2 : 1;
         const modifiers = menu.modifiers.filter(modifier => modifier.name === 'ไข่ดาว' ? seeded(index, line + 70) > 0.78 : seeded(index, line + 80) > 0.72);
@@ -142,13 +152,15 @@ export async function resetAndSeed(db, config, runAt = new Date()) {
         for (const modifier of modifiers) for (const [name, quantity] of modifier.recipe) used.set(name, (used.get(name) || 0) + quantity * qty);
       }
       const subtotal = lines.reduce((sum, row) => sum + row.unitPrice * row.qty, 0); const method = seeded(index, 50) > 0.42 ? 'PROMPTPAY' : 'CASH'; const type = seeded(index, 51) > 0.3 ? 'DINE_IN' : 'TAKEAWAY';
-      const y = String(paidAt.getFullYear()).slice(-2), m = String(paidAt.getMonth() + 1).padStart(2, '0'), d = String(paidAt.getDate()).padStart(2, '0'), seq = String(index + 1).padStart(5, '0');
-      const orderNumber = `ORD-${y}${m}${d}-${seq}`; const received = method === 'CASH' && seeded(index, 52) > 0.6 ? subtotal + 100 : subtotal;
-      const order = await tx.order.create({ data: { restaurantId: restaurant.id, orderNumber, tableId: type === 'DINE_IN' ? tables[index % tables.length].id : null, type, queueNumber: type === 'TAKEAWAY' ? `Q-${seq}` : null, status: 'SERVED', paymentStatus: 'PAID', subtotal, discount: 0, total: subtotal, stockDeducted: true, createdAt: paidAt, updatedAt: paidAt, pickedUpAt: type === 'TAKEAWAY' ? paidAt : null,
+      const numbers = await allocateOrderNumbers(tx, restaurant.id, type === 'TAKEAWAY', paidAt);
+      const { orderNumber, queueNumber } = numbers;
+      const table = type === 'DINE_IN' ? tables[index % tables.length] : null;
+      const received = method === 'CASH' && seeded(index, 52) > 0.6 ? subtotal + 100 : subtotal;
+      const order = await tx.order.create({ data: { restaurantId: restaurant.id, ...numbers, tableId: table?.id ?? null, type, status: 'SERVED', paymentStatus: 'PAID', subtotal, discount: 0, total: subtotal, stockDeducted: true, createdAt: paidAt, updatedAt: paidAt, pickedUpAt: type === 'TAKEAWAY' ? paidAt : null,
         items: { create: lines.map(row => ({ menuItemId: row.menu.id, name: row.menu.name, price: row.unitPrice, qty: row.qty, status: 'SERVED', source: 'STAFF', createdAt: paidAt, updatedAt: paidAt, modifiers: { create: row.modifiers.map(modifier => ({ modifierId: modifier.id, name: modifier.name, price: modifier.price })) } })) },
         payment: { create: { restaurantId: restaurant.id, method, amount: subtotal, receivedAmount: received, changeAmount: received - subtotal, paidAt } } }, include: { items: true, payment: true } });
       for (const [name, quantity] of used) { await tx.ingredient.update({ where: { id: ingredients[name].id }, data: { stock: { decrement: quantity } } }); await tx.stockMovement.create({ data: { restaurantId: restaurant.id, ingredientId: ingredients[name].id, type: 'STOCK_OUT', quantity, reference: orderNumber, note: 'ตัดจากออเดอร์', createdAt: paidAt } }); }
-      const details = { snapshotVersion: 1, actorName: owner.displayName, orderNumber, type, subtotal, discount: 0, total: subtotal, itemCount: lines.reduce((sum,row)=>sum+row.qty,0), items: lines.map(row=>({name:row.menu.name,qty:row.qty,price:row.unitPrice,modifiers:row.modifiers.map(modifier=>({name:modifier.name,price:modifier.price}))})) };
+      const details = { snapshotVersion: 1, actorName: owner.displayName, orderNumber, queueNumber, tableName: table?.name ?? null, type, subtotal, discount: 0, total: subtotal, itemCount: lines.reduce((sum,row)=>sum+row.qty,0), items: lines.map(row=>({name:row.menu.name,qty:row.qty,price:row.unitPrice,modifiers:row.modifiers.map(modifier=>({name:modifier.name,price:modifier.price}))})) };
       await tx.auditLog.createMany({ data: [
         { restaurantId: restaurant.id, employeeId: owner.id, action: 'CREATE_ORDER', requestId: randomUUID(), entityType: 'Order', entityId: String(order.id), details, createdAt: paidAt },
         { restaurantId: restaurant.id, employeeId: owner.id, action: 'PAY_ORDER', requestId: randomUUID(), entityType: 'Order', entityId: String(order.id), details: { ...details, paymentId: order.payment.id, method, receivedAmount: received, changeAmount: received - subtotal }, createdAt: paidAt },

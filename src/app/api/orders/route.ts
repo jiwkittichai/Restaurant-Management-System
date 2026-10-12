@@ -84,7 +84,7 @@ export async function PATCH(req: NextRequest) {
         await lockOrderTable(tx, Number(body.orderId));
         const current = await tx.order.findFirstOrThrow({
           where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId },
-          include: { payment: true, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
+          include: { payment: true, table: { select: { name: true } }, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
         });
         if (current.payment) throw new Error("ALREADY_PAID");
         if (current.status === OrderStatus.CANCELLED) throw new Error("CANCELLED_ORDER");
@@ -116,6 +116,8 @@ export async function PATCH(req: NextRequest) {
           method: payment.method,
           receivedAmount: payment.receivedAmount,
           changeAmount: payment.changeAmount,
+          tableName: current.table?.name ?? null,
+          queueNumber: current.queueNumber,
           itemCount: current.items.reduce((sum, item) => sum + item.qty, 0),
           items: current.items.map(item => ({
             id: item.id, name: item.name, qty: item.qty, price: item.price, note: item.note,
@@ -141,11 +143,19 @@ export async function PATCH(req: NextRequest) {
         where: { id: current.id }, data: { status: OrderStatus.SERVED, pickedUpAt: new Date() },
       });
       await writeAudit(auth.user.id,"PICKUP_ORDER","Order",order.id,{
+        snapshotVersion: 1,
         orderNumber:order.orderNumber,
         type:order.type,
+        subtotal:order.subtotal,
+        discount:order.discount,
         total:order.total,
+        tableName:null,
         queueNumber:order.queueNumber,
         itemCount:current.items.reduce((sum,item)=>sum+item.qty,0),
+        items:current.items.map(item=>({
+          id:item.id,name:item.name,qty:item.qty,price:item.price,note:item.note,
+          modifiers:item.modifiers.map(modifier=>({name:modifier.name,price:modifier.price})),
+        })),
       }, { tx, restaurantId: auth.user.restaurantId });
       return order;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
@@ -157,6 +167,7 @@ export async function PATCH(req: NextRequest) {
         await lockOrderTable(tx, Number(body.orderId));
         const current = await tx.order.findFirstOrThrow({
           where: { id: Number(body.orderId), restaurantId: auth.user.restaurantId },
+          include: { table: { select: { name: true } }, items: { include: { modifiers: true }, orderBy: { id: "asc" } } },
         });
         if (current.paymentStatus === PaymentStatus.PAID) throw new Error("PAID_ORDER");
         if (current.status === OrderStatus.CANCELLED) throw new Error("CANCELLED_ORDER");
@@ -175,7 +186,21 @@ export async function PATCH(req: NextRequest) {
         const cancelled = await tx.order.update({ where: { id: current.id }, data: { status: OrderStatus.CANCELLED, stockDeducted: false } });
         if (current.tableId) await closeTableSession(tx, current.tableId);
         if (current.tableId) await tx.restaurantTable.update({ where: { id: current.tableId }, data: { status: "AVAILABLE" } });
-        await writeAudit(auth.user.id,"CANCEL_ORDER","Order",cancelled.id,{orderNumber:cancelled.orderNumber}, { tx, restaurantId: auth.user.restaurantId });
+        await writeAudit(auth.user.id,"CANCEL_ORDER","Order",cancelled.id,{
+          snapshotVersion:1,
+          orderNumber:cancelled.orderNumber,
+          type:cancelled.type,
+          subtotal:cancelled.subtotal,
+          discount:cancelled.discount,
+          total:cancelled.total,
+          tableName:current.table?.name ?? null,
+          queueNumber:cancelled.queueNumber,
+          itemCount:current.items.reduce((sum,item)=>sum+item.qty,0),
+          items:current.items.map(item=>({
+            id:item.id,name:item.name,qty:item.qty,price:item.price,note:item.note,
+            modifiers:item.modifiers.map(modifier=>({name:modifier.name,price:modifier.price})),
+          })),
+        }, { tx, restaurantId: auth.user.restaurantId });
         return cancelled;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
       return moneyJson(order);

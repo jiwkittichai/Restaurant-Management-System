@@ -3,9 +3,10 @@ import { StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { roleText } from "../../roles";
-import AuditsClient from "../../../audits/_components/AuditsClient";
+import AuditListClient from "../../../audits/_components/list/AuditListClient";
 import { queryAudits } from "@/lib/audit-query";
 import { publicNumbers } from "@/lib/money";
+import { auditFilterParams, auditFilterState } from "../../../audits/_lib/filter-state";
 
 function formatLogin(value?: Date | null) {
   if (!value) return "ยังไม่เคยเข้าสู่ระบบ";
@@ -20,7 +21,7 @@ function formatLogin(value?: Date | null) {
   });
 }
 
-export default async function EmployeeHistoryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EmployeeHistoryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!user.roles.includes(StaffRole.OWNER)) redirect("/dashboard");
@@ -42,13 +43,17 @@ export default async function EmployeeHistoryPage({ params }: { params: Promise<
   });
   if (!employee) redirect("/dashboard/employees");
 
-  const initial = publicNumbers(await queryAudits(user.restaurantId, new URLSearchParams({ employeeId: String(employee.id) })));
+  const initialFilters = auditFilterState(await searchParams);
+  const auditParams = auditFilterParams(initialFilters);
+  auditParams.set("employeeId", String(employee.id));
+  const initial = publicNumbers(await queryAudits(user.restaurantId, auditParams));
   const roles = employee.roles.map((item) => roleText[item.role]).join(", ");
 
   return (
-    <AuditsClient
+    <AuditListClient
       initialAudits={initial.audits}
       initialMeta={initial.meta}
+      initialFilters={initialFilters}
       employeeId={employee.id}
       title={`ประวัติกิจกรรมของ ${employee.displayName}`}
       description="ค้นหาและกรองประวัติรายบุคคลด้วยเงื่อนไขเดียวกับหน้าประวัติทั้งหมด"

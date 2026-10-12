@@ -2,7 +2,7 @@ import { moneyJson } from "@/lib/money";
 import { OrderStatus, OrderType, PaymentStatus, Prisma } from "@prisma/client";
 import { money } from "@/lib/money";
 import { NextRequest } from "next/server";
-import { randomBytes } from "node:crypto";
+import { allocateOrderNumbers } from "@/lib/order-numbers";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/auth";
 import { lockTable } from "@/lib/table-session";
@@ -70,7 +70,6 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
     const subtotal = money(normalized.reduce((sum, item) => sum.plus(item.unitPrice.times(item.qty)), new Prisma.Decimal(0)));
     const safeDiscount = Prisma.Decimal.min(money(discount), subtotal);
     const orderType = tableId ? OrderType.DINE_IN : (type || OrderType.TAKEAWAY);
-    const queueNumber = orderType === OrderType.TAKEAWAY ? `Q${Date.now()}-${randomBytes(4).toString("hex")}` : null;
     const required = new Map<number, { name: string; quantity: number }>();
     for (const item of normalized) for (const recipe of item.source.recipes) {
       const current = required.get(recipe.ingredientId) || { name: recipe.ingredient.name, quantity: 0 };
@@ -138,10 +137,9 @@ export async function submitOrder(req: NextRequest, restaurantId: number, employ
         : await tx.order.create({
           data: {
             restaurantId: restaurantId,
-            orderNumber: `ORD-${Date.now()}-${randomBytes(3).toString("hex")}`,
+            ...await allocateOrderNumbers(tx, restaurantId, orderType === OrderType.TAKEAWAY),
             tableId: orderType === OrderType.DINE_IN && tableId ? Number(tableId) : null,
             type: orderType,
-            queueNumber,
             customerName: customerName?.trim() || null,
             customerPhone: customerPhone?.trim() || null,
             subtotal,

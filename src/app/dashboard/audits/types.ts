@@ -21,5 +21,6 @@ export type AuditBillItem = {
 };
 
 export type AuditMeta = { totalCount: number; oldestAt?: string | null; latestAt?: string | null; limit: number; nextCursor: string | null };
-export type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "CUSTOM";
-export type AuditsClientProps = { initialAudits: Audit[]; initialMeta: AuditMeta; employeeId?: number; title?: string; description?: string; backHref?: string; backLabel?: string; employeeSummary?: Array<{ label: string; value: string; accent?: string }> };
+export type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "YEAR" | "CUSTOM";
+export type AuditFilterState = { query: string; action: string; rangeMode: RangeMode; from: string; to: string };
+export type AuditListClientProps = { initialAudits: Audit[]; initialMeta: AuditMeta; initialFilters?: AuditFilterState; employeeId?: number; title?: string; description?: string; backHref?: string; backLabel?: string; employeeSummary?: Array<{ label: string; value: string; accent?: string }> };

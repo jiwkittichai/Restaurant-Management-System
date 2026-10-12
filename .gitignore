@@ -53,3 +53,5 @@ next-env.d.ts
 !/scripts/init-minio.js
 !/scripts/seed-realistic.mjs
 !/scripts/init-platform.mjs
+!/scripts/order-numbers.test.ts
+!/scripts/seed-realistic.test.mjs

@@ -43,6 +43,7 @@ model Restaurant {
   modifiers       MenuItemModifier[]
   tables          RestaurantTable[]
   orders          Order[]
+  orderNumberCounter OrderNumberCounter?
   payments        Payment[]
   ingredients     Ingredient[]
   stockMovements  StockMovement[]
@@ -160,6 +161,14 @@ model RestaurantTable {
   @@index([restaurantId, active])
 }
 
+model OrderNumberCounter {
+  restaurantId Int @id
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  businessDate String @db.VarChar(10)
+  orderSequence Int @default(0)
+  queueSequence Int @default(0)
+}
+
 model Order {
   id               Int              @id @default(autoincrement())
   restaurantId     Int
@@ -169,6 +178,7 @@ model Order {
   table            RestaurantTable? @relation(fields: [tableId], references: [id])
   type             OrderType        @default(DINE_IN)
   queueNumber      String?
+  queueDate        String?          @db.VarChar(10)
   customerName     String?
   customerPhone    String?
   estimatedReadyAt DateTime?
@@ -186,7 +196,8 @@ model Order {
   updatedAt        DateTime         @updatedAt
 
   @@unique([restaurantId, orderNumber])
-  @@unique([restaurantId, queueNumber])
+  @@unique([restaurantId, queueDate, queueNumber])
+  @@index([restaurantId, queueNumber])
 }
 
 model OrderItem {

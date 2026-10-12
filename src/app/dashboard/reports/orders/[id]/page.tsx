@@ -5,6 +5,7 @@ import { ArrowLeft, Banknote, Clock3, MapPin, ReceiptText, UserRound, Utensils }
 import { StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import CopyOrderNumber from "../../../_components/CopyOrderNumber";
 
 const methodText: Record<string, string> = { CASH: "เงินสด", PROMPTPAY: "พร้อมเพย์", CARD: "บัตร" };
 const orderTypeText: Record<string, string> = { DINE_IN: "ทานที่ร้าน", TAKEAWAY: "ซื้อกลับบ้าน" };
@@ -57,7 +58,8 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
   });
   if (!order?.payment) notFound();
 
-  const tableName = order.table?.name || "ซื้อกลับบ้าน";
+  const placeLabel = order.type === "TAKEAWAY" ? "หมายเลขคิว" : "โต๊ะอาหาร";
+  const placeValue = order.type === "TAKEAWAY" ? order.queueNumber || "ไม่ระบุคิว" : order.table?.name || "ไม่ระบุโต๊ะ";
   const payment = order.payment;
   const itemCount = order.items.reduce((sum, item) => sum + item.qty, 0);
 
@@ -83,7 +85,7 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
                   <p className="text-xs font-medium text-gray-400">เลขออเดอร์</p>
                   <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600">ชำระเงินแล้ว</span>
                 </div>
-                <h2 className="mt-1 break-all text-lg font-semibold text-gray-900 sm:text-xl">{order.orderNumber}</h2>
+                <div className="flex items-center gap-1"><h2 className="mt-1 break-all text-lg font-semibold text-gray-900 sm:text-xl">{order.orderNumber}</h2><CopyOrderNumber value={order.orderNumber} /></div>
               </div>
             </div>
 
@@ -97,8 +99,8 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
         </div>
 
         <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 lg:grid-cols-4">
-          <DetailTile icon={<MapPin size={17} />} label="โต๊ะ / จุดรับอาหาร">
-            {tableName}
+          <DetailTile icon={<MapPin size={17} />} label={placeLabel}>
+            {placeValue}
           </DetailTile>
           <DetailTile icon={<Utensils size={17} />} label="ประเภทออเดอร์">
             {orderTypeText[order.type] || order.type}
@@ -172,8 +174,7 @@ export default async function ReportOrderDetailPage({ params }: { params: Promis
 
         <section className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 lg:sticky lg:top-6">
           <div>
-            <h2 className="font-semibold text-gray-900">สรุปการชำระเงิน</h2>
-            <p className="mt-1 text-xs text-gray-400">ชำระผ่าน {methodText[payment.method] || payment.method}</p>
+            <h2 className="font-semibold text-gray-900">รายการชำระเงิน</h2>
           </div>
           <div className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between gap-4 text-gray-500"><span>ยอดอาหาร</span><span className="font-medium text-gray-700">{money(order.subtotal)}</span></div>

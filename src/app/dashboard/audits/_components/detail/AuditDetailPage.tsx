@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Banknote, Clock3, Database, FileClock, Hash, MapPin, ReceiptText, UserRound, Utensils } from "lucide-react";
+import { Armchair, ArrowLeft, ArrowRight, Banknote, Clock3, Database, FileClock, Hash, ReceiptText, UserRound, Utensils } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { actionText } from "../labels";
-import { asText, auditActorName, detailValue } from "../formatters";
-import { formatRelativeDate } from "../../formatters";
-import { auditBillItems, auditChangeRows, auditDetailRows, auditSummary } from "../detail-builders";
-import type { Audit } from "../types";
+import CopyOrderNumber from "../../../_components/CopyOrderNumber";
+import { actionText } from "../../_lib/labels";
+import { asText, auditActorName, detailValue } from "../../_lib/formatters";
+import { formatRelativeDate } from "../../../formatters";
+import { auditBillItems, auditChangeRows, auditDetailRows, auditSummary } from "../../_lib/detail-builders";
+import type { Audit } from "../../types";
 
 function billMoney(value: unknown) {
   const amount = Number(value);
@@ -98,11 +99,12 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
   const billItemCount = billItems.reduce((sum, item) => sum + item.qty, 0);
   const billTotal = audit.details?.total ?? billItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const orderNumber = asText(detailValue(audit.details, "orderNumber")) || `ออเดอร์ #${audit.entityId || "-"}`;
-  const orderType = asText(detailValue(audit.details, "type")) || "ไม่ระบุ";
+  const orderTypeValue = detailValue(audit.details, "type");
+  const orderType = asText(orderTypeValue) || "ไม่ระบุ";
   const tableName = asText(detailValue(audit.details, "tableName"));
   const queueNumber = asText(detailValue(audit.details, "queueNumber"));
   const paymentMethod = asText(detailValue(audit.details, "method"));
-  const orderLocation = tableName || (queueNumber ? `คิว ${queueNumber}` : orderType);
+  const isTakeaway = orderTypeValue === "TAKEAWAY" || (!tableName && Boolean(queueNumber));
   const billSubtotal = detailValue(audit.details, "subtotal") ?? billItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const billDiscount = detailValue(audit.details, "discount") ?? 0;
   const receivedAmount = detailValue(audit.details, "receivedAmount");
@@ -123,6 +125,62 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
     : detailRows.length === 2 || detailRows.length === 4
       ? "sm:grid-cols-2"
       : "sm:grid-cols-2 lg:grid-cols-3";
+  const timeLabel: Record<string, string> = {
+    CREATE_ORDER: "เวลาสร้างออเดอร์",
+    ADD_ORDER_ITEMS: "เวลาสั่งเพิ่ม",
+    PAY_ORDER: "เวลาชำระเงิน",
+    PICKUP_ORDER: "เวลาส่งมอบ",
+    CANCEL_ORDER: "เวลายกเลิก",
+  };
+  const badgeText: Record<string, string> = {
+    PAY_ORDER: "ชำระเงินแล้ว",
+    PICKUP_ORDER: "ส่งมอบแล้ว",
+    CANCEL_ORDER: "ยกเลิกแล้ว",
+  };
+  const badgeTone = audit.action === "CANCEL_ORDER"
+    ? "bg-red-50 text-red-600"
+    : audit.action === "PAY_ORDER" || audit.action === "PICKUP_ORDER"
+      ? "bg-emerald-50 text-emerald-600"
+      : "bg-blue-50 text-blue-600";
+  const amountLabel = audit.action === "PAY_ORDER"
+    ? "ยอดที่ชำระ"
+    : audit.action === "CANCEL_ORDER"
+      ? "ยอดออเดอร์"
+      : "ยอดรวม";
+  const itemSectionTitle: Record<string, string> = {
+    ADD_ORDER_ITEMS: "รายการที่สั่งเพิ่มครั้งนี้",
+    PICKUP_ORDER: "รายการที่ส่งมอบ",
+    CANCEL_ORDER: "รายการที่ยกเลิก",
+  };
+  const summaryTitle: Record<string, string> = {
+    PAY_ORDER: "สรุปการชำระเงิน",
+    PICKUP_ORDER: "สรุปการส่งมอบ",
+    CANCEL_ORDER: "สรุปออเดอร์ที่ยกเลิก",
+  };
+  const summaryTotalLabel: Record<string, string> = {
+    ADD_ORDER_ITEMS: "ยอดรวมหลังสั่งเพิ่ม",
+    PAY_ORDER: "รวมสุทธิ",
+    PICKUP_ORDER: "ยอดออเดอร์",
+    CANCEL_ORDER: "ยอดออเดอร์",
+  };
+  const orderMetaTiles: Array<{ key: string; icon: ReactNode; label: string; value: string }> = [];
+  if (isTakeaway && queueNumber) {
+    orderMetaTiles.push({ key: "queue", icon: <Hash size={17} />, label: "หมายเลขคิว", value: queueNumber });
+  } else if (tableName) {
+    orderMetaTiles.push({ key: "table", icon: <Armchair size={17} />, label: "โต๊ะอาหาร", value: tableName });
+  }
+  orderMetaTiles.push({ key: "type", icon: <Utensils size={17} />, label: "ประเภทออเดอร์", value: orderType });
+  if (audit.action === "PAY_ORDER") {
+    orderMetaTiles.push({ key: "payment", icon: <Banknote size={17} />, label: "วิธีชำระเงิน", value: paymentMethod || "ไม่ระบุวิธีชำระเงิน" });
+  } else if (audit.action === "CREATE_ORDER" || audit.action === "ADD_ORDER_ITEMS") {
+    orderMetaTiles.push({ key: "payment", icon: <Banknote size={17} />, label: "สถานะการชำระเงิน", value: "ยังไม่ชำระเงิน" });
+  }
+  orderMetaTiles.push({ key: "time", icon: <Clock3 size={17} />, label: timeLabel[audit.action] || "เวลาทำรายการ", value: formatRelativeDate(audit.createdAt) });
+  const orderMetaGrid = orderMetaTiles.length === 4
+    ? "sm:grid-cols-2 lg:grid-cols-4"
+    : orderMetaTiles.length === 3
+      ? "sm:grid-cols-3"
+      : "sm:grid-cols-2";
 
   return (
     <div className="mx-auto w-full max-w-[1280px] space-y-4 px-3 py-4 sm:space-y-5 sm:p-6 lg:p-8">
@@ -146,27 +204,26 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs font-medium text-gray-400">เลขออเดอร์</p>
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${audit.action === "PAY_ORDER" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"}`}>
-                      {audit.action === "PAY_ORDER" ? "ชำระเงินแล้ว" : actionText[audit.action] || audit.action}
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeTone}`}>
+                      {badgeText[audit.action] || actionText[audit.action] || audit.action}
                     </span>
                   </div>
-                  <h2 className="mt-1 break-all text-lg font-semibold text-gray-900 sm:text-xl">{orderNumber}</h2>
+                  <div className="flex items-center gap-1"><h2 className="mt-1 break-all text-lg font-semibold text-gray-900 sm:text-xl">{orderNumber}</h2><CopyOrderNumber value={orderNumber} /></div>
                   <p className="mt-1 text-xs text-gray-400">ทำรายการโดย <span className="font-medium text-gray-600">{auditActorName(audit)}</span></p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3 sm:block sm:bg-transparent sm:p-0 sm:text-right">
-                <p className="text-xs text-gray-400">{audit.action === "PAY_ORDER" ? "ยอดสุทธิ" : "ยอดรวม"}</p>
+                <p className="text-xs text-gray-400">{amountLabel}</p>
                 <p className="text-2xl font-semibold tracking-tight text-blue-600 sm:mt-1 sm:text-3xl">{billMoney(billTotal)}</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 lg:grid-cols-4">
-            <DetailTile icon={<MapPin size={17} />} label="โต๊ะ / จุดรับอาหาร">{orderLocation}</DetailTile>
-            <DetailTile icon={<Utensils size={17} />} label="ประเภทออเดอร์">{orderType}</DetailTile>
-            <DetailTile icon={<Banknote size={17} />} label="ช่องทางชำระเงิน">{paymentMethod || "ยังไม่ชำระเงิน"}</DetailTile>
-            <DetailTile icon={<Clock3 size={17} />} label={audit.action === "PAY_ORDER" ? "เวลาชำระเงิน" : "เวลาทำรายการ"}>{formatRelativeDate(audit.createdAt)}</DetailTile>
+          <div className={`grid grid-cols-1 gap-px border-t border-gray-100 bg-gray-100 ${orderMetaGrid}`}>
+            {orderMetaTiles.map((tile) => (
+              <DetailTile key={tile.key} icon={tile.icon} label={tile.label}>{tile.value}</DetailTile>
+            ))}
           </div>
         </section>
       ) : (
@@ -188,11 +245,10 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 lg:grid-cols-4">
+          <div className="grid gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
             <DetailTile icon={<UserRound size={17} />} label="ผู้ทำรายการ">{auditActorName(audit)}</DetailTile>
             <DetailTile icon={<Clock3 size={17} />} label="เวลาทำรายการ">{formatRelativeDate(audit.createdAt)}</DetailTile>
             <DetailTile icon={<Database size={17} />} label="ประเภทข้อมูล">{entityName}</DetailTile>
-            <DetailTile icon={<Hash size={17} />} label="รหัสรายการ">{audit.id.toLocaleString("th-TH")}</DetailTile>
           </div>
         </section>
       )}
@@ -202,7 +258,7 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
           <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-white">
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 sm:px-5">
               <div className="min-w-0">
-                <h2 className="font-semibold text-gray-900">{audit.action === "ADD_ORDER_ITEMS" ? "รายการที่สั่งเพิ่มครั้งนี้" : "รายการอาหาร"}</h2>
+                <h2 className="font-semibold text-gray-900">{itemSectionTitle[audit.action] || "รายการอาหาร"}</h2>
                 <p className="mt-1 text-sm text-gray-400">
                   {audit.details?.itemsSource === "current" ? "ข้อมูลเมนูจากออเดอร์ปัจจุบัน" : "รายละเอียดเมนู ณ เวลาทำรายการ"}
                 </p>
@@ -243,8 +299,16 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
           </section>
 
           <section className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 lg:sticky lg:top-6">
-            <h2 className="font-semibold text-gray-900">{audit.action === "PAY_ORDER" ? "สรุปการชำระเงิน" : "สรุปรายการ"}</h2>
-            <p className="mt-1 text-xs text-gray-400">{paymentMethod ? `ชำระผ่าน ${paymentMethod}` : "ข้อมูล ณ เวลาทำรายการ"}</p>
+            <h2 className="font-semibold text-gray-900">{summaryTitle[audit.action] || "สรุปรายการ"}</h2>
+            <p className="mt-1 text-xs text-gray-400">
+              {audit.action === "PAY_ORDER" && paymentMethod
+                ? `ชำระผ่าน ${paymentMethod}`
+                : audit.action === "PICKUP_ORDER"
+                  ? "ข้อมูล ณ เวลาส่งมอบ"
+                  : audit.action === "CANCEL_ORDER"
+                    ? "ข้อมูล ณ เวลายกเลิก"
+                    : "ข้อมูล ณ เวลาทำรายการ"}
+            </p>
             <div className="mt-5 space-y-3 text-sm">
               {audit.action === "PAY_ORDER" ? (
                 <>
@@ -262,7 +326,7 @@ export default function AuditDetailPage({ audit }: { audit: Audit }) {
             </div>
             <div className="mt-5 border-t border-gray-100 pt-4">
               <div className="flex items-end justify-between gap-3">
-                <span className="font-semibold text-gray-900">{audit.action === "ADD_ORDER_ITEMS" ? "ยอดรวมหลังสั่งเพิ่ม" : audit.action === "PAY_ORDER" ? "รวมสุทธิ" : "ยอดสุทธิ"}</span>
+                <span className="font-semibold text-gray-900">{summaryTotalLabel[audit.action] || "ยอดสุทธิ"}</span>
                 <span className="text-2xl font-semibold tracking-tight text-blue-600">{billMoney(billTotal)}</span>
               </div>
             </div>

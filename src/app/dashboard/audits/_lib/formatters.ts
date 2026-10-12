@@ -1,5 +1,5 @@
 import { roleText, statusText } from "./labels";
-import type { Audit, AuditDetails } from "./types";
+import type { Audit, AuditDetails } from "../types";
 
 export function auditActorName(audit: Audit): string {
   const recordedName = audit.details?.actorName;

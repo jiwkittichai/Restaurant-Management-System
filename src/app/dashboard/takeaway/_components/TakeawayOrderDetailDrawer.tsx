@@ -1,4 +1,5 @@
 import { PackageCheck, X } from "lucide-react";
+import CopyOrderNumber from "../../_components/CopyOrderNumber";
 import type { TakeawayOrder } from "../types";
 import { itemStatusText, money, statusText, timeText } from "../utils";
 
@@ -19,17 +20,19 @@ export default function TakeawayOrderDetailDrawer({
       />
       <div className="h-full w-full overflow-y-auto bg-white p-5 shadow-2xl sm:max-w-xl">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <PackageCheck size={22} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="font-semibold text-gray-900">
                 รายละเอียดคิวซื้อกลับบ้าน
               </h2>
-              <p className="text-sm text-gray-400">
-                {order.queueNumber} · {order.orderNumber}
-              </p>
+              <p className="mt-1 break-all font-semibold text-blue-600">คิว {order.queueNumber}</p>
+              <div className="flex items-center gap-1 text-sm text-gray-500">
+                <span className="min-w-0 break-all">{order.orderNumber}</span>
+                <CopyOrderNumber value={order.orderNumber} />
+              </div>
             </div>
           </div>
           <button

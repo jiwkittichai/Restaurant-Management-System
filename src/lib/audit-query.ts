@@ -4,7 +4,57 @@ import { prisma } from "@/lib/prisma";
 import { RequestError } from "@/lib/request-security";
 import { auditGroups, quietAuditActions } from "@/lib/audit-groups";
 
-const billActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PICKUP_ORDER"];
+const orderDetailActions = ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PAY_ORDER", "PICKUP_ORDER", "CANCEL_ORDER"];
+
+function auditDetails(value: Prisma.JsonValue | null) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Prisma.JsonObject : {};
+}
+
+function hasDetail(details: Prisma.JsonObject, key: string) {
+  return Object.prototype.hasOwnProperty.call(details, key);
+}
+
+function needsOrderFallback(details: Prisma.JsonObject) {
+  if (!Array.isArray(details.items) || !hasDetail(details, "type")) return true;
+  if (details.type === "DINE_IN") return !hasDetail(details, "tableName");
+  if (details.type === "TAKEAWAY") return !hasDetail(details, "queueNumber");
+  return false;
+}
+
+function withOrderFallback(
+  audit: { details: Prisma.JsonValue | null },
+  order: {
+    orderNumber: string;
+    type: string;
+    subtotal: Prisma.Decimal;
+    discount: Prisma.Decimal;
+    total: Prisma.Decimal;
+    table: { name: string } | null;
+    queueNumber: string | null;
+    items: Array<{ id: number; name: string; qty: number; price: Prisma.Decimal; note: string | null; modifiers: Array<{ id: number; name: string; price: Prisma.Decimal }> }>;
+  } | undefined,
+) {
+  const details = auditDetails(audit.details);
+  const hasItemsSnapshot = Array.isArray(details.items);
+  if (!order) return { ...audit, details: { ...details, ...(hasItemsSnapshot ? { itemsSource: "snapshot" } : {}) } };
+  const items = hasItemsSnapshot ? details.items : order.items;
+  return {
+    ...audit,
+    details: {
+      ...details,
+      orderNumber: details.orderNumber ?? order.orderNumber,
+      type: details.type ?? order.type,
+      subtotal: details.subtotal ?? order.subtotal,
+      discount: details.discount ?? order.discount,
+      total: details.total ?? order.total,
+      tableName: hasDetail(details, "tableName") ? details.tableName : order.table?.name ?? null,
+      queueNumber: hasDetail(details, "queueNumber") ? details.queueNumber : order.queueNumber,
+      items,
+      itemsSource: hasItemsSnapshot ? "snapshot" : "current",
+      itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0),
+    },
+  };
+}
 function integer(value: string | null, fallback: number, max: number) {
   if (value === null) return fallback;
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1 || Number(value) > max) throw new RequestError("ตัวกรองตัวเลขไม่ถูกต้อง");
@@ -63,17 +113,13 @@ export async function queryAudits(restaurantId: number, params = new URLSearchPa
     return { audits, stats, more: ids.length > take };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 
-  // Only old entries without snapshots need the existing bill drawer fallback.
-  const orderIds = [...new Set(result.audits.filter(a => billActions.includes(a.action) && !Array.isArray((a.details as Prisma.JsonObject | null)?.items)).map(a => Number(a.entityId)).filter(id => Number.isSafeInteger(id) && id > 0))];
-  const orders = orderIds.length ? await prisma.order.findMany({ where: { restaurantId, id: { in: orderIds } }, select: { id: true, orderNumber: true, subtotal: true, discount: true, total: true, table: { select: { name: true } }, queueNumber: true, items: { orderBy: { id: "asc" }, select: { id: true, name: true, qty: true, price: true, note: true, modifiers: { orderBy: { id: "asc" }, select: { id: true, name: true, price: true } } } } } }) : [];
+  // Older snapshots can be missing order type/location or all bill items. Fill only those gaps.
+  const orderIds = [...new Set(result.audits.filter(a => orderDetailActions.includes(a.action) && needsOrderFallback(auditDetails(a.details))).map(a => Number(a.entityId)).filter(id => Number.isSafeInteger(id) && id > 0))];
+  const orders = orderIds.length ? await prisma.order.findMany({ where: { restaurantId, id: { in: orderIds } }, select: { id: true, orderNumber: true, type: true, subtotal: true, discount: true, total: true, table: { select: { name: true } }, queueNumber: true, items: { orderBy: { id: "asc" }, select: { id: true, name: true, qty: true, price: true, note: true, modifiers: { orderBy: { id: "asc" }, select: { id: true, name: true, price: true } } } } } }) : [];
   const byId = new Map(orders.map(order => [order.id, order]));
   const audits = result.audits.map(audit => {
-    if (!billActions.includes(audit.action)) return audit;
-    const details = audit.details && typeof audit.details === "object" && !Array.isArray(audit.details) ? audit.details : {};
-    if (Array.isArray(details.items)) return { ...audit, details: { ...details, itemsSource: "snapshot" } };
-    const order = byId.get(Number(audit.entityId));
-    if (!order) return audit;
-    return { ...audit, details: { ...details, orderNumber: details.orderNumber ?? order.orderNumber, subtotal: details.subtotal ?? order.subtotal, discount: details.discount ?? order.discount, total: details.total ?? order.total, tableName: details.tableName ?? order.table?.name, queueNumber: details.queueNumber ?? order.queueNumber, items: details.items ?? order.items, itemsSource: "current", itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0) } };
+    if (!orderDetailActions.includes(audit.action)) return audit;
+    return withOrderFallback(audit, byId.get(Number(audit.entityId)));
   });
   const last = result.audits.at(-1);
   return { audits, meta: { totalCount: Number(result.stats.totalCount), oldestAt: result.stats.oldestAt, latestAt: result.stats.latestAt, limit: take, nextCursor: result.more && last ? Buffer.from(JSON.stringify({ id: last.id, at: last.createdAt.toISOString() })).toString("base64url") : null } };
@@ -84,15 +130,14 @@ export async function queryAuditById(restaurantId: number, id: number) {
     where: { id, restaurantId },
     include: { employee: { select: { displayName: true } } },
   });
-  if (!audit || !billActions.includes(audit.action)) return audit;
-  const details = audit.details && typeof audit.details === "object" && !Array.isArray(audit.details) ? audit.details : {};
-  if (Array.isArray(details.items)) return { ...audit, details: { ...details, itemsSource: "snapshot" } };
+  if (!audit || !orderDetailActions.includes(audit.action)) return audit;
+  const details = auditDetails(audit.details);
+  if (!needsOrderFallback(details)) return withOrderFallback(audit, undefined);
   const orderId = Number(audit.entityId);
-  if (!Number.isSafeInteger(orderId) || orderId < 1) return audit;
+  if (!Number.isSafeInteger(orderId) || orderId < 1) return withOrderFallback(audit, undefined);
   const order = await prisma.order.findFirst({
     where: { id: orderId, restaurantId },
-    select: { orderNumber: true, subtotal: true, discount: true, total: true, table: { select: { name: true } }, queueNumber: true, items: { orderBy: { id: "asc" }, select: { id: true, name: true, qty: true, price: true, note: true, modifiers: { orderBy: { id: "asc" }, select: { id: true, name: true, price: true } } } } },
+    select: { orderNumber: true, type: true, subtotal: true, discount: true, total: true, table: { select: { name: true } }, queueNumber: true, items: { orderBy: { id: "asc" }, select: { id: true, name: true, qty: true, price: true, note: true, modifiers: { orderBy: { id: "asc" }, select: { id: true, name: true, price: true } } } } },
   });
-  if (!order) return audit;
-  return { ...audit, details: { ...details, orderNumber: details.orderNumber ?? order.orderNumber, subtotal: details.subtotal ?? order.subtotal, discount: details.discount ?? order.discount, total: details.total ?? order.total, tableName: details.tableName ?? order.table?.name, queueNumber: details.queueNumber ?? order.queueNumber, items: details.items ?? order.items, itemsSource: "current", itemCount: details.itemCount ?? order.items.reduce((sum, item) => sum + item.qty, 0) } };
+  return withOrderFallback(audit, order ?? undefined);
 }

@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:audit": "tsx --test src/app/dashboard/audits/_tests/*.test.ts",
+    "test:order-numbers": "tsx --test scripts/order-numbers.test.ts",
+    "test:seed": "tsx --test scripts/seed-realistic.test.mjs",
     "start": "next start",
-    "db:seed": "node scripts/seed-realistic.mjs --apply --confirm-database=restaurant_system",
-    "db:seed:preview": "node scripts/seed-realistic.mjs",
+    "db:seed": "tsx scripts/seed-realistic.mjs --apply --confirm-database=restaurant_system",
+    "db:seed:preview": "tsx scripts/seed-realistic.mjs",
     "db:seed:platform": "node scripts/init-platform.mjs",
     "minio:init": "node scripts/init-minio.js"
   },

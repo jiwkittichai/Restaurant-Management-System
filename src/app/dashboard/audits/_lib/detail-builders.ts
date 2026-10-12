@@ -1,6 +1,6 @@
 import { actionText } from "./labels";
 import { asNumber, asText, auditActorName, detailValue, money } from "./formatters";
-import type { Audit, AuditBillItem, AuditDetails } from "./types";
+import type { Audit, AuditBillItem, AuditDetails } from "../types";
 
 export function auditBillItems(audit: Audit): AuditBillItem[] {
   const details = audit.details || {};
@@ -64,7 +64,7 @@ export function auditSummary(audit: Audit) {
   if (audit.action === "ADD_ORDER_ITEMS") return `เพิ่มรายการในบิล ${orderNumber}${money(detailValue(details, "total")) ? ` ยอดรวม ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "PAY_ORDER") return `รับชำระเงิน ${orderNumber || `ออเดอร์ #${audit.entityId || "-"}`} ${asText(detailValue(details, "method"))} ${money(detailValue(details, "total"))}`;
   if (audit.action === "PICKUP_ORDER") return `ส่งมอบออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
-  if (audit.action === "CANCEL_ORDER") return `ยกเลิกออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}`;
+  if (audit.action === "CANCEL_ORDER") return `ยกเลิกออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "UPDATE_KITCHEN_STATUS") return `อัปเดต ${asText(detailValue(details, "itemName")) || "รายการครัว"} เป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
   if (audit.action === "CREATE_INGREDIENT") return `เพิ่มวัตถุดิบ ${name}${detailValue(details, "stock") !== undefined ? ` ตั้งต้น ${asText(detailValue(details, "stock"))}${detailValue(details, "unit") ? ` ${asText(detailValue(details, "unit"))}` : ""}` : ""}`;
   if (audit.action === "STOCK_IN") return `รับ${name || "วัตถุดิบ"}เข้าสต็อก ${asText(detailValue(details, "quantity"))}${detailValue(details, "unit") ? ` ${asText(detailValue(details, "unit"))}` : ""}`;
@@ -105,7 +105,7 @@ export function auditChangeRows(audit: Audit) {
 
   if (details.passwordReset) rows.push({ label: "รีเซ็ตรหัสผ่าน", after: "มีการตั้งรหัสผ่านใหม่" });
   if (details.imageChanged) rows.push({ label: "รูปเมนู", after: "มีการเปลี่ยนรูป" });
-  if (details.logoChanged) rows.push({ label: "โลโก้ร้าน", after: "มีการเปลี่ยนโลโก้" });
+  if (details.logoChanged) rows.push({ label: "โลโก้ร้าน", after: "มีการเปลี่ยนแปลง" });
   if (details.qrChanged) rows.push({ label: "QR พร้อมเพย์", after: "มีการเปลี่ยน QR" });
   if (details.modifierGroupsChanged) rows.push({ label: "ตัวเลือกเมนู", after: "มีการแก้ไขตัวเลือก" });
   if (!rows.length && details.roles) rows.push({ label: "บทบาท", after: asText(details.roles) });

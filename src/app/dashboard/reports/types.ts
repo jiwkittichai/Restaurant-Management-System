@@ -1,6 +1,7 @@
 export type ReportOrder = {
   id: number;
   orderNumber: string;
+  queueNumber?: string | null;
   table: string;
   type: string;
   status: string;
@@ -26,6 +27,9 @@ export type Report = {
   chart?: Array<{ key?: string; label: string; amount: number; orders: number; average: number }>;
   chartMode?: "hour" | "day" | "month" | "year";
   recent: ReportOrder[];
+  recentTotal?: number;
+  recentPage?: number;
+  recentPageSize?: number;
 };
 
 export type RangeMode = "ALL" | "TODAY" | "7D" | "MONTH" | "YEAR" | "CUSTOM";

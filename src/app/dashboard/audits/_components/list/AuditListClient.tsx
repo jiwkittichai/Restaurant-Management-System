@@ -3,41 +3,42 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { actionText } from "../labels";
-import { auditActorName } from "../formatters";
-import { formatRelativeDate } from "../../formatters";
-import { auditChangeRows, auditSummary } from "../detail-builders";
-import AuditFilters, { allActionsValue } from "./AuditFilters";
-import { daysAgo, localDate, monthStart } from "../date-utils";
-import type { Audit, AuditMeta, AuditsClientProps, RangeMode } from "../types";
+import { useRouter } from "next/navigation";
+import { actionText } from "../../_lib/labels";
+import { auditActorName } from "../../_lib/formatters";
+import { formatRelativeDate } from "../../../formatters";
+import { auditChangeRows, auditSummary } from "../../_lib/detail-builders";
+import AuditFilters from "./AuditFilters";
+import { daysAgo, localDate, monthStart, yearStart } from "../../_lib/date-utils";
+import { allActionsValue, auditFilterParams } from "../../_lib/filter-state";
+import type { Audit, AuditListClientProps, AuditMeta, RangeMode } from "../../types";
 
-export default function AuditsClient({
+export default function AuditListClient({
   initialAudits,
   initialMeta,
+  initialFilters = { query: "", action: "", rangeMode: "ALL", from: "", to: "" },
   employeeId,
   title = "ประวัติกิจกรรม",
   description = "ค้นหาและกรองประวัติย้อนหลังของร้าน",
   backHref,
   backLabel = "กลับ",
   employeeSummary = [],
-}: AuditsClientProps) {
+}: AuditListClientProps) {
+  const router = useRouter();
   const didRenderInitialData = useRef(false);
   const [audits, setAudits] = useState<Audit[]>(initialAudits);
   const [meta, setMeta] = useState<AuditMeta | null>(initialMeta);
-  const [query, setQuery] = useState("");
-  const [action, setAction] = useState("");
-  const [rangeMode, setRangeMode] = useState<RangeMode>("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [query, setQuery] = useState(initialFilters.query);
+  const [action, setAction] = useState(initialFilters.action);
+  const [rangeMode, setRangeMode] = useState<RangeMode>(initialFilters.rangeMode);
+  const [from, setFrom] = useState(initialFilters.from);
+  const [to, setTo] = useState(initialFilters.to);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const params = new URLSearchParams();
-  if (query.trim()) params.set("q", query.trim());
-  if (action === allActionsValue) params.set("scope", "all");
-  else if (action) params.set("group", action);
+  const filterParams = auditFilterParams({ query, action, from, to });
+  const filterUrl = filterParams.toString();
+  const params = new URLSearchParams(filterParams);
   if (employeeId) params.set("employeeId", String(employeeId));
-  if (from) params.set("from", from);
-  if (to) params.set("to", to);
   const filterKey = params.toString();
   const [pages, setPages] = useState({ key: filterKey, cursors: [""], index: 0 });
   const pageIndex = pages.key === filterKey ? pages.index : 0;
@@ -49,6 +50,12 @@ export default function AuditsClient({
   useEffect(() => {
     setPages(current => current.key === filterKey ? current : { key: filterKey, cursors: [""], index: 0 });
   }, [filterKey]);
+
+  useEffect(() => {
+    const nextUrl = `${window.location.pathname}${filterUrl ? `?${filterUrl}` : ""}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) router.replace(nextUrl, { scroll: false });
+  }, [filterUrl, router]);
 
   useEffect(() => {
     if (!didRenderInitialData.current) {
@@ -110,6 +117,10 @@ export default function AuditsClient({
     }
     if (mode === "MONTH") {
       setFrom(monthStart());
+      setTo(today);
+    }
+    if (mode === "YEAR") {
+      setFrom(yearStart());
       setTo(today);
     }
     if (mode === "CUSTOM" && !from && !to) {
