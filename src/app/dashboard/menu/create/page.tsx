@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImageIcon, Trash2, Upload } from "lucide-react";
 import LoadErrorMessage from "../../_components/LoadErrorMessage";
 import { fetchJson } from "@/lib/client-fetch";
 import ModifierGroupsEditor from "../_components/ModifierGroupsEditor";
@@ -99,34 +100,64 @@ export default function CreateMenuPage() {
       >
         <div>
           <label className="text-sm text-gray-600">รูปเมนู</label>
-          <p className="mt-1 text-xs text-gray-400">
-            แนะนำภาพแนวนอนอัตราส่วน 4:3 เช่น 1200 × 900 พิกเซล
-          </p>
-          <div className="mt-3 flex items-center gap-4">
-            <label className="cursor-pointer rounded-xl bg-blue-50 px-4 py-2 text-blue-600">
-              เลือกรูป
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const selected = event.target.files?.[0];
-                  if (selected) {
-                    setFile(selected);
-                    setPreview(URL.createObjectURL(selected));
-                  }
-                }}
-              />
-            </label>
-            {preview && (
-              <div className="aspect-[4/3] w-40 overflow-hidden rounded-xl bg-gray-100">
+          <div className="mt-2 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <div className="grid aspect-[4/3] w-40 shrink-0 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {preview ? (
                 <img
                   src={preview}
                   alt="ตัวอย่างรูปเมนู"
-                  className="h-full w-full object-cover object-center"
+                  className="block h-full w-full rounded-[inherit] object-cover object-center"
                 />
+              ) : (
+                <span className="grid h-full w-full place-items-center text-slate-300">
+                  <ImageIcon size={28} />
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-800">
+                {form.name || "รูปเมนูใหม่"}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50">
+                  <Upload size={16} />
+                  {preview ? "เปลี่ยนรูป" : "เลือกรูป"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const selected = event.target.files?.[0];
+                      if (selected) {
+                        setFile(selected);
+                        setPreview(URL.createObjectURL(selected));
+                      }
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                {preview && (
+                  <button
+                    type="button"
+                    aria-label="ลบรูปเมนู"
+                    title="ลบรูปเมนู"
+                    onClick={() => {
+                      setPreview("");
+                      setFile(null);
+                    }}
+                    className="rounded-lg border border-red-100 bg-white p-2 text-red-500 transition hover:bg-red-50"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
-            )}
+              <p className="mt-2 text-xs text-slate-400">
+                PNG, JPG หรือ WebP ไม่เกิน 5 MB
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                แนะนำภาพแนวนอนอัตราส่วน 4:3 เช่น 1200 × 900 พิกเซล
+              </p>
+            </div>
           </div>
         </div>
         <MenuItemFormFields
