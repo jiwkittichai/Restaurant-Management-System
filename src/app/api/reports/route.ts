@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
   const filledChartRows: Array<{ label: string; amount: Prisma.Decimal; orders: number; sort: string }> = [];
   if (bucketMode === "hour" && from) {
     const rowsByKey = new Map(chartRows.map((row) => [row.sort, row]));
-    for (let hour = 10; hour <= 22; hour += 1) {
+    for (let hour = 0; hour <= 23; hour += 1) {
       const key = `${dateKey(from)}-${String(hour).padStart(2, "0")}`;
       filledChartRows.push(rowsByKey.get(key) || { label: `${String(hour).padStart(2, "0")}:00`, amount: zero, orders: 0, sort: key });
     }

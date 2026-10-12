@@ -150,12 +150,14 @@ model RestaurantTable {
   name         String
   seats        Int            @default(2)
   status       TableStatus    @default(AVAILABLE)
+  active       Boolean        @default(true)
   orders       Order[]
   sessions     TableSession[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@unique([restaurantId, name])
+  @@index([restaurantId, active])
 }
 
 model Order {

@@ -66,14 +66,16 @@ export function auditSummary(audit: Audit) {
   if (audit.action === "PICKUP_ORDER") return `ส่งมอบออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}${money(detailValue(details, "total")) ? ` ยอด ${money(detailValue(details, "total"))}` : ""}`;
   if (audit.action === "CANCEL_ORDER") return `ยกเลิกออเดอร์ ${orderNumber || `#${audit.entityId || "-"}`}`;
   if (audit.action === "UPDATE_KITCHEN_STATUS") return `อัปเดต ${asText(detailValue(details, "itemName")) || "รายการครัว"} เป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
-  if (audit.action === "CREATE_INGREDIENT") return `เพิ่มวัตถุดิบ ${name}${detailValue(details, "stock") !== undefined ? ` ตั้งต้น ${asText(detailValue(details, "stock"))}` : ""}`;
-  if (audit.action === "STOCK_IN") return `รับวัตถุดิบเข้า ${asText(detailValue(details, "quantity"))}`;
-  if (audit.action === "ADJUST_STOCK") return `ปรับยอดสต็อกเป็น ${asText(detailValue(details, "stock"))}`;
+  if (audit.action === "CREATE_INGREDIENT") return `เพิ่มวัตถุดิบ ${name}${detailValue(details, "stock") !== undefined ? ` ตั้งต้น ${asText(detailValue(details, "stock"))}${detailValue(details, "unit") ? ` ${asText(detailValue(details, "unit"))}` : ""}` : ""}`;
+  if (audit.action === "STOCK_IN") return `รับ${name || "วัตถุดิบ"}เข้าสต็อก ${asText(detailValue(details, "quantity"))}${detailValue(details, "unit") ? ` ${asText(detailValue(details, "unit"))}` : ""}`;
+  if (audit.action === "ADJUST_STOCK") return `ปรับยอด${name || "วัตถุดิบ"}เป็น ${asText(detailValue(details, "stock"))}${detailValue(details, "unit") ? ` ${asText(detailValue(details, "unit"))}` : ""}`;
   if (audit.action === "UPDATE_RECIPE") return `แก้ไขสูตรอาหาร ${asText(detailValue(details, "ingredientCount"))} วัตถุดิบ`;
   if (audit.action === "CREATE_CATEGORY") return `เพิ่มหมวดหมู่ ${name}`;
   if (audit.action === "UPDATE_CATEGORY") return `แก้ไขหมวดหมู่ ${name}`;
   if (audit.action === "DELETE_CATEGORY") return `ลบหมวดหมู่ ${name || `#${audit.entityId || "-"}`}`;
   if (audit.action === "CREATE_TABLE") return `เพิ่มโต๊ะ ${name}${detailValue(details, "seats") ? ` ${asText(detailValue(details, "seats"))} ที่นั่ง` : ""}`;
+  if (audit.action === "UPDATE_TABLE") return `แก้ไขโต๊ะ ${name || `#${audit.entityId || "-"}`}`;
+  if (audit.action === "DELETE_TABLE") return `ลบโต๊ะ ${name || `#${audit.entityId || "-"}`}`;
   if (audit.action === "UPDATE_TABLE_STATUS") return `เปลี่ยนสถานะโต๊ะเป็น ${asText(detailValue(details, "status")) || asText(afterDetails?.status)}`;
   if (audit.action === "CREATE_MENU" || audit.action === "UPDATE_MENU") return `${actionText[audit.action]} ${name}`;
   if (audit.action === "TOGGLE_MENU") return `เปลี่ยนสถานะเมนูเป็น ${asText(detailValue(details, "available")) || asText(afterDetails?.available)}`;
@@ -91,7 +93,7 @@ export function auditChangeRows(audit: Audit) {
     const fields: Array<[string, string]> = [
       ["displayName", "ชื่อที่แสดง"], ["username", "ชื่อผู้ใช้เข้าสู่ระบบ"], ["active", "สถานะบัญชี"], ["roles", "บทบาท"],
       ["name", "ชื่อรายการ"], ["description", "รายละเอียด"], ["price", "ราคา"], ["saleUnit", "หน่วยขาย"], ["categoryId", "หมวดหมู่"],
-      ["unit", "หน่วย"], ["status", "สถานะ"], ["available", "สถานะการขาย"], ["stock", "ยอดคงเหลือ"], ["minStock", "สต็อกขั้นต่ำ"],
+      ["unit", "หน่วย"], ["seats", "จำนวนที่นั่ง"], ["status", "สถานะ"], ["available", "สถานะการขาย"], ["stock", "ยอดคงเหลือ"], ["minStock", "สต็อกขั้นต่ำ"],
       ["address", "ที่อยู่ร้าน"], ["phone", "เบอร์โทรร้าน"], ["welcomeMessage", "ข้อความต้อนรับ"], ["receiptFooter", "ท้ายใบเสร็จ"], ["promptPayEnabled", "พร้อมเพย์"],
     ];
     for (const [key, label] of fields) {
@@ -125,7 +127,7 @@ export function auditDetailRows(audit: Audit) {
     ["paymentId", "รหัสการชำระเงิน"], ["quantity", "จำนวน"], ["stock", "ยอดคงเหลือ"], ["status", "สถานะ"],
     ["itemName", "รายการอาหาร"], ["itemCount", "จำนวนรายการ"], ["tableName", "โต๊ะ"], ["queueNumber", "คิว"],
     ["name", "ชื่อรายการ"], ["unit", "หน่วย"], ["note", "หมายเหตุ"], ["displayName", "ชื่อพนักงาน"],
-    ["username", "ชื่อผู้ใช้"], ["ingredientCount", "จำนวนวัตถุดิบในสูตร"],
+    ["username", "ชื่อผู้ใช้"], ["seats", "จำนวนที่นั่ง"], ["ingredientCount", "จำนวนวัตถุดิบในสูตร"],
   ] as const) {
     const value = detailValue(details, key);
     if (value !== undefined) rows.push({ label, value: key === "total" ? money(value) : asText(value) });

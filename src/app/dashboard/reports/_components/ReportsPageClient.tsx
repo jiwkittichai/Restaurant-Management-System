@@ -150,7 +150,7 @@ export default function ReportsPageClient() {
 
       <ReportSummaryCards summary={report.summary} />
 
-      <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
+      <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
         <SalesChart report={report} rangeMode={rangeMode} />
         <section className="min-w-0 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
           <h2 className="font-semibold">เมนูขายดี</h2>

@@ -27,6 +27,8 @@ export const actionText: Record<string, string> = {
   UPDATE_CATEGORY: "แก้ไขหมวดหมู่",
   DELETE_CATEGORY: "ลบหมวดหมู่",
   CREATE_TABLE: "เพิ่มโต๊ะ",
+  UPDATE_TABLE: "แก้ไขโต๊ะ",
+  DELETE_TABLE: "ลบโต๊ะ",
   UPDATE_TABLE_STATUS: "เปลี่ยนสถานะโต๊ะ",
   QR_TABLE_ROTATE: "สร้าง QR โต๊ะใหม่",
   CREATE_MENU: "เพิ่มเมนู",

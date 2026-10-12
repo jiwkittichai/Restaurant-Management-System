@@ -1,4 +1,4 @@
-import { Armchair, Eye, ReceiptText, Utensils, X } from "lucide-react";
+import { Armchair, Eye, Pencil, ReceiptText, Trash2, Utensils, X } from "lucide-react";
 import type { ActiveOrder, RestaurantTable } from "../types";
 import {
   itemStatusText,
@@ -18,6 +18,9 @@ type TableCardProps = {
   onOpenDetail: (table: RestaurantTable, order: ActiveOrder) => void;
   onOpenBill: (table: RestaurantTable, order: ActiveOrder) => void;
   onCancel: (order: ActiveOrder) => void;
+  showManagementActions: boolean;
+  onEdit: (table: RestaurantTable) => void;
+  onDelete: (table: RestaurantTable) => void;
 };
 
 export default function TableCard({
@@ -27,6 +30,9 @@ export default function TableCard({
   onOpenDetail,
   onOpenBill,
   onCancel,
+  showManagementActions,
+  onEdit,
+  onDelete,
 }: TableCardProps) {
   const order = table.orders[0];
   const itemCount = order?.items.reduce((sum, item) => sum + item.qty, 0) || 0;
@@ -48,9 +54,17 @@ export default function TableCard({
               <p className="text-sm text-gray-400">{table.seats} ที่นั่ง</p>
             </div>
           </div>
-          <span className={`shrink-0 rounded-full px-3 py-1 text-xs ${statusClass[table.status]}`}>
-            {statusText[table.status]}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className={`rounded-full px-3 py-1 text-xs ${statusClass[table.status]}`}>
+              {statusText[table.status]}
+            </span>
+            {showManagementActions && (
+              <>
+                <button type="button" onClick={() => onEdit(table)} aria-label={`แก้ไข ${table.name}`} title="แก้ไขโต๊ะ" className="rounded-lg p-2 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600"><Pencil size={16} /></button>
+                <button type="button" onClick={() => onDelete(table)} aria-label={`ลบ ${table.name}`} title="ลบโต๊ะ" className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"><Trash2 size={16} /></button>
+              </>
+            )}
+          </div>
         </div>
 
         {order ? (
