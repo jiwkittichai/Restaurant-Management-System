@@ -82,7 +82,7 @@ export async function queryAudits(restaurantId: number, params = new URLSearchPa
   const take = integer(params.get("take"), 100, 100);
   const employeeId = integer(params.get("employeeId"), 0, 2147483647);
   const groupId = params.get("group") || "";
-  const scope = params.get("scope") || "important";
+  const scope = params.get("scope") || "all";
   const action = params.get("action") || "";
   const q = (params.get("q") || "").trim();
   if (q.length > 100 || !["important", "all"].includes(scope)) throw new RequestError("ตัวกรองไม่ถูกต้อง");

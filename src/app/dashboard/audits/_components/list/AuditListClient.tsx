@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { actionText } from "../../_lib/labels";
@@ -16,7 +16,7 @@ import type { Audit, AuditListClientProps, AuditMeta, RangeMode } from "../../ty
 export default function AuditListClient({
   initialAudits,
   initialMeta,
-  initialFilters = { query: "", action: "", rangeMode: "ALL", from: "", to: "" },
+  initialFilters = { query: "", action: allActionsValue, rangeMode: "ALL", from: "", to: "" },
   employeeId,
   title = "ประวัติกิจกรรม",
   description = "ค้นหาและกรองประวัติย้อนหลังของร้าน",
@@ -80,7 +80,7 @@ export default function AuditListClient({
   const pending = loading || loadedKey !== requestKey;
   const showPagination = !pending && Boolean(meta) && (pageIndex > 0 || Boolean(meta?.nextCursor));
 
-  const hasFilters = Boolean(query.trim() || action || from || to);
+  const hasFilters = Boolean(query.trim() || (action && action !== allActionsValue) || from || to);
   const todayValue = localDate(new Date());
   const oldestValue = meta?.oldestAt ? localDate(new Date(meta.oldestAt)) : "";
   const visibleFrom = from || oldestValue;
@@ -94,7 +94,7 @@ export default function AuditListClient({
 
   function clearFilters() {
     setQuery("");
-    setAction("");
+    setAction(allActionsValue);
     setRangeMode("ALL");
     setFrom("");
     setTo("");
@@ -175,7 +175,16 @@ export default function AuditListClient({
             <h2 className="font-semibold text-gray-900">รายการประวัติ</h2>
             <p role="status" className="mt-1 text-sm text-gray-400">{loading ? "กำลังโหลดประวัติ..." : message ? "โหลดไม่สำเร็จ กดรีเฟรชเพื่อลองอีกครั้ง" : resultText}</p>
           </div>
-          <button disabled={loading} onClick={() => { setPages({ key: filterKey, cursors: [""], index: 0 }); setRefresh(value => value + 1); }} className="rounded-xl border border-gray-200 px-4 py-2 text-sm disabled:opacity-50">รีเฟรช</button>
+          <button
+            type="button"
+            disabled={loading}
+            aria-label="รีเฟรชประวัติกิจกรรม"
+            title="รีเฟรช"
+            onClick={() => { setPages({ key: filterKey, cursors: [""], index: 0 }); setRefresh(value => value + 1); }}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw size={17} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
 
         <div className="divide-y divide-gray-100">

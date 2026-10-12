@@ -30,12 +30,7 @@ function rangeMode(from: string, to: string): RangeMode {
 export function auditFilterState(search: SearchRecord): AuditFilterState {
   const query = first(search.q).trim().slice(0, 100);
   const group = first(search.group);
-  const scope = first(search.scope);
-  const action = scope === "all"
-    ? allActionsValue
-    : auditGroups.some((item) => item.id === group)
-      ? group
-      : "";
+  const action = auditGroups.some((item) => item.id === group) ? group : allActionsValue;
   let from = validDate(first(search.from));
   let to = validDate(first(search.to));
   if ((from && to && from > to) || Boolean(from) !== Boolean(to)) {
@@ -48,8 +43,7 @@ export function auditFilterState(search: SearchRecord): AuditFilterState {
 export function auditFilterParams(filters: Pick<AuditFilterState, "query" | "action" | "from" | "to">) {
   const params = new URLSearchParams();
   if (filters.query.trim()) params.set("q", filters.query.trim());
-  if (filters.action === allActionsValue) params.set("scope", "all");
-  else if (filters.action) params.set("group", filters.action);
+  if (filters.action && filters.action !== allActionsValue) params.set("group", filters.action);
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
   return params;
