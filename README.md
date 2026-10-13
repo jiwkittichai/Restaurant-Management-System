@@ -23,46 +23,29 @@
 npm install
 ```
 
-### 2. สร้างไฟล์ `.env`
-
-บน Windows Command Prompt:
-
-```cmd
-copy .env.example .env
-```
-
-จากนั้นเปิด `.env` แล้วเปลี่ยนรหัสผ่านและค่าที่จำเป็นสำหรับเครื่องของตัวเอง โดยเฉพาะ `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `DATABASE_URL`, `SEED_OWNER_PASSWORD` และ `PLATFORM_ADMIN_PASSWORD` ห้ามนำรหัสผ่านจริงใน `.env` ขึ้น GitHub
-
-### 3. สร้าง Prisma Client
+### 2. สร้าง Prisma Client
 
 ```bash
 npx prisma generate
 ```
 
-### 4. เปิดบริการ Docker
+### 3. เปิดบริการ Docker
 
 ```bash
 docker compose up -d
 ```
 
-### 5. สร้างโครงสร้างฐานข้อมูล
+### 4. สร้างโครงสร้างฐานข้อมูล
 
 ```bash
 npx prisma migrate deploy
 ```
 
-### 6. ตั้งต้นระบบและสร้างแอดมินแพลตฟอร์ม
-
-ตั้งค่า `PLATFORM_ADMIN_USERNAME`, `PLATFORM_ADMIN_DISPLAY_NAME` และ `PLATFORM_ADMIN_PASSWORD` ใน `.env` โดยเปลี่ยนรหัสผ่านตัวอย่างเป็นรหัสผ่านส่วนตัว 12–128 ตัว และใช้ชื่อผู้ใช้/รหัสผ่านต่างจากบัญชีร้าน จากนั้นรัน:
+### 5. นำเข้าบัญชีแอดมินลง Database
 
 ```bash
 npm run db:seed:platform
 ```
-
-คำสั่งนี้ใช้ `scripts/init-platform.mjs` สร้างแอดมินเพื่อเซ็ตค่าเริ่มต้นของแพลตฟอร์ม
-
-รันซ้ำได้: หากมีชื่อผู้ใช้นี้แล้ว จะไม่เปลี่ยนรหัสผ่าน ชื่อแสดง สถานะบัญชี หรือ session เดิม การแก้รหัสผ่านใน `.env` แล้วรันซ้ำจึงไม่ใช่การรีเซ็ตรหัสผ่าน หากชื่อผู้ใช้ชนกับบัญชีร้านจะหยุดโดยไม่เปลี่ยนข้อมูล เข้าสู่ระบบผ่าน `/login` ด้วยบัญชีแอดมินที่สร้างไว้
-
 
 ### 7. สร้าง MinIO Bucket
 
@@ -71,6 +54,17 @@ npm run minio:init
 ```
 
 คำสั่งนี้จะสร้าง Bucket ชื่อ `products` สำหรับจัดเก็บรูปภาพเมนู และสามารถรันซ้ำได้โดยไม่ลบรูปเดิม
+
+
+```
+
+## นำเข้าข้อมูลร้านจำลองลง Database
+
+สำหรับบัญชีสร้างร้านจำลอง บัญชีเจ้าของร้าน เมนู ตัวเลือกเสริมพร้อมสูตรตัดสต็อก วัตถุดิบ โต๊ะ และยอดขาย
+
+```bash
+npm run db:seed
+```
 
 ### 8. เปิดเว็บไซต์
 
@@ -82,15 +76,7 @@ npm run dev
 
 ```text
 http://localhost:3000
-```
 
-## ข้อมูลสำหรับสร้างร้านจำลองสำหรับทดสอบ
-
-ตั้งค่า `SEED_OWNER_USERNAME`, `SEED_OWNER_PASSWORD`, `SEED_OWNER_EMAIL`, `SEED_RESTAURANT_NAME` และ `SEED_SALES_COUNT` ใน `.env` สำหรับบัญชีสร้างร้านจำลอง บัญชีเจ้าของร้าน เมนู ตัวเลือกเสริมพร้อมสูตรตัดสต็อก วัตถุดิบ โต๊ะ และยอดขาย
-
-```bash
-npm run db:seed
-```
 
 ## URL ของบริการ
 
