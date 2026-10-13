@@ -92,7 +92,7 @@ export default function RestaurantActionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center p-4">
+    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-3 sm:p-4">
       <button
         type="button"
         aria-label="ปิดหน้าต่างยืนยัน"
@@ -104,7 +104,7 @@ export default function RestaurantActionModal({
         aria-modal="true"
         aria-labelledby="review-dialog-title"
         onSubmit={submit}
-        className="relative z-10 w-full max-w-md rounded-3xl border border-gray-100 bg-white p-6 shadow-2xl shadow-slate-950/20"
+        className="relative z-10 my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl shadow-slate-950/20 sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -120,7 +120,7 @@ export default function RestaurantActionModal({
               >
                 {ui.title}
               </h2>
-              <p className="mt-1 truncate text-sm text-gray-500">
+              <p className="mt-1 break-words text-sm text-gray-500">
                 {action.restaurant.name}
               </p>
             </div>

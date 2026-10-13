@@ -146,9 +146,9 @@ export default function RestaurantList() {
     : "ยังไม่มีร้านในสถานะนี้";
 
   return (
-    <section className="space-y-4">
+    <section className="min-w-0 space-y-4">
       <div className="flex justify-end">
-        <button type="button" onClick={() => { setCreateOpen(true); setMessage(""); }} className="inline-flex items-center gap-2 rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+        <button type="button" onClick={() => { setCreateOpen(true); setMessage(""); }} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#356DDB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto">
           <UserPlus size={18} />
           เพิ่มบัญชีร้าน
         </button>
@@ -169,13 +169,13 @@ export default function RestaurantList() {
           {message}
         </p>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-2 min-[360px]:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
         {filters.map(({ value, label, count, icon: Icon, tone }) => (
           <button
             key={value || "all"}
             type="button"
             onClick={() => selectStatus(value)}
-            className={`flex items-center gap-3 rounded-2xl border bg-white p-4 text-left transition ${status === value ? "border-blue-200 ring-4 ring-blue-50" : "border-gray-100 hover:border-blue-100"}`}
+            className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-white p-3 text-left transition sm:p-4 ${status === value ? "border-blue-200 ring-4 ring-blue-50" : "border-gray-100 hover:border-blue-100"}`}
           >
             <span
               className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}
@@ -196,7 +196,7 @@ export default function RestaurantList() {
         ))}
       </div>
       <div
-        className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 sm:flex-row"
+        className="flex gap-2 rounded-2xl border border-gray-100 bg-white p-3 sm:gap-3 sm:p-4"
       >
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">ค้นหาร้าน</span>
@@ -217,25 +217,25 @@ export default function RestaurantList() {
             setSort(current => current === "newest" ? "oldest" : "newest");
             setPage(1);
           }}
-          className={`${inputClass} grid h-[46px] w-[52px] shrink-0 cursor-pointer place-items-center self-end p-0 text-gray-700 hover:border-blue-200 hover:bg-blue-50 sm:self-auto`}
+          className={`${inputClass} grid h-[46px] w-[46px] shrink-0 cursor-pointer place-items-center p-0 text-gray-700 hover:border-blue-200 hover:bg-blue-50 sm:w-[52px]`}
         >
           {sort === "newest" ? <ArrowDown size={17} /> : <ArrowUp size={17} />}
         </button>
       </div>
       <div
         ref={resultsRef}
-        className="scroll-mt-4 overflow-x-auto rounded-2xl border border-gray-100 bg-white"
+        className="scroll-mt-4 overflow-hidden rounded-2xl border border-gray-100 bg-white"
       >
-        <table className="w-full min-w-[900px] table-fixed text-center text-sm">
-          <thead className="bg-slate-50/80 text-gray-500">
+        <table className="block w-full text-left text-sm md:table md:table-fixed md:text-center">
+          <thead className="hidden bg-slate-50/80 text-gray-500 md:table-header-group">
             <tr>
-              <th className="w-[29%] px-6 py-4 font-medium">ร้าน</th>
-              <th className="w-[23%] px-6 py-4 font-medium">ผู้ใช้</th>
-              <th className="w-[15%] px-6 py-4 font-medium">สถานะ</th>
-              <th className="w-[33%] px-6 py-4 font-medium">จัดการ</th>
+              <th className="w-[27%] px-3 py-3 font-medium lg:px-4">ร้าน</th>
+              <th className="w-[22%] px-3 py-3 font-medium lg:px-4">ผู้ใช้</th>
+              <th className="w-[15%] px-3 py-3 font-medium lg:px-4">สถานะ</th>
+              <th className="w-[36%] px-3 py-3 font-medium lg:px-4">จัดการ</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block divide-y divide-gray-100 md:table-row-group md:divide-y-0">
             {data?.restaurants.map((row) => {
               const current = restaurantStatus(row);
               const StatusIcon = row.approvalStatus === "PENDING"
@@ -248,38 +248,42 @@ export default function RestaurantList() {
               return (
                 <tr
                   key={row.id}
-                  className="transition even:bg-slate-50/40 hover:bg-blue-50/40"
+                  className="block p-3 transition hover:bg-blue-50/40 sm:p-4 md:table-row md:p-0 md:even:bg-slate-50/40"
                 >
-                  <td className="px-6 py-5">
-                    <p className="truncate font-semibold">{row.name}</p>
-                    <p className="mt-1 truncate text-xs text-gray-400">
+                  <td className="block py-2 md:table-cell md:px-3 md:py-4 lg:px-4">
+                    <span className="mb-1 block text-xs font-medium text-gray-400 md:hidden">ร้าน</span>
+                    <p className="break-words font-semibold md:truncate">{row.name}</p>
+                    <p className="mt-1 break-all text-xs text-gray-400 md:truncate">
                       {restaurantCode(row.id)}
                     </p>
                   </td>
-                  <td className="px-6 py-5">
-                    <p className="truncate font-medium text-gray-700">
+                  <td className="block py-2 md:table-cell md:px-3 md:py-4 lg:px-4">
+                    <span className="mb-1 block text-xs font-medium text-gray-400 md:hidden">ผู้ใช้</span>
+                    <p className="break-words font-medium text-gray-700 md:truncate">
                       {row.owner?.displayName || "ไม่ระบุ"}
                     </p>
-                    <p className="mt-1 truncate text-xs text-gray-400">
+                    <p className="mt-1 break-all text-xs text-gray-400 md:truncate">
                       {row.owner?.email || "ยังไม่มีอีเมล"}
                     </p>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="flex items-center justify-between gap-3 py-2 md:table-cell md:px-3 md:py-4 lg:px-4">
+                    <span className="text-xs font-medium text-gray-400 md:hidden">สถานะ</span>
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${current.className}`}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${current.className}`}
                     >
                       <StatusIcon size={13} aria-hidden="true" />
                       {current.text}
                     </span>
                   </td>
-                  <td className="px-6 py-5">
-                    <div className="flex flex-wrap justify-center gap-2">
+                  <td className="block pt-3 md:table-cell md:px-3 md:py-4 lg:px-4">
+                    <span className="mb-2 block text-xs font-medium text-gray-400 md:hidden">จัดการ</span>
+                    <div className="flex flex-wrap gap-2 md:justify-center">
                       {row.approvalStatus === "PENDING" && (
                         <>
                           <button
                             type="button"
                             onClick={() => openAction(row, "APPROVED")}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
+                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 md:min-h-0 md:flex-none md:px-2"
                           >
                             <CircleCheck size={15} aria-hidden="true" />
                             อนุมัติ
@@ -287,7 +291,7 @@ export default function RestaurantList() {
                           <button
                             type="button"
                             onClick={() => openAction(row, "REJECTED")}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 md:min-h-0 md:flex-none md:px-2"
                           >
                             <CircleX size={15} aria-hidden="true" />
                             ปฏิเสธ
@@ -298,7 +302,7 @@ export default function RestaurantList() {
                         <button
                           type="button"
                           onClick={() => openAction(row, "APPROVED")}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
+                          className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 md:min-h-0 md:flex-none md:px-2"
                         >
                           <CircleCheck size={15} aria-hidden="true" />
                           อนุมัติ
@@ -310,7 +314,7 @@ export default function RestaurantList() {
                           onClick={() =>
                             openAction(row, row.active ? "SUSPEND" : "RESUME")
                           }
-                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 ${row.active ? "bg-red-50 text-red-500 hover:bg-red-100 focus-visible:ring-red-200" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 focus-visible:ring-emerald-200"}`}
+                          className={`inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 md:min-h-0 md:flex-none md:px-2 ${row.active ? "bg-red-50 text-red-500 hover:bg-red-100 focus-visible:ring-red-200" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 focus-visible:ring-emerald-200"}`}
                         >
                           {row.active ? <ShieldAlert size={15} aria-hidden="true" /> : <CircleCheck size={15} aria-hidden="true" />}
                           {row.active ? "ระงับ" : "เปิดใช้งาน"}
@@ -318,7 +322,7 @@ export default function RestaurantList() {
                       )}
                       <Link
                         href={`/platform/restaurants/${row.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+                        className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 md:min-h-0 md:flex-none md:px-2"
                       >
                         <Eye size={15} aria-hidden="true" />
                         ดูรายละเอียด
@@ -329,8 +333,8 @@ export default function RestaurantList() {
               );
             })}
             {data?.restaurants.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center">
+              <tr className="block md:table-row">
+                <td colSpan={4} className="block px-6 py-12 text-center md:table-cell">
                   <Store size={20} className="mx-auto text-slate-400" />
                   <p className="mt-3 text-sm text-gray-500">{emptyLabel}</p>
                 </td>
@@ -345,16 +349,16 @@ export default function RestaurantList() {
         )}
       </div>
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-3 text-sm">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm sm:gap-3">
           <button
             type="button"
             disabled={page <= 1}
             onClick={() => changePage(page - 1)}
-            className={`${inputClass} min-w-24 disabled:opacity-40`}
+            className={`${inputClass} min-w-0 px-3 disabled:opacity-40 sm:min-w-24 sm:px-4`}
           >
             ก่อนหน้า
           </button>
-          <span className="text-xs text-gray-400">
+          <span className="whitespace-nowrap text-center text-xs text-gray-400">
             หน้า {page.toLocaleString("th-TH")} จาก{" "}
             {totalPages.toLocaleString("th-TH")}
           </span>
@@ -362,7 +366,7 @@ export default function RestaurantList() {
             type="button"
             disabled={!data || page * data.pageSize >= data.total}
             onClick={() => changePage(page + 1)}
-            className={`${inputClass} min-w-24 disabled:opacity-40`}
+            className={`${inputClass} min-w-0 px-3 disabled:opacity-40 sm:min-w-24 sm:px-4`}
           >
             ถัดไป
           </button>

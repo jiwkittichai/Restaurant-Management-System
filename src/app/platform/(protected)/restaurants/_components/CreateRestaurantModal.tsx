@@ -44,9 +44,9 @@ export default function CreateRestaurantModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-3 sm:p-4">
       <button type="button" aria-label="ปิดหน้าต่างเพิ่มบัญชีร้าน" disabled={busy} onClick={onClose} className="fixed inset-0 bg-slate-950/40 backdrop-blur-[1px] disabled:cursor-wait" />
-      <form role="dialog" aria-modal="true" aria-labelledby="create-restaurant-title" onSubmit={submit} className="relative z-10 my-auto w-full max-w-2xl rounded-3xl border border-gray-100 bg-white p-5 shadow-2xl shadow-slate-950/20 sm:p-6">
+      <form role="dialog" aria-modal="true" aria-labelledby="create-restaurant-title" onSubmit={submit} className="relative z-10 my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl shadow-slate-950/20 sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><Building2 size={21} /></span>
