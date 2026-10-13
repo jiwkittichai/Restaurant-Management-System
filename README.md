@@ -23,25 +23,35 @@
 npm install
 ```
 
-### 2. สร้าง Prisma Client
+### 2. สร้างไฟล์ `.env`
+
+บน Windows Command Prompt:
+
+```cmd
+copy .env.example .env
+```
+
+จากนั้นเปิด `.env` แล้วเปลี่ยนรหัสผ่านและค่าที่จำเป็นสำหรับเครื่องของตัวเอง โดยเฉพาะ `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `DATABASE_URL`, `SEED_OWNER_PASSWORD` และ `PLATFORM_ADMIN_PASSWORD` ห้ามนำรหัสผ่านจริงใน `.env` ขึ้น GitHub
+
+### 3. สร้าง Prisma Client
 
 ```bash
 npx prisma generate
 ```
 
-### 3. เปิดบริการ Docker
+### 4. เปิดบริการ Docker
 
 ```bash
 docker compose up -d
 ```
 
-### 4. สร้างโครงสร้างฐานข้อมูล
+### 5. สร้างโครงสร้างฐานข้อมูล
 
 ```bash
 npx prisma migrate deploy
 ```
 
-### 5. ตั้งต้นระบบและสร้างแอดมินแพลตฟอร์ม
+### 6. ตั้งต้นระบบและสร้างแอดมินแพลตฟอร์ม
 
 ตั้งค่า `PLATFORM_ADMIN_USERNAME`, `PLATFORM_ADMIN_DISPLAY_NAME` และ `PLATFORM_ADMIN_PASSWORD` ใน `.env` โดยเปลี่ยนรหัสผ่านตัวอย่างเป็นรหัสผ่านส่วนตัว 12–128 ตัว และใช้ชื่อผู้ใช้/รหัสผ่านต่างจากบัญชีร้าน จากนั้นรัน:
 
