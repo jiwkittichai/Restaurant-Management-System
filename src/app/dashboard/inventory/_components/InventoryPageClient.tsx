@@ -1,3 +1,8 @@
+/**
+ * InventoryPageClient ดูแลข้อมูลและการทำงานหลักของหน้าวัตถุดิบและสต็อก
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 import { useNotificationTarget } from "../../_hooks/useNotificationTarget";
 

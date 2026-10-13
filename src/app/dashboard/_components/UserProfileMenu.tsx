@@ -1,3 +1,8 @@
+/**
+ * UserProfileMenu แสดงข้อมูลผู้ใช้และเมนูจัดการบัญชี
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { ChevronDown, LogOut, UserRound } from "lucide-react";

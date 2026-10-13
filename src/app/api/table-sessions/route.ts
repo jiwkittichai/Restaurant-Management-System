@@ -1,3 +1,8 @@
+/**
+ * API สำหรับช่วงเวลาการใช้งาน QR ของแต่ละโต๊ะ รองรับ POST
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { brandSelect, publicBrand } from "@/lib/restaurant-brand";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";

@@ -1,3 +1,8 @@
+/**
+ * หน้ารายละเอียดกิจกรรมของผู้ดูแลแพลตฟอร์ม
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import { notFound, redirect } from "next/navigation";
 import { getPlatformAdmin } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";

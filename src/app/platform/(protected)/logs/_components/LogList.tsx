@@ -1,3 +1,8 @@
+/**
+ * LogList แสดงรายการข้อมูลในส่วนระบบผู้ดูแลแพลตฟอร์ม
+ * ใช้รับข้อมูลจากส่วนอื่นและจัดการการโต้ตอบที่จำเป็นบนหน้าจอ
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";

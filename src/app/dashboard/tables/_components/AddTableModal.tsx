@@ -1,3 +1,8 @@
+/**
+ * AddTableModal แสดงหน้าต่างสำหรับทำรายการในส่วนโต๊ะและออเดอร์ภายในร้าน
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { FormEvent } from "react";
 import { Armchair, Plus, Save, X } from "lucide-react";
 

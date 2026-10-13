@@ -1,3 +1,8 @@
+/**
+ * InventoryHeader แสดงหัวข้อและคำสั่งหลักของวัตถุดิบและสต็อก
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { AlertTriangle, CheckCircle2, PackageOpen, Plus, Search } from "lucide-react";
 import type { StockFilter } from "../types";
 import StockFilterCard from "./StockFilterCard";

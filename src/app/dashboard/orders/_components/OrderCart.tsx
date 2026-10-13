@@ -1,3 +1,8 @@
+/**
+ * OrderCart แสดงรายการอาหารที่เลือกและยอดรวมก่อนสร้างออเดอร์
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Minus, Package, Plus, Trash2, Utensils } from "lucide-react";
 import type {
   ActiveOrder,

@@ -1,3 +1,8 @@
+/**
+ * แปลงที่อยู่รูปเมนูให้เป็นชื่อไฟล์ที่ระบบจัดเก็บข้อมูลเข้าใจ
+ * ใช้รองรับทั้ง URL และตำแหน่งไฟล์ภายในระบบเมื่อต้องอ่านหรือลบรูป
+ */
+
 const bucket = process.env.MINIO_BUCKET || "products";
 
 /** Only resolve stored URLs belonging to this installation's image bucket. */

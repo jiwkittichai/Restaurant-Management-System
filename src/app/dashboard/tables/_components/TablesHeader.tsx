@@ -1,3 +1,8 @@
+/**
+ * TablesHeader แสดงช่องค้นหา ตัวกรอง และปุ่มจัดการโต๊ะ
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Pencil, Plus, Search } from "lucide-react";
 import type { TableTab } from "../types";
 import TableFilterCard from "./TableFilterCard";

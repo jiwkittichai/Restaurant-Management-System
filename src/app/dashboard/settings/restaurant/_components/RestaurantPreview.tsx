@@ -1,3 +1,8 @@
+/**
+ * RestaurantPreview แสดงตัวอย่างข้อมูลของการตั้งค่าข้อมูลร้านอาหาร
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { RestaurantBrand } from "@/lib/restaurant-brand";
 
 export default function RestaurantPreview({

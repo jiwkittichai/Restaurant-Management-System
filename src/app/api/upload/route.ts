@@ -1,3 +1,8 @@
+/**
+ * API สำหรับอัปโหลดรูปภาพไปยังพื้นที่เก็บไฟล์ รองรับ POST
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextResponse } from "next/server";
 import { Client } from "@/lib/storage-client";
 import { StaffRole } from "@prisma/client";

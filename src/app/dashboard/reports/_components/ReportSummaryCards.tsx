@@ -1,3 +1,8 @@
+/**
+ * ReportSummaryCards แสดงข้อมูลแบบการ์ดในส่วนรายงานยอดขายและออเดอร์
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Banknote, ClipboardList, Percent, ReceiptText } from "lucide-react";
 import type { Report } from "../types";
 import { money } from "../utils";

@@ -1,3 +1,8 @@
+/**
+ * รวมรูปแบบข้อมูลที่ใช้ในงานภายในครัว
+ * ใช้กำหนดว่าข้อมูลจาก API สถานะของหน้าจอ และข้อมูลที่ส่งระหว่างส่วนประกอบต้องมีหน้าตาอย่างไร
+ */
+
 export type Ingredient = { id: number; name: string; unit: string };
 export type Recipe = { id: number; ingredientId: number; quantity: number; ingredient: Ingredient };
 export type Modifier = { id: number; name: string; price: number; modifier?: { recipes: Recipe[] } | null };

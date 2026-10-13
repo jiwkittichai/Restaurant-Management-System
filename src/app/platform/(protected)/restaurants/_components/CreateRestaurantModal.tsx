@@ -1,3 +1,8 @@
+/**
+ * CreateRestaurantModal แสดงหน้าต่างสำหรับทำรายการในส่วนระบบผู้ดูแลแพลตฟอร์ม
+ * ใช้รับข้อมูลจากส่วนอื่นและจัดการการโต้ตอบที่จำเป็นบนหน้าจอ
+ */
+
 "use client";
 
 import { FormEvent, useState } from "react";

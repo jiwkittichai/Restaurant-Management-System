@@ -1,3 +1,8 @@
+/**
+ * GuestMenuCatalog แสดงรายการที่เลือกได้ในส่วนการสั่งอาหารผ่าน QR
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Plus, Search, Utensils } from "lucide-react";
 import type { GuestMenuItem } from "../types";
 import { guestMoney } from "../utils";

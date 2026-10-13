@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในการรับออเดอร์
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import type { CartItem, MenuItem } from "./types";
 
 export function saleUnit(item: MenuItem) {

@@ -1,3 +1,8 @@
+/**
+ * เก็บรายชื่อและกลุ่มของเหตุการณ์ที่ปรากฏในประวัติกิจกรรม
+ * ใช้จัดหมวดหมู่เหตุการณ์ให้ API และหน้าจอแสดงผลตรงกัน
+ */
+
 // Shared by the server query and both history screens.
 export const auditGroups = [
   { id: "orders", label: "ออเดอร์", actions: ["CREATE_ORDER", "ADD_ORDER_ITEMS", "PICKUP_ORDER", "CANCEL_ORDER", "UPDATE_KITCHEN_STATUS"] },

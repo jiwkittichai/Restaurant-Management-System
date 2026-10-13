@@ -1,3 +1,8 @@
+/**
+ * DeleteMenuItemDialog แสดงกล่องยืนยันก่อนทำรายการในส่วนเมนูอาหาร
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { MenuItemListItem } from "../types";
 
 export default function DeleteMenuItemDialog({

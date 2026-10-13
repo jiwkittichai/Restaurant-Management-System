@@ -1,3 +1,8 @@
+/**
+ * API สำหรับรายชื่อและสถานะร้านอาหารในระบบแพลตฟอร์ม รองรับ GET, POST, PATCH
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
 import { normalizedEmail } from "@/lib/account-tokens";

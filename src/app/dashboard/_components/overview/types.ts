@@ -1,3 +1,8 @@
+/**
+ * รวมรูปแบบข้อมูลที่ใช้ในแดชบอร์ดร้านอาหาร
+ * ใช้กำหนดว่าข้อมูลจาก API สถานะของหน้าจอ และข้อมูลที่ส่งระหว่างส่วนประกอบต้องมีหน้าตาอย่างไร
+ */
+
 import type { DashboardRole } from "../../roles";
 
 export type MenuItem = { id: number; name: string; price: number };

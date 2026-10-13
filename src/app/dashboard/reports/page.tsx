@@ -1,3 +1,8 @@
+/**
+ * หน้าสำหรับรายงานยอดขายและออเดอร์
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import ReportsPageClient from "./_components/ReportsPageClient";
 import { reportFilterState } from "./filter-state";
 

@@ -1,3 +1,8 @@
+/**
+ * หน้าแก้ไขข้อมูลเมนูอาหาร
+ * ใช้รวมส่วนประกอบที่จำเป็นและเป็นจุดเริ่มต้นของการทำงานบนหน้าจอ
+ */
+
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";

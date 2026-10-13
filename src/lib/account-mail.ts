@@ -1,3 +1,8 @@
+/**
+ * ตรวจสอบการตั้งค่าอีเมลและส่งลิงก์ยืนยันบัญชีหรือรีเซ็ตรหัสผ่าน
+ * ใช้สร้างเนื้อหาอีเมลตามงานที่ต้องการ แล้วส่งผ่านระบบ SMTP
+ */
+
 import "server-only";
 import nodemailer from "nodemailer";
 import { RequestError } from "@/lib/request-security";

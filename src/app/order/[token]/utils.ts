@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในการสั่งอาหารผ่าน QR
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import type { CartLine } from "./types";
 
 export const guestItemStatusText: Record<string, string> = {

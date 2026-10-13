@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในออเดอร์กลับบ้าน
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import type { TakeawayOrder } from "./types";
 
 export const statusText: Record<string, string> = { SENT: "รอครัว", PREPARING: "กำลังทำ", READY: "พร้อมรับ", SERVED: "รับแล้ว", CANCELLED: "ยกเลิก" };

@@ -1,3 +1,8 @@
+/**
+ * RoleSelector แสดงตัวเลือกที่ใช้ในส่วนพนักงานและสิทธิ์การใช้งาน
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { Role } from "../types";
 import { roleDescription, roleText, toggleRole } from "../roles";
 

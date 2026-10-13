@@ -1,7 +1,5 @@
 import { networkInterfaces } from "node:os";
 
-// QR links use the machine's LAN address; Next dev must also serve its scripts
-// to those exact hosts. Never use a wildcard for development origins.
 const localDevHosts = Object.values(networkInterfaces()).flatMap(addresses =>
   (addresses || []).filter(address => address.family === "IPv4" && !address.internal).map(address => address.address)
 );

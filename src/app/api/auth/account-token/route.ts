@@ -1,3 +1,8 @@
+/**
+ * API สำหรับลิงก์ยืนยันอีเมลและรีเซ็ตรหัสผ่าน รองรับ POST
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizedEmail, issueAccountToken, consumeAccountToken } from "@/lib/account-tokens";

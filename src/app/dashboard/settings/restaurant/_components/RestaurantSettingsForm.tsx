@@ -1,3 +1,8 @@
+/**
+ * RestaurantSettingsForm เป็นฟอร์มสำหรับการตั้งค่าข้อมูลร้านอาหาร
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";

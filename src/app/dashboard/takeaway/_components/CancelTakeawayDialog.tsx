@@ -1,3 +1,8 @@
+/**
+ * CancelTakeawayDialog แสดงกล่องยืนยันก่อนทำรายการในส่วนออเดอร์กลับบ้าน
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { TakeawayOrder } from "../types";
 
 export default function CancelTakeawayDialog({ order, loading, onClose, onConfirm }: { order: TakeawayOrder; loading: boolean; onClose: () => void; onConfirm: () => void }) {

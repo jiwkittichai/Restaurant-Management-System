@@ -1,3 +1,8 @@
+/**
+ * สร้างตัวเชื่อมต่อฐานข้อมูล Prisma เพียงชุดเดียวสำหรับทั้งแอป
+ * ใช้ป้องกันการเปิดการเชื่อมต่อซ้ำระหว่างการพัฒนาและการโหลดโค้ดใหม่
+ */
+
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };

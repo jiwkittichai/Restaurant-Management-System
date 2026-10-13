@@ -1,3 +1,8 @@
+/**
+ * สร้างเลขออเดอร์และเลขคิวประจำวันโดยไม่ให้ซ้ำกัน
+ * ใช้แยกลำดับของออเดอร์ในร้านและออเดอร์กลับบ้านตามวันทำการ
+ */
+
 import type { Prisma } from "@prisma/client";
 
 export function orderBusinessDate(now: Date) {

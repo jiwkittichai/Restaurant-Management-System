@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในโต๊ะและออเดอร์ภายในร้าน
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 export const statusText: Record<string, string> = { AVAILABLE: "ว่าง", OCCUPIED: "กำลังใช้งาน", RESERVED: "จอง", CLEANING: "รอทำความสะอาด" };
 export const statusClass: Record<string, string> = { AVAILABLE: "bg-emerald-100 text-emerald-700", OCCUPIED: "bg-red-100 text-red-700", RESERVED: "bg-amber-100 text-amber-700", CLEANING: "bg-gray-100 text-gray-600" };
 export const orderStatusText: Record<string, string> = { SENT: "ส่งครัวแล้ว", PREPARING: "กำลังทำ", READY: "พร้อมเสิร์ฟ", SERVED: "เสิร์ฟแล้ว" };

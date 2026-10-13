@@ -1,3 +1,8 @@
+/**
+ * หน้าสำหรับประวัติกิจกรรม
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import { redirect } from "next/navigation";
 import { StaffRole } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";

@@ -1,3 +1,8 @@
+/**
+ * รวมรูปแบบข้อมูลที่ใช้ในออเดอร์กลับบ้าน
+ * ใช้กำหนดว่าข้อมูลจาก API สถานะของหน้าจอ และข้อมูลที่ส่งระหว่างส่วนประกอบต้องมีหน้าตาอย่างไร
+ */
+
 import type { BillOrder } from "../_components/billing/types";
 
 export type TakeawayItem = { id: number; name: string; qty: number; price: number; note?: string | null; status?: string; modifiers?: Array<{ id: number; name: string; price: number }> };

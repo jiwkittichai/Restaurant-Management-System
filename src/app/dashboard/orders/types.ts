@@ -1,3 +1,8 @@
+/**
+ * รวมรูปแบบข้อมูลที่ใช้ในการรับออเดอร์
+ * ใช้กำหนดว่าข้อมูลจาก API สถานะของหน้าจอ และข้อมูลที่ส่งระหว่างส่วนประกอบต้องมีหน้าตาอย่างไร
+ */
+
 export type Modifier = { id: number; name: string; price: number };
 export type ModifierGroup = {
   id: number;

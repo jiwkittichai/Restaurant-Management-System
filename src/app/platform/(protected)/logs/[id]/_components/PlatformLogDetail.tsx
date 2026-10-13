@@ -1,3 +1,8 @@
+/**
+ * PlatformLogDetail แสดงรายละเอียดกิจกรรมของผู้ดูแลแพลตฟอร์ม
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Clock3, Database, FileClock, UserRound } from "lucide-react";
 import { formatRelativeDate } from "@/app/dashboard/formatters";

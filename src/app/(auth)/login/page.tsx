@@ -1,3 +1,8 @@
+/**
+ * หน้าเข้าสู่ระบบ
+ * ใช้รวมส่วนประกอบที่จำเป็นและเป็นจุดเริ่มต้นของการทำงานบนหน้าจอ
+ */
+
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";

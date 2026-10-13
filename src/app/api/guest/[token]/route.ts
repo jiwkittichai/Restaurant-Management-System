@@ -1,3 +1,8 @@
+/**
+ * API สำหรับข้อมูลและการส่งออเดอร์ของลูกค้าผ่าน QR รองรับ GET, POST
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { moneyJson } from "@/lib/money";
 import { brandSelect, publicBrand } from "@/lib/restaurant-brand";
 import { menuImageObjectKey } from "@/lib/menu-image";

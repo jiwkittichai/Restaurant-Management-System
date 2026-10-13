@@ -1,3 +1,8 @@
+/**
+ * จัดการเซสชัน การตั้งค่า และประวัติกิจกรรมของผู้ดูแลแพลตฟอร์ม
+ * ใช้ตรวจสิทธิ์ ป้องกันคำขอจากแหล่งอื่น และบันทึกการเปลี่ยนแปลงระดับแพลตฟอร์ม
+ */
+
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";

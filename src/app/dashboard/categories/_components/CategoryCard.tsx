@@ -1,3 +1,8 @@
+/**
+ * CategoryCard แสดงข้อมูลแบบการ์ดในส่วนหมวดหมู่เมนู
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Pencil, Save, Tags, Trash2, X } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import type { Category } from "../types";

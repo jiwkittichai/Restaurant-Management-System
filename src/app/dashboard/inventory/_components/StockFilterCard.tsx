@@ -1,3 +1,8 @@
+/**
+ * StockFilterCard แสดงข้อมูลแบบการ์ดในส่วนวัตถุดิบและสต็อก
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { LucideIcon } from "lucide-react";
 
 export default function StockFilterCard({ active, label, value, tone, icon: Icon, iconClass, activeClass, hoverClass, onClick }: { active: boolean; label: string; value: string; tone: string; icon: LucideIcon; iconClass: string; activeClass: string; hoverClass: string; onClick: () => void }) {

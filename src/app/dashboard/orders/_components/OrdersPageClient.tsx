@@ -1,3 +1,8 @@
+/**
+ * OrdersPageClient ดูแลข้อมูลและการทำงานหลักของหน้าการรับออเดอร์
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";

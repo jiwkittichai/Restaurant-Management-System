@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในรายงานยอดขายและออเดอร์
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 export const methodText: Record<string, string> = { CASH: "เงินสด", PROMPTPAY: "พร้อมเพย์", CARD: "บัตร" };
 
 export function localDate(date: Date) {

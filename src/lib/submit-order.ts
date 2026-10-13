@@ -1,3 +1,8 @@
+/**
+ * จัดการขั้นตอนสร้างออเดอร์จากพนักงานหรือลูกค้าที่สั่งผ่าน QR
+ * ใช้ตรวจเมนู ตัวเลือก ราคา และโต๊ะ ก่อนบันทึกออเดอร์ทั้งหมดพร้อมกัน
+ */
+
 import { moneyJson } from "@/lib/money";
 import { OrderStatus, OrderType, PaymentStatus, Prisma } from "@prisma/client";
 import { money } from "@/lib/money";

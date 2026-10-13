@@ -1,3 +1,8 @@
+/**
+ * API สำหรับออเดอร์และสถานะการทำอาหาร รองรับ GET, POST, PATCH
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { moneyJson } from "@/lib/money";
 import { submitOrder } from "@/lib/submit-order";
 import { lockOrderTable, closeTableSession } from "@/lib/table-session";

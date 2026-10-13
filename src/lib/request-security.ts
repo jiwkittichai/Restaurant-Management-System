@@ -1,3 +1,8 @@
+/**
+ * รวมเครื่องมือป้องกันคำขอที่ไม่ปลอดภัยหรือมีขนาดใหญ่เกินกำหนด
+ * ใช้จำกัดขนาดข้อมูล จำกัดจำนวนคำขอ และแปลงข้อผิดพลาดเป็นคำตอบมาตรฐาน
+ */
+
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import { NextResponse } from "next/server";

@@ -1,3 +1,8 @@
+/**
+ * หน้าสำหรับแดชบอร์ดร้านอาหาร
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";

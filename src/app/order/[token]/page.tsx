@@ -1,3 +1,8 @@
+/**
+ * หน้าสั่งอาหารของลูกค้าผ่าน QR
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import GuestOrder from "./_components/GuestOrder";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";

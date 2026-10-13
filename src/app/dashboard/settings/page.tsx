@@ -1,3 +1,8 @@
+/**
+ * หน้าสำหรับการตั้งค่า
+ * ใช้รวมส่วนประกอบที่จำเป็นและเป็นจุดเริ่มต้นของการทำงานบนหน้าจอ
+ */
+
 import Link from "next/link";
 import { ChevronRight, CreditCard, Store, UserRound } from "lucide-react";
 

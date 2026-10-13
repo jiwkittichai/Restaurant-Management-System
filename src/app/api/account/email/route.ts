@@ -1,3 +1,8 @@
+/**
+ * API สำหรับอีเมลของบัญชีผู้ใช้ รองรับ GET, POST
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";

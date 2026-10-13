@@ -1,3 +1,8 @@
+/**
+ * จัดการการล็อกโต๊ะ ล็อกออเดอร์ และปิดช่วงใช้งานของโต๊ะ
+ * ใช้ป้องกันคำขอที่เข้ามาพร้อมกันทำให้สถานะโต๊ะหรือบิลไม่ตรงกัน
+ */
+
 import { Prisma } from "@prisma/client";
 
 // All order/session mutations lock the table first, including payment and cancellation.

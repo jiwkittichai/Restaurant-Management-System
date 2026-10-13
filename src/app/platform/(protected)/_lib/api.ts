@@ -1,3 +1,8 @@
+/**
+ * ตัวช่วยเรียก API ของระบบผู้ดูแลแพลตฟอร์ม
+ * ใช้จัดการผลลัพธ์ ข้อผิดพลาด และพาผู้ใช้กลับไปเข้าสู่ระบบเมื่อเซสชันหมดอายุ
+ */
+
 export async function platformRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init });
   if (response.status === 401) {

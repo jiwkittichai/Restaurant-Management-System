@@ -1,3 +1,8 @@
+/**
+ * PaymentSettingsForm เป็นฟอร์มสำหรับการตั้งค่าการชำระเงิน
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { ChangeEvent, useEffect, useState } from "react";

@@ -1,3 +1,8 @@
+/**
+ * RoleBoundary ตรวจสิทธิ์ก่อนแสดงเนื้อหาในแดชบอร์ดร้านอาหาร
+ * ใช้รับข้อมูลจากส่วนอื่นและจัดการการโต้ตอบที่จำเป็นบนหน้าจอ
+ */
+
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";

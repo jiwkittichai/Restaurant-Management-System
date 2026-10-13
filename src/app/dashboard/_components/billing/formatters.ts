@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในแดชบอร์ดร้านอาหาร
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import type { PaymentMethod } from "./types";
 
 export const methodText: Record<PaymentMethod, string> = { CASH: "เงินสด", PROMPTPAY: "พร้อมเพย์" };

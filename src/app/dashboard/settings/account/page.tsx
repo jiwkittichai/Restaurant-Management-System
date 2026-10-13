@@ -1,3 +1,8 @@
+/**
+ * หน้าสำหรับการตั้งค่าบัญชีผู้ใช้
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import { StaffRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";

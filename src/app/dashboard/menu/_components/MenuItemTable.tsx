@@ -1,3 +1,8 @@
+/**
+ * MenuItemTable แสดงข้อมูลแบบตารางในส่วนเมนูอาหาร
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Pencil, Trash2 } from "lucide-react";
 import type { MenuItemListItem } from "../types";
 

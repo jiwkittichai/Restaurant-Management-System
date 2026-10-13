@@ -1,3 +1,8 @@
+/**
+ * API สำหรับประวัติกิจกรรมของร้าน รองรับ GET
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest } from "next/server";
 import { StaffRole } from "@prisma/client";
 import { authorizeApi } from "@/lib/auth";

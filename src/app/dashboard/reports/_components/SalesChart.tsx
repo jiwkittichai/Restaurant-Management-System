@@ -1,3 +1,8 @@
+/**
+ * SalesChart แสดงข้อมูลของรายงานยอดขายและออเดอร์ในรูปแบบกราฟ
+ * ใช้รับข้อมูลจากส่วนอื่นและจัดการการโต้ตอบที่จำเป็นบนหน้าจอ
+ */
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";

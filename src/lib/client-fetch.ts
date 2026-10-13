@@ -1,3 +1,8 @@
+/**
+ * ช่วยเรียก API จากหน้าจอและจัดการผลลัพธ์ JSON ในรูปแบบเดียวกัน
+ * ใช้แปลงข้อผิดพลาดจากเซิร์ฟเวอร์ให้เป็นข้อความที่นำไปแสดงกับผู้ใช้ได้ทันที
+ */
+
 export async function fetchJson(input: RequestInfo | URL, init?: RequestInit): Promise<unknown> {
   const response = await fetch(input, init);
   let data: unknown;

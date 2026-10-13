@@ -1,3 +1,8 @@
+/**
+ * GuestSubmittedOrders แสดงออเดอร์ที่ลูกค้าส่งไปแล้ว
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { BellRing, ChefHat } from "lucide-react";
 import type { GuestOrderData, GuestTab } from "../types";
 import { guestItemStatusText, guestMoney } from "../utils";

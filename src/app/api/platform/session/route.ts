@@ -1,3 +1,8 @@
+/**
+ * API สำหรับการเข้าสู่ระบบของผู้ดูแลแพลตฟอร์ม รองรับ POST, GET, DELETE
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { authorizePlatform, destroyPlatformSession, platformWriteRequest } from "@/lib/platform";
 import { requestError } from "@/lib/request-security";

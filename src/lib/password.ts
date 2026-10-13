@@ -1,3 +1,8 @@
+/**
+ * เข้ารหัสและตรวจสอบรหัสผ่านด้วย scrypt พร้อมค่า salt แบบสุ่ม
+ * ใช้เก็บรหัสผ่านอย่างปลอดภัยและตรวจว่ารหัสที่กรอกตรงกับค่าที่บันทึกไว้หรือไม่
+ */
+
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 

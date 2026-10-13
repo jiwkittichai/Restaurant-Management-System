@@ -1,3 +1,8 @@
+/**
+ * CategoriesPageClient ดูแลข้อมูลและการทำงานหลักของหน้าหมวดหมู่เมนู
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";

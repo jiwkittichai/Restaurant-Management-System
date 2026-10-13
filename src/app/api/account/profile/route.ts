@@ -1,3 +1,8 @@
+/**
+ * API สำหรับโปรไฟล์ของบัญชีผู้ใช้ รองรับ PATCH
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma, StaffRole } from "@prisma/client";
 import { authorizeApi, replaceEmployeeSessions, setSessionCookie, writeAudit } from "@/lib/auth";

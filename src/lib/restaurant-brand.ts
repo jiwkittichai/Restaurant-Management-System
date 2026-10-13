@@ -1,3 +1,8 @@
+/**
+ * กำหนดข้อมูลร้านที่สามารถนำไปแสดงต่อผู้ใช้ได้
+ * ใช้เลือกข้อมูลแบรนด์และสร้าง URL โลโก้ที่เปลี่ยนตามเวอร์ชันล่าสุด
+ */
+
 export type RestaurantBrand = { name: string; logoUrl: string | null; address: string | null; phone: string | null; welcomeMessage: string | null; receiptFooter: string | null };
 export const brandSelect = { id: true, name: true, logoUrl: true, address: true, phone: true, welcomeMessage: true, receiptFooter: true, updatedAt: true } as const;
 export function publicBrand(restaurant: RestaurantBrand & { id: number; updatedAt: Date }) {

@@ -1,3 +1,8 @@
+/**
+ * RecipeModal แสดงหน้าต่างสำหรับทำรายการในส่วนงานภายในครัว
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { BookOpenText, X } from "lucide-react";
 import type { KitchenItem, KitchenOrder, RecipeLine } from "../types";
 

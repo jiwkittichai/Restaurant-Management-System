@@ -1,3 +1,8 @@
+/**
+ * จัดการการเข้าสู่ระบบและเซสชันของพนักงานร้าน
+ * ใช้สร้างคุกกี้ อ่านผู้ใช้ปัจจุบัน ตรวจสิทธิ์ และบันทึกกิจกรรมสำคัญ
+ */
+
 import "server-only";
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";

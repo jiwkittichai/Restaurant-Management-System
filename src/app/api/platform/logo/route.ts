@@ -1,3 +1,8 @@
+/**
+ * API สำหรับโลโก้ของแพลตฟอร์ม รองรับ GET, POST, DELETE
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
 import { randomUUID } from "node:crypto";

@@ -1,3 +1,8 @@
+/**
+ * หน้าตั้งค่าระบบแพลตฟอร์ม
+ * ใช้เตรียมพารามิเตอร์และตรวจสิทธิ์บนเซิร์ฟเวอร์ก่อนส่งข้อมูลไปแสดงผล
+ */
+
 import { platformSettings } from "@/lib/platform";
 import PlatformSettingsForm from "./_components/PlatformSettingsForm";
 

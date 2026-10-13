@@ -1,3 +1,8 @@
+/**
+ * BillModal แสดงหน้าต่างสำหรับทำรายการในส่วนแดชบอร์ดร้านอาหาร
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { Printer, ReceiptText, WalletCards, X } from "lucide-react";

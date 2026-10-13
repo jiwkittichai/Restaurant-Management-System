@@ -1,3 +1,8 @@
+/**
+ * ModifierGroupsEditor ใช้เพิ่มและแก้ไขข้อมูลในส่วนเมนูอาหาร
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { ModifierGroupDraft, ModifierOptionDraft } from "../types";
 
 export default function ModifierGroupsEditor({

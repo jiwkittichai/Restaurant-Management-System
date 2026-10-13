@@ -1,3 +1,8 @@
+/**
+ * แปลงและคำนวณจำนวนเงินโดยรักษาความแม่นยำของทศนิยม
+ * ใช้เตรียมค่าจำนวนเงินจากฐานข้อมูลให้อยู่ในรูปที่ส่งเป็น JSON ได้
+ */
+
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 

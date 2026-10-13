@@ -1,3 +1,8 @@
+/**
+ * จัดการลิงก์ยืนยันอีเมลและรีเซ็ตรหัสผ่านตั้งแต่สร้างจนถูกใช้งาน
+ * ใช้สร้างโทเคน เก็บค่าแบบแฮช ตรวจวันหมดอายุ และป้องกันการใช้ลิงก์ซ้ำ
+ */
+
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";

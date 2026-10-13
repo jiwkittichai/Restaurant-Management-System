@@ -1,3 +1,8 @@
+/**
+ * โครงหน้าที่ใช้ร่วมกันในแดชบอร์ดร้านอาหาร
+ * ใช้ตรวจข้อมูลที่จำเป็นและวางส่วนประกอบร่วมก่อนแสดงหน้าด้านใน
+ */
+
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import DashboardShell from "./_components/DashboardShell";

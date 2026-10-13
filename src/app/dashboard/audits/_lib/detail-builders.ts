@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในประวัติกิจกรรม
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import { actionText } from "./labels";
 import { asNumber, asText, auditActorName, detailValue, money } from "./formatters";
 import type { Audit, AuditBillItem, AuditDetails } from "../types";

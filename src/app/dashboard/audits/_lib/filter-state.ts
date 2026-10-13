@@ -1,3 +1,8 @@
+/**
+ * รวมตัวช่วยและค่าที่ใช้ซ้ำในประวัติกิจกรรม
+ * ใช้แปลงข้อมูล จัดรูปแบบข้อความ และเก็บกฎย่อยไม่ให้ปะปนกับโค้ดแสดงผล
+ */
+
 import { auditGroups } from "@/lib/audit-groups";
 import { daysAgo, localDate, monthStart, yearStart } from "./date-utils";
 import type { AuditFilterState, RangeMode } from "../types";

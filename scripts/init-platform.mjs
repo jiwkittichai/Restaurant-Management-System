@@ -40,7 +40,7 @@ export async function initializePlatform(db, env) {
 
     const settings = await tx.platformSettings.findUnique({ where: { id: 1 } });
     if (!settings) {
-      await tx.platformSettings.create({ data: { id: 1, name: 'PromRaan' } });
+      await tx.platformSettings.create({ data: { id: 1, name: 'Restaurant Management System' } });
     }
 
     const existing = await tx.platformAdmin.findUnique({

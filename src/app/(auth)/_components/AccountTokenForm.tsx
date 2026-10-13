@@ -1,3 +1,8 @@
+/**
+ * AccountTokenForm เป็นฟอร์มสำหรับบัญชีผู้ใช้และการเข้าสู่ระบบ
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";

@@ -1,3 +1,8 @@
+/**
+ * PrintableReceipt จัดวางข้อมูลบิลให้อยู่ในรูปแบบใบเสร็จสำหรับพิมพ์
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { RestaurantBrand } from "@/lib/restaurant-brand";
 import { methodText, receiptDateTime, receiptMoney } from "./formatters";
 import type { BillOrder, PaymentMethod } from "./types";

@@ -1,3 +1,8 @@
+/**
+ * GuestOrder ควบคุมหน้าสั่งอาหารผ่าน QR ของลูกค้า
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { CheckCircle2, ShoppingBag, X } from "lucide-react";

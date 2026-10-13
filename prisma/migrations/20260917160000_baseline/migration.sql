@@ -541,4 +541,4 @@ ALTER TABLE `QrSubmission` ADD CONSTRAINT `QrSubmission_sessionId_fkey` FOREIGN 
 
 -- Create the required singleton configuration for a completely empty installation.
 INSERT INTO `PlatformSettings` (`id`, `name`, `registrationOpen`, `updatedAt`)
-VALUES (1, 'PromRaan', true, CURRENT_TIMESTAMP(3));
+VALUES (1, 'Restaurant Management System', true, CURRENT_TIMESTAMP(3));

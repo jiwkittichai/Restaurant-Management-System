@@ -1,3 +1,8 @@
+/**
+ * DashboardOverview แสดงภาพรวมของแดชบอร์ดร้านอาหาร
+ * ใช้จัดการข้อมูลบนหน้าจอ ติดต่อ API และแจ้งผลสำเร็จหรือข้อผิดพลาดให้ผู้ใช้
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";

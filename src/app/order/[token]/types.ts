@@ -1,3 +1,8 @@
+/**
+ * รวมรูปแบบข้อมูลที่ใช้ในการสั่งอาหารผ่าน QR
+ * ใช้กำหนดว่าข้อมูลจาก API สถานะของหน้าจอ และข้อมูลที่ส่งระหว่างส่วนประกอบต้องมีหน้าตาอย่างไร
+ */
+
 import type { RestaurantBrand } from "@/lib/restaurant-brand";
 
 export type ModifierOption = { id: number; name: string; price: number };

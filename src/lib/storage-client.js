@@ -1,3 +1,8 @@
+/**
+ * เชื่อมคำสั่งจัดเก็บไฟล์ของแอปเข้ากับบริการ S3
+ * ใช้เพิ่ม อ่าน ตรวจสอบ และลบไฟล์ผ่านรูปแบบคำสั่งเดียวกับ MinIO
+ */
+
 // S3-compatible operations shared by the app and maintenance scripts.
 // Existing MinIO buckets, keys, credentials and public URLs remain compatible.
 const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand,

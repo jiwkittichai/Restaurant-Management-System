@@ -1,3 +1,8 @@
+/**
+ * OrdersReportTable แสดงข้อมูลแบบตารางในส่วนรายงานยอดขายและออเดอร์
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import type { KeyboardEvent } from "react";
 import type { ReportOrder } from "../types";
 import { methodText } from "../utils";

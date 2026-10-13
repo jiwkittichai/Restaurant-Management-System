@@ -1,3 +1,8 @@
+/**
+ * API สำหรับข้อมูลสรุปสำหรับรายงานยอดขาย รองรับ GET
+ * ใช้ตรวจข้อมูลจากคำขอ ติดต่อฐานข้อมูลหรือบริการที่เกี่ยวข้อง แล้วส่งผลลัพธ์กลับให้หน้าจอ
+ */
+
 import { moneyJson } from "@/lib/money";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";

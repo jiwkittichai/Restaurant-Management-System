@@ -1,3 +1,8 @@
+/**
+ * GuestCartDialog แสดงกล่องยืนยันก่อนทำรายการในส่วนการสั่งอาหารผ่าน QR
+ * ใช้รับข้อมูลที่เตรียมไว้แล้วจัดวางให้อ่านง่ายและนำกลับไปใช้ในหน้าอื่นได้
+ */
+
 import { Minus, Plus, X } from "lucide-react";
 import type { CartLine, ModifierGroup, ModifierOption } from "../types";
 import { cartLinePrice, guestMoney } from "../utils";
