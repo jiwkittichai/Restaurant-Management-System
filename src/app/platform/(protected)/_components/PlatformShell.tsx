@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, History, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Store, UserRound, X } from "lucide-react";
+import { ChevronDown, History, LayoutDashboard, LogOut, Menu, Settings, Store, UserRound } from "lucide-react";
 
 const navigation = [
   { href: "/platform", label: "ภาพรวม", icon: LayoutDashboard },
@@ -19,20 +19,28 @@ function currentTitle(pathname: string) {
 }
 
 export default function PlatformShell({
-  platformName,
-  logoUrl,
   children,
 }: {
-  platformName: string;
-  logoUrl: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    const mobileViewport = window.matchMedia("(max-width: 767px)");
+
+    if (mobileViewport.matches) setSidebarOpen(false);
+
+    function handleViewportChange(event: MediaQueryListEvent) {
+      setSidebarOpen(!event.matches);
+    }
+
+    mobileViewport.addEventListener("change", handleViewportChange);
+    return () => mobileViewport.removeEventListener("change", handleViewportChange);
+  }, []);
 
   useEffect(() => {
     function closeProfile(event: MouseEvent) {
@@ -40,6 +48,15 @@ export default function PlatformShell({
     }
     document.addEventListener("mousedown", closeProfile);
     return () => document.removeEventListener("mousedown", closeProfile);
+  }, []);
+
+  useEffect(() => {
+    function closeSidebar(event: KeyboardEvent) {
+      if (event.key === "Escape" && window.matchMedia("(max-width: 767px)").matches) setSidebarOpen(false);
+    }
+
+    window.addEventListener("keydown", closeSidebar);
+    return () => window.removeEventListener("keydown", closeSidebar);
   }, []);
 
   async function logout() {
@@ -55,42 +72,34 @@ export default function PlatformShell({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#F8F8F8] text-gray-900">
-      {sidebarOpen && <button type="button" aria-label="ปิดเมนู" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-40 bg-slate-950/25 lg:hidden" />}
+      <div className="relative h-screen w-0 shrink-0 min-[480px]:w-16 md:w-auto">
+        {sidebarOpen && <button type="button" aria-label="ปิดเมนู" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-slate-950/20 backdrop-blur-[1px] md:hidden" />}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex bg-white transition-all duration-300 lg:static lg:z-auto ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${sidebarExpanded ? "w-64" : "w-64 lg:w-20"}`}>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-[88px] items-center gap-3 px-4">
-            <button type="button" onClick={() => setSidebarExpanded(value => !value)} aria-label={sidebarExpanded ? "ย่อเมนู" : "ขยายเมนู"} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[#356DDB] transition hover:bg-blue-50">
-              <Menu size={23} />
+        <aside id="platform-sidebar" className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col overflow-hidden bg-white transition-[width,box-shadow] duration-300 ease-in-out md:relative md:z-auto ${sidebarOpen ? "w-64 shadow-2xl md:shadow-none" : "w-0 shadow-none min-[480px]:w-16 md:w-20"}`}>
+          <div className="p-4 min-[480px]:p-3 md:p-4">
+            <button type="button" onClick={() => setSidebarOpen(value => !value)} aria-label={sidebarOpen ? "ย่อเมนู" : "ขยายเมนู"} aria-expanded={sidebarOpen} aria-controls="platform-sidebar" className="rounded-lg p-2 transition-colors hover:bg-[#E8EFFF] md:p-3">
+              <Menu className="h-6 w-6 text-[#356DDB]" />
             </button>
-            <div className={`min-w-0 transition-all duration-300 ${sidebarExpanded ? "opacity-100" : "lg:pointer-events-none lg:w-0 lg:opacity-0"}`}>
-              <div className="flex items-center gap-2">
-                {logoUrl ? <img src={logoUrl} alt={`โลโก้ ${platformName}`} className="h-7 w-7 shrink-0 rounded-lg object-contain" /> : <ShieldCheck size={18} className="shrink-0 text-blue-600" />}
-                <p className="truncate font-semibold text-gray-900">{platformName}</p>
-              </div>
-              <p className="mt-1 truncate text-xs text-gray-400">ศูนย์ดูแลแพลตฟอร์ม</p>
-            </div>
-            <button type="button" onClick={() => setSidebarOpen(false)} aria-label="ปิดเมนู" className="ml-auto rounded-lg p-2 text-gray-400 lg:hidden"><X size={19} /></button>
           </div>
 
-          <nav aria-label="ส่วนจัดการแพลตฟอร์ม" className="flex-1 space-y-1 px-3">
+          <nav aria-label="ส่วนจัดการแพลตฟอร์ม" className="flex-1 space-y-1 overflow-y-auto px-2 pb-4 md:px-3">
             {navigation.map(({ href, label, icon: Icon }) => {
               const active = href === "/platform" ? pathname === href : pathname.startsWith(href);
               return (
-                <Link key={href} href={href} onClick={() => setSidebarOpen(false)} aria-current={active ? "page" : undefined} title={!sidebarExpanded ? label : undefined} className={`group flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium transition-all active:scale-[0.98] ${active ? "bg-[#356DDB] text-[#E8EFFF] shadow-md" : "text-[#AFAFAF] hover:bg-[#E8EFFF] hover:text-[#356DDB]"}`}>
-                  <span className="grid h-5 w-5 shrink-0 place-items-center"><Icon size={20} className="transition-transform group-hover:scale-110" /></span>
-                  <span className={`ml-2 whitespace-nowrap transition-all duration-300 ${sidebarExpanded ? "opacity-100" : "lg:pointer-events-none lg:-translate-x-2 lg:opacity-0"}`}>{label}</span>
+                <Link key={href} href={href} onClick={() => { if (window.matchMedia("(max-width: 767px)").matches) setSidebarOpen(false); }} aria-current={active ? "page" : undefined} title={!sidebarOpen ? label : undefined} className={`group flex w-full items-center rounded-xl px-3 py-3 text-left transition-all duration-150 ease-out active:scale-95 md:px-4 ${active ? "bg-[#356DDB] text-[#E8EFFF] shadow-md" : "text-[#AFAFAF] hover:bg-[#E8EFFF] hover:text-[#356DDB]"}`}>
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center"><Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" /></span>
+                  <span className={`whitespace-nowrap text-sm font-medium transition-all duration-300 ease-in-out ${sidebarOpen ? "ml-2 translate-x-0 opacity-100" : "pointer-events-none -translate-x-2 opacity-0"}`}>{label}</span>
                 </Link>
               );
             })}
           </nav>
-        </div>
-      </aside>
+        </aside>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-auto">
         <header className="flex w-full items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={() => setSidebarOpen(true)} aria-label="เปิดเมนู" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-gray-500 shadow-sm lg:hidden"><Menu size={20} /></button>
+            <button type="button" onClick={() => setSidebarOpen(true)} aria-label="เปิดเมนู" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[#356DDB] transition-colors hover:bg-[#E8EFFF] min-[480px]:hidden"><Menu className="h-6 w-6" /></button>
             <div className="min-w-0"><p className="text-xs text-gray-400">Platform Administration</p><h1 className="truncate text-lg font-semibold text-gray-900 sm:text-xl">{currentTitle(pathname)}</h1></div>
           </div>
           <div ref={profileRef} className="relative">
