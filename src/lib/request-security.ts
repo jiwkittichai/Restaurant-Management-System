@@ -12,7 +12,7 @@ export class RequestError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 
-// Read incrementally: Content-Length is optional and is not a security boundary.
+
 export async function boundedBody(req: Request, limit: number) {
   if (Number(req.headers.get("content-length")) > limit) throw new RequestError("ข้อมูลมีขนาดใหญ่เกินกำหนด", 413);
   const reader = req.body?.getReader();
@@ -47,7 +47,7 @@ export function requestError(error: unknown) {
 }
 
 export function clientKey(req: Request) {
-  // Enable only behind a proxy that OVERWRITES this header and blocks direct access.
+ 
   const header = process.env.TRUSTED_CLIENT_IP_HEADER;
   const value = header ? req.headers.get(header)?.trim() : undefined;
   return value && isIP(value) ? value : "shared";

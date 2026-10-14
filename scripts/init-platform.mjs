@@ -50,7 +50,7 @@ export async function initializePlatform(db, env) {
       return { admin: 'unchanged', active: existing.active, settings: settings ? 'unchanged' : 'created' };
     }
 
-    // Same scrypt format as src/lib/password.ts; no plaintext password is stored.
+    
     const salt = randomBytes(16).toString('hex');
     const passwordHash = `scrypt$${salt}$${scryptSync(config.password, salt, 64).toString('hex')}`;
     const admin = await tx.platformAdmin.create({
@@ -78,7 +78,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (!result.active) console.log('The existing admin is disabled. This command does not reactivate accounts.');
     console.log(`Platform settings: ${result.settings}. No shop data was seeded or deleted.`);
   } catch (error) {
-    // Prisma errors can contain query arguments; never print raw errors or credentials.
+    
     console.error(error instanceof SetupError ? error.message
       : error?.code === 'P2002' ? 'A setup record already exists. No changes committed; check the accounts and rerun.'
       : 'Platform initialization failed. Check database connectivity and migrations. No changes committed.');

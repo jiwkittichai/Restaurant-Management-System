@@ -9,8 +9,6 @@ export function orderBusinessDate(now: Date) {
   return new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-// Call only when creating a new order, inside the same transaction as the order.
-// One locked counter per restaurant serializes allocation, including across midnight.
 export async function allocateOrderNumbers(tx: Prisma.TransactionClient, restaurantId: number, takeaway: boolean, now?: Date) {
   await tx.$executeRaw`INSERT INTO OrderNumberCounter (restaurantId, businessDate, orderSequence, queueSequence)
     VALUES (${restaurantId}, '', 0, 0)
@@ -24,7 +22,7 @@ export async function allocateOrderNumbers(tx: Prisma.TransactionClient, restaur
   let queueSequence = counter.businessDate === businessDate ? counter.queueSequence : 0;
 
   if (orderSequence === 0) {
-    // Include imported/seeded numbers already using this prefix, even with extra padding.
+    
     const existing = await tx.$queryRaw<Array<{ orderNumber: string }>>`
       SELECT orderNumber FROM \`Order\` WHERE restaurantId = ${restaurantId}
       AND orderNumber LIKE ${`${prefix}%`} FOR UPDATE`;
@@ -40,7 +38,7 @@ export async function allocateOrderNumbers(tx: Prisma.TransactionClient, restaur
     do {
       queueSequence += 1;
       queueNumber = `Q${String(queueSequence).padStart(3, "0")}`;
-      // Never reuse today's cancelled/collected numbers or an unfinished older queue.
+      
       occupied = await tx.$queryRaw<Array<{ id: number }>>`
         SELECT id FROM \`Order\` WHERE restaurantId = ${restaurantId} AND queueNumber = ${queueNumber}
         AND (queueDate = ${businessDate} OR status NOT IN ('SERVED', 'CANCELLED')) LIMIT 1 FOR UPDATE`;

@@ -124,9 +124,7 @@ export async function writeAudit(
   details?: Record<string, unknown>,
   context?: { tx?: Prisma.TransactionClient; restaurantId: number },
 ) {
-  // Keep only events that are useful for financial, stock, security, or
-  // administrative investigations. High-frequency workflow state belongs in
-  // its source table, not in the audit trail.
+
   if (!RETAINED_AUDIT_ACTIONS.has(action)) return;
 
   const compactDetails = details ? compactAuditDetails(publicNumbers(details)) : undefined;

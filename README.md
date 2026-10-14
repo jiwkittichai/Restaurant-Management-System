@@ -1,5 +1,13 @@
 # Restaurant Management System
 
+## บัญชีแอดมิน
+๊Username: admin
+Password: 888888888888
+
+## บัญชีร้านค้า
+๊Username: kruakaneng
+Password: 88888888
+
 ## เทคโนโลยีที่ใช้
 
 - **Core Framework:** Next.js
@@ -17,33 +25,33 @@
 
 ## การติดตั้งโปรเจค
 
-เปลี่ยนไฟล์ .env.example เป็น .env
+### 1. เปลี่ยนชื่อไฟล์ `.env.example` เป็น `.env`
 
-### 1. ติดตั้ง Dependencies
+### 2. ติดตั้ง Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. สร้าง Prisma Client
+### 3. สร้าง Prisma Client
 
 ```bash
 npx prisma generate
 ```
 
-### 3. เปิดบริการ Docker
+### 4. เปิดบริการ Docker
 
 ```bash
 docker compose up -d
 ```
 
-### 4. สร้างโครงสร้างฐานข้อมูล
+### 5. สร้างโครงสร้างฐานข้อมูล
 
 ```bash
 npx prisma migrate deploy
 ```
 
-### 5. นำเข้าบัญชีแอดมินลง Database
+### 6. นำเข้าบัญชีแอดมินลง Database
 
 ```bash
 npm run db:seed:platform
@@ -58,17 +66,16 @@ npm run minio:init
 คำสั่งนี้จะสร้าง Bucket ชื่อ `products` สำหรับจัดเก็บรูปภาพเมนู และสามารถรันซ้ำได้โดยไม่ลบรูปเดิม
 
 
-```
 
-## นำเข้าข้อมูลร้านจำลองลง Database
-
+### 8. นำเข้าข้อมูลร้านจำลองลง Database
 สำหรับบัญชีสร้างร้านจำลอง บัญชีเจ้าของร้าน เมนู ตัวเลือกเสริมพร้อมสูตรตัดสต็อก วัตถุดิบ โต๊ะ และยอดขาย
 
 ```bash
 npm run db:seed
 ```
 
-### 8. เปิดเว็บไซต์
+
+### 9. เปิดเว็บไซต์
 
 ```bash
 npm run dev
@@ -78,7 +85,7 @@ npm run dev
 
 ```text
 http://localhost:3000
-
+```
 
 ## URL ของบริการ
 

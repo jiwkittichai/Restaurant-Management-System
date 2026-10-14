@@ -15,7 +15,6 @@ export function money(value: unknown): Prisma.Decimal {
 }
 export function cents(value: unknown) { return money(value).times(100).toNumber(); }
 
-// Preserve the existing numeric API contract; calculations/storage use Decimal.
 export function publicNumbers(value: unknown): any {
   if (value instanceof Prisma.Decimal) return value.toNumber();
   if (value instanceof Date) return value.toISOString();

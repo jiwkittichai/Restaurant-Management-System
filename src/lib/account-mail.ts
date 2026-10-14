@@ -30,14 +30,14 @@ export async function sendAccountMail(email: string, token: string, purpose: "VE
     connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000,
     disableFileAccess: true, disableUrlAccess: true,
   });
-  // Fragment is not sent in page requests or Referer headers; consume only by POST.
+  
   const verificationContext = purpose === "VERIFY" && options?.emailChange ? "?context=change" : "";
   const link = `${config.origin}/${purpose === "VERIFY" ? "verify-email" : "reset-password"}${verificationContext}#token=${token}`;
   const title = purpose === "VERIFY" ? (options?.emailChange ? "ยืนยันอีเมลใหม่" : "ยืนยันอีเมลบัญชีร้านอาหาร") : "คำขอตั้งรหัสผ่านใหม่";
   const expiresIn = purpose === "VERIFY" ? "24 ชั่วโมง" : "30 นาที";
   const text = purpose === "RESET"
-    ? `เรียน ผู้ใช้งาน PromRaan\n\nเราได้รับคำขอตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ กรุณาเปิดลิงก์ด้านล่างเพื่อดำเนินการ\n\n${link}\n\nลิงก์นี้ใช้ได้เพียงครั้งเดียวและจะหมดอายุภายใน ${expiresIn}\nหากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถละเว้นอีเมลฉบับนี้ได้ และโปรดอย่าเผยแพร่ลิงก์แก่ผู้อื่น\n\nขอแสดงความนับถือ\nทีมงาน PromRaan`
-    : `${title}\n\nกรุณาเปิดลิงก์ด้านล่างเพื่อดำเนินการ\n\n${link}\n\nลิงก์นี้ใช้ได้เพียงครั้งเดียวและจะหมดอายุภายใน ${expiresIn}\nหากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถละเว้นอีเมลฉบับนี้ได้ และโปรดอย่าเผยแพร่ลิงก์แก่ผู้อื่น\n\nทีมงาน PromRaan`;
+    ? `เรียน ผู้ใช้งาน Restaurant Management System\n\nเราได้รับคำขอตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ กรุณาเปิดลิงก์ด้านล่างเพื่อดำเนินการ\n\n${link}\n\nลิงก์นี้ใช้ได้เพียงครั้งเดียวและจะหมดอายุภายใน ${expiresIn}\nหากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถละเว้นอีเมลฉบับนี้ได้ และโปรดอย่าเผยแพร่ลิงก์แก่ผู้อื่น\n\nขอแสดงความนับถือ\nทีมงาน Restaurant Management System`
+    : `${title}\n\nกรุณาเปิดลิงก์ด้านล่างเพื่อดำเนินการ\n\n${link}\n\nลิงก์นี้ใช้ได้เพียงครั้งเดียวและจะหมดอายุภายใน ${expiresIn}\nหากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถละเว้นอีเมลฉบับนี้ได้ และโปรดอย่าเผยแพร่ลิงก์แก่ผู้อื่น\n\nทีมงาน Restaurant Management System`;
   try {
     const info = await transport.sendMail({ from: config.from, to: email, subject: title,
       text,

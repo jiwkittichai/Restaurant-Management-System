@@ -5,7 +5,6 @@
 
 const bucket = process.env.MINIO_BUCKET || "products";
 
-/** Only resolve stored URLs belonging to this installation's image bucket. */
 export function menuImageObjectKey(image: string | null): string | null {
   if (!image) return null;
   try {

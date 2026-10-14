@@ -5,7 +5,6 @@
 
 import { Prisma } from "@prisma/client";
 
-// All order/session mutations lock the table first, including payment and cancellation.
 export async function lockTable(tx: Prisma.TransactionClient, tableId: number) {
   await tx.$queryRaw`SELECT id FROM RestaurantTable WHERE id = ${tableId} FOR UPDATE`;
 }

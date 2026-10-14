@@ -1,4 +1,4 @@
-/** Explicit LOCAL reset to one approved restaurant with complete operating data. */
+
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
@@ -87,7 +87,7 @@ export function saleDate(index, count, range) {
 }
 
 export function salesPlan(count, range) {
-  // Keep each sale's deterministic menu choices, but allocate numbers in time order.
+  
   return Array.from({ length: count }, (_, index) => ({ index, paidAt: saleDate(index, count, range) }))
     .sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime() || a.index - b.index);
 }
