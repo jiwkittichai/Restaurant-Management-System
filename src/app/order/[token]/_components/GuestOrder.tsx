@@ -87,7 +87,7 @@ export default function GuestOrder({ token }: { token: string }) {
         JSON.stringify({ cart, pending: pending.current }),
       );
     } catch {
-      // Storage may be unavailable; keep the in-memory cart.
+      
     }
   }, [cart, guest, storageKey]);
 
@@ -160,7 +160,7 @@ export default function GuestOrder({ token }: { token: string }) {
         JSON.stringify({ cart, pending: pending.current }),
       );
     } catch {
-      // Storage may be unavailable; the request can still be submitted.
+      
     }
 
     try {

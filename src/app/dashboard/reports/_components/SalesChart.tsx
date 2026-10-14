@@ -39,8 +39,7 @@ export default function SalesChart({ report, rangeMode }: { report: Report; rang
         orders: day.orders || 0,
         average: day.average || 0,
       })), [report.chart, report.daily]);
-  // Use the real maximum. Falling back to 1 made an empty chart use a 1.2-baht
-  // ceiling; rounding its ticks then produced duplicate React keys (1, 1, 1, 0, 0).
+
   const maxAmount = Math.max(...data.map((item) => item.amount), 0);
   const max = axisMaximum(maxAmount);
   const best = data.reduce<(typeof data)[number] | null>(

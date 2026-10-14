@@ -7,7 +7,6 @@
 
 import { useEffect, useRef } from "react";
 
-/** Resolve notification anchors after the page's asynchronous data and filters settle. */
 export function useNotificationTarget(resetFilters: () => void) {
   const reset = useRef(resetFilters);
   reset.current = resetFilters;

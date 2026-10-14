@@ -19,7 +19,7 @@ export function guestMoney(value: number) {
   })}`;
 }
 
-// Works over LAN HTTP as well as HTTPS; crypto.randomUUID needs a secure context.
+
 export function createGuestId() {
   return Array.from(crypto.getRandomValues(new Uint8Array(20)), (byte) =>
     byte.toString(16).padStart(2, "0"),
